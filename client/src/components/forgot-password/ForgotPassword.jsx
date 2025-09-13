@@ -4,7 +4,6 @@ import { z } from "zod"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -12,37 +11,32 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import FormInput from "@/components/forms/formInput"
-import { useState } from "react"
 import { Link } from "react-router-dom"
-//định nghĩa validate cho form
+
 const formSchema = z.object({
-  username: z.string().min(2, { message: "Tên đăng nhập phải chứa ít nhất 2 kí tự." }),
-  password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 kí tự." }),
-  remember: z.boolean().optional().default(false)
-})
-const Login = () => {
-  // Form validation với react-hook-form
+  email: z.string().email({ message: "Email không hợp lệ" }),
+  password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 kí tự" }),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp",
+  path: ["confirmPassword"],
+});
+
+const ForgotPassword = () => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
-      remember: false
+      confirmPassword: ""
     }
   })
 
-  // Hàm xử lý khi submit form
   const onSubmit = (data) => {
     console.log('Form submitted:', data);
-    // TODO: Thêm logic gọi API đăng nhập ở đây
+    // TODO: Thêm logic gọi API đổi mật khẩu ở đây
   }
-  const [variant, setVariant] = useState("SIGNIN")
-  const toggleVariant= () => {
-    if (variant === 'SIGNIN') setVariant("SIGNUP")
-      else setVariant("SIGNIN")
-  }
-  // Google login sẽ được thêm sau
+
   return (
     <div className="flex min-h-screen">
       {/* Background section */}
@@ -60,20 +54,21 @@ const Login = () => {
       {/* Form section */}
       <div className="w-full max-w-[600px] flex items-center justify-center bg-gray-100">
         <div className="w-full max-w-[360px] bg-white rounded-2xl shadow-2xl p-10 m-4">
-          <h1 className="text-2xl font-bold mb-2">Đăng nhập</h1>
-          <p className="text-gray-600 mb-8">Chào mừng bạn quay trở lại ChatMate</p>
+          <h1 className="text-2xl font-bold mb-2">Thay đổi mật khẩu</h1>
+          <p className="text-gray-600 mb-8">Khôi phục tài khoản của bạn</p>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tên người dùng</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Nhập tên người dùng" 
+                        type="email"
+                        placeholder="Nhập email của bạn" 
                         {...field}
                       />
                     </FormControl>
@@ -87,11 +82,11 @@ const Login = () => {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mật khẩu</FormLabel>
+                    <FormLabel>Mật khẩu mới</FormLabel>
                     <FormControl>
                       <Input 
                         type="password" 
-                        placeholder="Nhập mật khẩu"
+                        placeholder="••••••••••"
                         {...field}
                       />
                     </FormControl>
@@ -100,40 +95,37 @@ const Login = () => {
                 )}
               />
 
-              <div className="flex items-center justify-between">
-                <FormField
-                  control={form.control}
-                  name="remember"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormLabel className="text-sm font-normal">
-                        Ghi nhớ đăng nhập
-                      </FormLabel>
-                    </FormItem>
-                  )}
-                />
-                <Link to="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
-                  Quên mật khẩu?
-                </Link>
-              </div>
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Xác nhận mật khẩu</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••••"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                Đăng nhập
+                Đổi mật khẩu
               </Button>
 
-              <p className="text-center text-sm text-gray-600">
-                Chưa có tài khoản?{" "}
-                <Link to="/auth/register" className="text-blue-600 hover:underline">
-                  Đăng ký ngay
+              <div className="flex justify-center space-x-4 text-sm text-gray-600">
+                <Link to="/auth/login" className="text-blue-600 hover:underline">
+                  Đăng nhập
                 </Link>
-              </p>
+                <span>|</span>
+                <Link to="/auth/register" className="text-blue-600 hover:underline">
+                  Đăng ký
+                </Link>
+              </div>
             </form>
           </Form>
         </div>
@@ -142,4 +134,4 @@ const Login = () => {
   )
 }
 
-export default Login
+export default ForgotPassword

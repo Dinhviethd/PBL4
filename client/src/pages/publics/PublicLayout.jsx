@@ -5,7 +5,7 @@ const PublicLayout= () => {
     return (
     <div>
         <HeaderBar />
-        PublicLayout
+            PublicLayout
         <Outlet />
     </div>)
 

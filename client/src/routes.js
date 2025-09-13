@@ -1,18 +1,25 @@
 import pathname from "@/lib/pathName"
 import App from "./App"
-import { PublicLayout, RentProperty, SoldProperty, News, Home } from "./pages/publics/index"
+import LoginPage from "./pages/auth/LoginPage"
+import RegisterPage from "./pages/auth/RegisterPage"
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage"
 
-const routes= [{
+const routes = [{
     path: "/",
     Component: App,
     children: [
         {
-        path: pathname.public.layout, Component: PublicLayout,
-            children: [
-                {path: pathname.public.homepage, Component: Home},
-            ]
+            path: "auth/login",
+            Component: LoginPage
+        },
+        {
+            path: "auth/register",
+            Component: RegisterPage
+        },
+        {
+            path: "auth/forgot-password",
+            Component: ForgotPasswordPage
         }
     ],
-
 }]
-export default routes
+export default routes   

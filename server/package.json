@@ -30,11 +30,11 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.2.0",
+    "@types/node": "^24.3.3",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typeorm": "^0.3.25",
+    "typeorm": "^0.3.26",
     "typescript": "^5.9.2"
   }
 }
