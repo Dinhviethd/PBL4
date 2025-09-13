@@ -14,7 +14,6 @@ app.use(cors({
 }))
 initDatabase()
 app.use("/api", router)
-
 app.use(errorHandler.notFound)
 app.use(errorHandler.errorHandler)
 
