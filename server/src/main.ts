@@ -15,6 +15,11 @@ app.use(cors({
 initDatabase()
 app.use("/api", router)
 
+// Route for root path
+app.get("/", (req, res) => {
+    res.json({ message: "Welcome to the API" });
+});
+
 app.use(errorHandler.notFound)
 app.use(errorHandler.errorHandler)
 

@@ -1,13 +1,34 @@
-import z from "zod"
-export const registerSchema= z.object({
-    email: z.email().min(1).max(255),
-    password: z.string().min(1).max(20),
-    confirmPassword: z.string().min(1).max(20),
-    userAgent: z.string().optional()
-}).refine((val) => val.password === val.confirmPassword, { 
-    message: "Password do not match",
+import { z } from "zod"
+
+export const registerSchema = z.object({
+    username: z.string().min(3).max(50),
+    email: z.string().email(),
+    password: z.string().min(6).max(50),
+    confirmPassword: z.string().min(6).max(50),
+    fullname: z.string().min(3).max(100),
+    avatarUrl: z.string().url().optional()
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
     path: ["confirmPassword"],
-})
+});
+
+export const loginSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(6).max(50)
+});
+
+export const forgotPasswordSchema = z.object({
+    email: z.string().email()
+});
+
+export const resetPasswordSchema = z.object({
+    token: z.string(),
+    newPassword: z.string().min(6).max(50),
+    confirmPassword: z.string().min(6).max(50)
+}).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+});
 
 
 
