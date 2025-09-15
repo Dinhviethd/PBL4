@@ -16,7 +16,7 @@ import { useState } from "react"
 import authService from "@/services/auth.service"
 
 const formSchema = z.object({
-  fullName: z.string().min(2, { message: "Họ và tên phải chứa ít nhất 2 kí tự." }),
+  name: z.string().min(2, { message: "Họ và tên phải chứa ít nhất 2 kí tự." }),
   phone: z.string().min(10, { message: "Số điện thoại không hợp lệ" }),
   email: z.string().email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 kí tự" }),
@@ -30,7 +30,7 @@ const Register = () => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
+      name: "",
       phone: "",
       email: "",
       password: "",
@@ -47,7 +47,7 @@ const Register = () => {
       setIsLoading(true);
       setError("");
       await authService.register({
-        fullname: data.fullName,
+        name: data.name,
         phone: data.phone,
         email: data.email,
         password: data.password,
@@ -88,7 +88,7 @@ const Register = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="fullName"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Họ và tên</FormLabel>

@@ -30,7 +30,7 @@ class AuthService {
         const hashedPassword = await hashPassword(data.password);
         
         const user = await this.userRepository.save({
-            name: data.fullname,
+            name: data.name,
             email: data.email,
             password: hashedPassword,
             phone: data.phone,
@@ -44,7 +44,7 @@ class AuthService {
             user: {
                 id: user.idUser,
                 email: user.email || '',
-                fullname: user.name || '',
+                name: user.name || '',
                 avatarUrl: user.avatarUrl,
                 createdAt: user.createdAt || new Date()
             },
@@ -79,7 +79,7 @@ class AuthService {
             user: {
                 id: user.idUser,
                 email: user.email || '',
-                fullname: user.name || '',
+                name: user.name || '',
                 avatarUrl: user.avatarUrl,
                 createdAt: user.createdAt || new Date()
             },

@@ -1,7 +1,7 @@
 export interface RegisterDTO {
     email: string;
     password: string;
-    fullname: string;
+    name: string;
     phone?: string;
     avatarUrl?: string;
 }
@@ -26,7 +26,7 @@ export interface AuthResponse {
     user: {
         id: number;
         email: string;
-        fullname: string;
+        name: string;
         avatarUrl?: string;
         createdAt: Date;
     }
