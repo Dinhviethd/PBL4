@@ -14,10 +14,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import FormInput from "@/components/forms/formInput"
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import authService from "@/services/auth.service"
 //định nghĩa validate cho form
 const formSchema = z.object({
-  username: z.string().min(2, { message: "Tên đăng nhập phải chứa ít nhất 2 kí tự." }),
+  email: z.string().email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 kí tự." }),
   remember: z.boolean().optional().default(false)
 })
@@ -26,16 +27,28 @@ const Login = () => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
       remember: false
     }
   })
 
   // Hàm xử lý khi submit form
-  const onSubmit = (data) => {
-    console.log('Form submitted:', data);
-    // TODO: Thêm logic gọi API đăng nhập ở đây
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  const onSubmit = async (data) => {
+    try {
+      setIsLoading(true);
+      setError("");
+      const result = await authService.login(data.email, data.password, data.remember);
+      // TODO: Handle successful login (redirect to dashboard)
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Đăng nhập thất bại');
+    } finally {
+      setIsLoading(false);
+    }
   }
   const [variant, setVariant] = useState("SIGNIN")
   const toggleVariant= () => {
@@ -67,13 +80,14 @@ const Login = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tên người dùng</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Nhập tên người dùng" 
+                        type="email"
+                        placeholder="Nhập email của bạn" 
                         {...field}
                       />
                     </FormControl>
@@ -124,8 +138,18 @@ const Login = () => {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                Đăng nhập
+              {error && (
+                <div className="text-sm text-red-500 mb-4">
+                  {error}
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
               </Button>
 
               <p className="text-center text-sm text-gray-600">

@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { useState } from "react"
+import authService from "@/services/auth.service"
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Họ và tên phải chứa ít nhất 2 kí tự." }),
-  birthday: z.string().min(1, { message: "Ngày sinh là bắt buộc" }),
   phone: z.string().min(10, { message: "Số điện thoại không hợp lệ" }),
-  address: z.string().min(5, { message: "Địa chỉ phải chứa ít nhất 5 kí tự" }),
   email: z.string().email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 kí tự" }),
   confirmPassword: z.string()
@@ -31,18 +31,37 @@ const Register = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
-      birthday: "",
       phone: "",
-      address: "",
       email: "",
       password: "",
       confirmPassword: ""
     }
   })
 
-  const onSubmit = (data) => {
-    console.log('Form submitted:', data);
-    // TODO: Thêm logic gọi API đăng ký ở đây
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const onSubmit = async (data) => {
+    try {
+      setIsLoading(true);
+      setError("");
+      await authService.register({
+        fullname: data.fullName,
+        phone: data.phone,
+        email: data.email,
+        password: data.password,
+        confirmPassword: data.confirmPassword
+      });
+      // Chuyển hướng đến trang đăng nhập sau khi đăng ký thành công
+      navigate('/auth/login', { 
+        state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' }
+      });
+    } catch (err) {
+      setError(err.message || 'Đăng ký thất bại');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -61,7 +80,7 @@ const Register = () => {
       
       {/* Form section */}
       <div className="w-full max-w-[600px] flex items-center justify-center bg-gray-100">
-        <div className="w-full max-w-[360px] bg-white rounded-2xl shadow-2xl p-10 m-4">
+        <div className="w-full max-w-[500px] bg-white rounded-2xl shadow-2xl p-10 m-4">
           <h1 className="text-2xl font-bold mb-2">Đăng ký</h1>
           <p className="text-gray-600 mb-8">Tạo tài khoản ChatMate của bạn ngay bây giờ!</p>
 
@@ -75,7 +94,7 @@ const Register = () => {
                     <FormLabel>Họ và tên</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Nguyễn Văn An" 
+                        placeholder="Nhập tên của bạn" 
                         {...field}
                       />
                     </FormControl>
@@ -84,52 +103,15 @@ const Register = () => {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="birthday"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ngày sinh</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date"
-                          placeholder="15/03/1990" 
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Số điện thoại</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="0901234567" 
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <FormField
                 control={form.control}
-                name="address"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Địa chỉ</FormLabel>
+                    <FormLabel>Số điện thoại</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="123 Đường ABC, Quận 1, TP. Hồ Chí Minh" 
+                        placeholder="Nhập số điện thoại" 
                         {...field}
                       />
                     </FormControl>
@@ -166,7 +148,7 @@ const Register = () => {
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="••••••••••"
+                          placeholder=""
                           {...field}
                         />
                       </FormControl>
@@ -184,7 +166,7 @@ const Register = () => {
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="••••••••••"
+                          placeholder=""
                           {...field}
                         />
                       </FormControl>

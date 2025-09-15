@@ -1,8 +1,8 @@
 export interface RegisterDTO {
-    username: string;
     email: string;
     password: string;
     fullname: string;
+    phone?: string;
     avatarUrl?: string;
 }
 
@@ -25,7 +25,6 @@ export interface AuthResponse {
     refreshToken: string;
     user: {
         id: number;
-        username: string;
         email: string;
         fullname: string;
         avatarUrl?: string;

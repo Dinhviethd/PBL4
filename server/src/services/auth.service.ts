@@ -1,4 +1,4 @@
-import { User } from "@/models/users.model";
+import { User } from '@/models/users.model';
 import { RegisterDTO, LoginDTO, AuthResponse } from '@/DTOs/auth.dto';
 import { Repository } from "typeorm";
 import { AppDataSource } from "@/configs/database.config";
@@ -33,6 +33,7 @@ class AuthService {
             name: data.fullname,
             email: data.email,
             password: hashedPassword,
+            phone: data.phone,
             avatarUrl: data.avatarUrl,
             status: StatusUser.OFFLINE
         });
@@ -42,7 +43,6 @@ class AuthService {
         return {
             user: {
                 id: user.idUser,
-                username: user.name || '',
                 email: user.email || '',
                 fullname: user.name || '',
                 avatarUrl: user.avatarUrl,
@@ -78,7 +78,6 @@ class AuthService {
         return {
             user: {
                 id: user.idUser,
-                username: user.name || '',
                 email: user.email || '',
                 fullname: user.name || '',
                 avatarUrl: user.avatarUrl,
