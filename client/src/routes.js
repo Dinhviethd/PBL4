@@ -1,4 +1,3 @@
-import pathname from "@/lib/pathName"
 import App from "./App"
 import LoginPage from "./pages/auth/LoginPage"
 import RegisterPage from "./pages/auth/RegisterPage"
