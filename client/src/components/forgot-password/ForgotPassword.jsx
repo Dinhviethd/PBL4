@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { useState } from "react"
+import authService from "@/services/auth.service"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email không hợp lệ" }),
@@ -32,9 +34,30 @@ const ForgotPassword = () => {
     }
   })
 
-  const onSubmit = (data) => {
-    console.log('Form submitted:', data);
-    // TODO: Thêm logic gọi API đổi mật khẩu ở đây
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [step, setStep] = useState("request"); // "request" or "reset"
+  const navigate = useNavigate();
+
+  const onSubmit = async (data) => {
+    try {
+      setIsLoading(true);
+      setError("");
+      
+      if (step === "request") {
+        await authService.forgotPassword(data.email);
+        setStep("reset");
+      } else {
+        await authService.resetPassword(data.email, data.password);
+        navigate('/auth/login', { 
+          state: { message: 'Mật khẩu đã được thay đổi thành công! Vui lòng đăng nhập.' }
+        });
+      }
+    } catch (err) {
+      setError(err.message || 'Yêu cầu thất bại');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
