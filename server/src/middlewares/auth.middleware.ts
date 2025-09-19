@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "@/utils/error.response";
+import { AppDataSource } from "@/configs/database.config";
+import { User } from "@/models/users.model";
+import { StatusUser } from "@/constants/constants";
 
 interface JwtPayload {
   id: number;
@@ -31,8 +34,6 @@ export const authMiddleware = (
     const secret = process.env.JWT_ACCESS_SECRET;
     if (!secret) throw new Error("JWT_ACCESS_SECRET is not defined in environment");
 
-    console.log("Using JWT_ACCESS_SECRET:", secret); // Debug log
-    console.log("Verifying token:", token); // Debug log
     const decoded = jwt.verify(token, secret) as JwtPayload;
 
   req.user = {
@@ -48,5 +49,33 @@ export const authMiddleware = (
     } else {
       next(error);
     }
+  }
+};
+
+// Middleware to check if account is not locked (for sensitive operations)
+export const checkAccountStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) throw new AppError(401, "Unauthorized");
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({
+      where: { idUser: userId },
+      select: ['status']
+    });
+
+    if (!user) throw new AppError(404, "User not found");
+    
+    if (user.status === StatusUser.LOCKED) {
+      throw new AppError(403, "Tài khoản đã bị vô hiệu hóa. Vui lòng đăng nhập lại để kích hoạt.");
+    }
+
+    next();
+  } catch (error: any) {
+    next(error);
   }
 };

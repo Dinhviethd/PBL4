@@ -10,7 +10,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import Button from "@/components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import authService from "@/services/auth.service"
@@ -92,6 +92,7 @@ const ForgotPassword = () => {
                       <Input 
                         type="email"
                         placeholder="Nhập email của bạn" 
+                        disabled={isLoading}
                         {...field}
                       />
                     </FormControl>
@@ -136,8 +137,14 @@ const ForgotPassword = () => {
                 )}
               />
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                Đổi mật khẩu
+              {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
+
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang xử lý..." : (step === "request" ? "Gửi yêu cầu" : "Đổi mật khẩu")}
               </Button>
 
               <div className="flex justify-center space-x-4 text-sm text-gray-600">

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAuthInit } from "@/hooks/useAuthInit";
 import { NavLink } from "react-router-dom";
 import { MessageCircle, Users, Bell, UserPlus, Settings } from "lucide-react";
 import PopupInfo from "../components/profile/PopupInfor"; // popup component của bạn
@@ -13,14 +14,13 @@ const links = [
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Dữ liệu người dùng demo
+  // Khởi tạo auth và lấy user data
+  const { user } = useAuthInit();
+  
   const userData = {
-    avatar: "https://i.pravatar.cc/60",
-    name: "Nguyen Van A",
-    gender: "Nam",
-    dob: "01/01/2000",
-    phone: "0123456789",
+    avatar: user?.avatarUrl ? `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.avatarUrl}` : "/images/avatar-default-icon.png",
   };
+  console.log(userData.avatar);
 
   return (
     <nav className="w-20 h-screen bg-white border-r border-gray-200 flex flex-col justify-between py-4 shadow-sm relative">
@@ -32,6 +32,7 @@ export default function Sidebar() {
             alt="avatar"
             className="w-12 h-12 rounded-full border-2 border-blue-500 object-cover shadow-md cursor-pointer"
             onClick={() => setIsOpen(true)}
+            onError={(e) => { e.target.onerror = null; e.target.src = "/images/avatar-default-icon.png"; }}
           />
 
           {/* Popup Info */}

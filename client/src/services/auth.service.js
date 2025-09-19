@@ -1,4 +1,5 @@
 import instance from "./axios.config"; 
+import useAuthStore from "../zustand/authStore";
 
 const authService = {
   login: async (email, password, remember = false) => {
@@ -6,12 +7,14 @@ const authService = {
       const response = await instance.post(
         "/auth/login",
         { email, password, remember },
-        { isLoginRequest: true } // flag cho interceptor
+        { isLoginRequest: true }
       );
 
       if (response.data.accessToken) {
-        localStorage.setItem("user", JSON.stringify(response.data));
+        useAuthStore.getState().setAuth(response.data);
+        console.log("Login successful, user data:", response.data);
       }
+
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Đã có lỗi xảy ra" };
@@ -53,10 +56,10 @@ const authService = {
       const response = await instance.post(
         "/auth/refresh-token",
         {},
-        { isRefreshRequest: true } 
+        { isRefreshRequest: true }
       );
       if (response.data.accessToken) {
-        localStorage.setItem("user", JSON.stringify(response.data));
+        useAuthStore.getState().setAuth(response.data);
       }
       return response.data;
     } catch (error) {
@@ -65,11 +68,11 @@ const authService = {
   },
 
   logout: () => {
-    localStorage.removeItem("user");
+    useAuthStore.getState().clearAuth();
   },
 
   getCurrentUser: () => {
-    return JSON.parse(localStorage.getItem("user"));
+    return useAuthStore.getState().user;
   },
 };
 

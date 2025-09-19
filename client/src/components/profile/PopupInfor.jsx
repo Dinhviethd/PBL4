@@ -1,53 +1,73 @@
 import React, { useState, useEffect, useMemo } from "react";
 import userService from "@/services/user.service";
+import useAuthStore from "@/zustand/authStore";
+import { useNotification } from "@/hooks/useNotification";
 
-export default function ProfilePopup({ isOpen, onClose, avatar, name, gender, dob, phone }) {
+export default function ProfilePopup({ isOpen, onClose }) {
+  const { user, setAuth } = useAuthStore();
+  const { showSuccess, showError, showWarning } = useNotification();
   const [isEdit, setIsEdit] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    gender: "",
-    day: "01",
-    month: "01",
-    year: "2000",
-    phone: "",
-  });
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({});
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Load user profile khi mở popup
+  // Helper function để set form data từ user object
+  const setFormDataFromUser = (userData) => {
+    let day = "01", month = "01", year = "2000";
+    if (userData.birthday) {
+      const parts = userData.birthday.split("-");
+      if (parts.length === 3) {
+        year = parts[0];
+        month = parts[1];
+        day = parts[2].slice(0, 2);
+      }
+    }
+    setFormData({
+      name: userData.name || "",
+      gender: userData.gender || "",
+      day,
+      month,
+      year,
+      phone: userData.phone || "",
+    });
+  };
+
+  // Tự động set formData khi có user trong store
   useEffect(() => {
-    if (isOpen) {
+    if (user && user.name && isOpen) {
+      console.log("Setting formData from authStore user:", user);
+      setFormDataFromUser(user);
+    }
+  }, [user, isOpen]);
+
+  // Load user profile khi mở popup (chỉ khi chưa có user)
+  useEffect(() => {
+    if (isOpen && (!user || !user.name)) {
+      console.log("Fetching user profile from API...");
       setLoading(true);
-      userService.getProfile().then((res) => {
-        const u = res.data || res;
-        setUser(u);
-
-        let day = "01", month = "01", year = "2000";
-        if (u.birthday) {
-          const parts = u.birthday.split("-");
-          if (parts.length === 3) {
-            year = parts[0];
-            month = parts[1];
-            day = parts[2].slice(0, 2);
-          }
-        }
-
-        setFormData({
-          name: u.name || "",
-          gender: u.gender || "",
-          day,
-          month,
-          year,
-          phone: u.phone || "",
+      userService.getProfile()
+        .then((userData) => {
+          console.log("Loaded user profile:", userData);
+          setAuth({
+            user: userData,
+            accessToken: useAuthStore.getState().accessToken
+          });
+          setFormDataFromUser(userData);
+        })
+        .catch((err) => {
+          console.error("Error loading profile:", err);
+          setFormData({});
+        })
+        .finally(() => {
+          setLoading(false);
         });
-
-        setLoading(false);
-      });
-    } else {
+    } else if (!isOpen) {
       // Reset edit mode khi đóng popup
       setIsEdit(false);
     }
-  }, [isOpen]);
+  }, [isOpen, user, setAuth]);
 
   // Tạo form ban đầu để so sánh
   const initialForm = useMemo(() => {
@@ -69,7 +89,7 @@ export default function ProfilePopup({ isOpen, onClose, avatar, name, gender, do
       year,
       phone: user.phone || "",
     };
-  }, [user]);
+  }, [user, formData]);
 
   // Kiểm tra form đã thay đổi chưa
   const isChanged = useMemo(() => {
@@ -78,7 +98,10 @@ export default function ProfilePopup({ isOpen, onClose, avatar, name, gender, do
 
   if (!isOpen) return null;
 
-  if (loading) {
+  console.log("Popup render - user:", user?.name, "formData:", formData?.name, "isEdit:", isEdit);
+
+  // Chỉ hiển thị loading khi thực sự đang fetch và chưa có gì
+  if (loading && !user) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-8">Đang tải thông tin...</div>
@@ -93,6 +116,63 @@ export default function ProfilePopup({ isOpen, onClose, avatar, name, gender, do
 
   const handleUpdateClick = () => setIsEdit(true);
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Kiểm tra loại file
+      if (!file.type.startsWith('image/')) {
+        showWarning('Chọn file', 'Vui lòng chọn file ảnh!');
+        return;
+      }
+      
+      // Kiểm tra kích thước file (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showError('File quá lớn', 'File quá lớn! Vui lòng chọn file nhỏ hơn 5MB.');
+        return;
+      }
+
+      setAvatarFile(file);
+      
+      // Tạo preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAvatarPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!avatarFile) return;
+    
+    try {
+      setUploadingAvatar(true);
+      const updatedUser = await userService.uploadAvatar(avatarFile);
+      
+      // Cập nhật authStore
+      setAuth({
+        user: updatedUser,
+        accessToken: useAuthStore.getState().accessToken
+      });
+      
+      // Reset states
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      
+      showSuccess('Thành công', 'Cập nhật avatar thành công!');
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      showError('Lỗi', 'Cập nhật avatar thất bại!');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCancelAvatarUpload = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const birthday = `${formData.year}-${formData.month.padStart(2, "0")}-${formData.day.padStart(2, "0")}`;
@@ -103,13 +183,22 @@ export default function ProfilePopup({ isOpen, onClose, avatar, name, gender, do
       phone: formData.phone,
     };
     try {
-      await userService.updateProfile(updateData);
-      setUser(updateData); // cập nhật ngay
+      const updatedUser = await userService.updateProfile(updateData);
+      console.log("Profile updated successfully:", updatedUser);
+      
+      // Cập nhật authStore
+      setAuth({
+        user: updatedUser,
+        accessToken: useAuthStore.getState().accessToken
+      });
+
+      // Đồng bộ formData với helper function
+      setFormDataFromUser(updatedUser);
       setIsEdit(false);
-      // onClose(); // nếu muốn đóng popup sau khi cập nhật, bỏ comment dòng này
+      showSuccess('Thành công', 'Cập nhật thông tin thành công!');
     } catch (err) {
-      console.error(err);
-      alert("Cập nhật thất bại!");
+      console.error("Error updating profile:", err);
+      showError('Lỗi', "Cập nhật thất bại!");
     }
   };
 
@@ -142,19 +231,64 @@ export default function ProfilePopup({ isOpen, onClose, avatar, name, gender, do
             </div>
 
             <div className="flex justify-center -mt-20 mb-4">
-              <img
-                className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover"
-                src={user?.avatarUrl || avatar}
-                alt="avatar"
-              />
+              <div className="relative">
+                <img
+                  className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover"
+                  src={avatarPreview || (user?.avatarUrl ? `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.avatarUrl}` : "/images/avatar-default-icon.png")}
+                  alt="avatar"
+                  onError={e => { e.target.onerror = null; e.target.src = "/images/avatar-default-icon.png"; }}
+                />
+                
+                {/* Upload avatar button */}
+                <div className="absolute bottom-0 right-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                    id="avatar-upload"
+                  />
+                  <label
+                    htmlFor="avatar-upload"
+                    className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-lg"
+                  >
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </label>
+                </div>
+              </div>
             </div>
 
+            {/* Avatar upload controls */}
+            {avatarFile && (
+              <div className="text-center mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">Ảnh mới đã được chọn</p>
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={handleUploadAvatar}
+                    disabled={uploadingAvatar}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  >
+                    {uploadingAvatar ? 'Đang tải...' : 'Cập nhật'}
+                  </button>
+                  <button
+                    onClick={handleCancelAvatarUpload}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="text-center mt-4">
-              <h2 className="font-bold text-3xl text-gray-800">{user?.name || name}</h2>
+              <h2 className="font-bold text-3xl text-gray-800">{user?.name || "Người dùng"}</h2>
               <div className="flex flex-col items-center mt-6 space-y-4">
-                <p className="text-lg text-gray-700"><span className="font-semibold">Giới tính:</span> {user?.gender || gender}</p>
-                <p className="text-lg text-gray-700"><span className="font-semibold">Ngày sinh:</span> {user?.birthday ? `${user.birthday.split("-")[2]}/${user.birthday.split("-")[1]}/${user.birthday.split("-")[0]}` : dob}</p>
-                <p className="text-lg text-gray-700"><span className="font-semibold">Điện thoại:</span> {user?.phone || phone}</p>
+                <p className="text-lg text-gray-700"><span className="font-semibold">Giới tính:</span> {user?.gender || ""}</p>
+                <p className="text-lg text-gray-700"><span className="font-semibold">Ngày sinh:</span> {user?.birthday ? `${user.birthday.split("-")[2]}/${user.birthday.split("-")[1]}/${user.birthday.split("-")[0]}` : ""}</p>
+                <p className="text-lg text-gray-700"><span className="font-semibold">Điện thoại:</span> {user?.phone || ""}</p>
               </div>
             </div>
 

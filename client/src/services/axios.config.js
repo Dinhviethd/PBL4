@@ -1,7 +1,8 @@
 import axios from "axios";
 import authService from "./auth.service.js";
+import useAuthStore from "@/zustand/authStore";
 
-const apiUrl = import.meta.env.VITE_API_URL; 
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const instance = axios.create({
   baseURL: apiUrl,
@@ -15,13 +16,11 @@ const instance = axios.create({
 // Request interceptor
 instance.interceptors.request.use(
   (config) => {
-    if (config.skipAuthRedirect) {
-      config.skipAuthRedirect = true;
-    }
+    const { accessToken } = useAuthStore.getState();
 
-    config.headers = {
-      ...config.headers,
-    };
+    if (accessToken && !config.isRefreshRequest && !config.isLoginRequest) {
+      config.headers["Authorization"] = `Bearer ${accessToken}`;
+    }
 
     return config;
   },
@@ -38,16 +37,10 @@ instance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (originalRequest?.isRefreshRequest === true) {
-      console.error("Lỗi xác thực:", error);
-      window.location.href = "/";
-      return Promise.reject(error);
-    }
-
-    if (
-      originalRequest?.headers &&
-      originalRequest.headers["X-From-Header"] === "true"
-    ) {
+    if (originalRequest?.isRefreshRequest) {
+      console.error("Refresh token không hợp lệ:", error);
+      useAuthStore.getState().clearAuth();
+      window.location.href = "/auth/login";
       return Promise.reject(error);
     }
 
@@ -55,21 +48,12 @@ instance.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await authService.refreshToken();
-        console.log("refreshToken thành công");
-
-        const newRequest = {
-          ...originalRequest,
-          headers: { ...originalRequest.headers },
-        };
-
-        return instance(newRequest);
+        console.log("Refresh token thành công ✅");
+        return instance(originalRequest);
       } catch (refreshError) {
-        console.error("Lỗi khi làm mới token:", refreshError);
-        if (!originalRequest?.skipAuthRedirect) {
-          if (window.location.pathname !== "/auth/login") {
-            window.location.href = "/auth/login";
-          }
-        }
+        console.error("Lỗi khi refresh token:", refreshError);
+        useAuthStore.getState().clearAuth();
+        window.location.href = "/auth/login";
         return Promise.reject(refreshError);
       }
     }

@@ -5,6 +5,8 @@ export interface UserResponse {
   email?: string;
   avatarUrl?: string;
   phone?: string;
+  gender?: string;
+  birthday?: string;
   createdAt?: Date;
 }
 
@@ -14,4 +16,6 @@ export interface UpdateUserDTO {
   avatarUrl?: string;
   password?: string;
   phone?: string;
+  gender?: string;
+  birthday?: string;
 }

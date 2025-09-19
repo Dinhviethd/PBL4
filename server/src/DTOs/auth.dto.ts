@@ -28,6 +28,9 @@ export interface AuthResponse {
         email: string;
         name: string;
         avatarUrl?: string;
+        phone?: string;
+        gender?: string;
+        birthday?: string;
         createdAt: Date;
     }
 }
