@@ -7,6 +7,7 @@ import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import NotificationPage from "./pages/publics/NotificationPage";
 
 const routes = [
   {
@@ -19,6 +20,7 @@ const routes = [
         children: [
           { path: "", Component: HomePage },
           { path: "settings", Component: SettingsPage },
+          { path: "notifications", Component: NotificationPage},
         ],
       },
       {
