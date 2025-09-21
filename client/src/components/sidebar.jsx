@@ -6,7 +6,7 @@ import PopupInfo from "../components/profile/PopupInfor"; // popup component c�
 
 const links = [
   { to: "/", label: "Tin nhắn", icon: <MessageCircle size={22} /> },
-  { to: "/contacts", label: "Bạn bè", icon: <Users size={22} /> },
+  { to: "/contact", label: "Bạn bè", icon: <Users size={22} /> },
   { to: "/notifications", label: "Thông báo", icon: <Bell size={22} /> },
   { to: "/add-friend", label: "Thêm bạn", icon: <UserPlus size={22} /> },
 ];
