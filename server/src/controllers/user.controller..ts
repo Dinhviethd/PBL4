@@ -6,7 +6,7 @@ import { hashPassword, passwordCompare } from "@/utils/password";
 
 export const getMyInfo = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     const user = await userService.getMyInfo(userId);
     res.json({ success: true, data: user });
@@ -16,7 +16,7 @@ export const getMyInfo = async (req: Request, res: Response) => {
 };
 export const updateMyInfo = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     const validatedData = updateUserSchema.parse(req.body);
     const updatedUser = await userService.updateMyInfo(userId, validatedData);
@@ -31,7 +31,7 @@ export const updateMyInfo = async (req: Request, res: Response) => {
 
 export const uploadAvatar = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     
     if (!req.file) {
@@ -47,7 +47,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 
 export const deleteMyAccount = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     
     const { confirmText, password } = req.body;
@@ -68,7 +68,7 @@ export const deleteMyAccount = async (req: Request, res: Response) => {
 
 export const changePassword = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     
     const { currentPassword, newPassword } = req.body;
@@ -115,7 +115,7 @@ export const changePassword = async (req: Request, res: Response) => {
 
 export const deactivateAccount = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     
     const { password } = req.body;
@@ -130,7 +130,7 @@ export const deactivateAccount = async (req: Request, res: Response) => {
 
 export const reactivateAccount = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     
     await userService.reactivateAccount(userId);
@@ -142,7 +142,7 @@ export const reactivateAccount = async (req: Request, res: Response) => {
 
 export const getAccountStatus = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
     
     const status = await userService.getAccountStatus(userId);
