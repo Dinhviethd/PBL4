@@ -13,7 +13,7 @@ export class VerifiedCode{
         type: "timestamp", 
         default: () => "CURRENT_TIMESTAMP(6)", 
     })
-    createdAt!: Date; 
+    CreatedAt!: Date; 
 
     @Column({type: "enum" ,enum: verifiedCodeType})
     type!: verifiedCodeType;

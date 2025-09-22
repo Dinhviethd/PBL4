@@ -1,18 +1,39 @@
-import pathname from "@/lib/pathName"
-import App from "./App"
-import { PublicLayout, RentProperty, SoldProperty, News, Home } from "./pages/publics/index"
 
-const routes= [{
+import App from "./App";
+import MainLayout from "./layouts/MainLayout";
+import AuthLayout from "./layouts/AuthLayout";
+import HomePage from "./pages/publics/HomePage";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import SettingsPage from "./pages/settings/SettingsPage";
+import NotificationPage from "./pages/publics/NotificationPage";
+
+const routes = [
+  {
     path: "/",
     Component: App,
     children: [
-        {
-        path: pathname.public.layout, Component: PublicLayout,
-            children: [
-                {path: pathname.public.homepage, Component: Home},
-            ]
-        }
+      {
+        path: "/",
+        Component: MainLayout,
+        children: [
+          { path: "", Component: HomePage },
+          { path: "settings", Component: SettingsPage },
+          { path: "notifications", Component: NotificationPage},
+        ],
+      },
+      {
+        path: "auth",
+        Component: AuthLayout,
+        children: [
+          { path: "login", Component: LoginPage },
+          { path: "register", Component: RegisterPage },
+          { path: "forgot-password", Component: ForgotPasswordPage },
+        ],
+      },
     ],
+  },
+];
 
-}]
-export default routes
+export default routes;

@@ -1,19 +1,36 @@
-export interface registerDTO{
-    username: string, 
-    password: string,
-    fullname: string,
-    avatarUrl?: string,
+export interface RegisterDTO {
+    email: string;
+    password: string;
+    name: string;
+    phone?: string;
+    avatarUrl?: string;
 }
-export type createAccount = {
-    email: string,
-    password: string,
-    userAgent?: string
+
+export interface LoginDTO {
+    email: string;
+    password: string;
 }
-export interface loginDTOResponse{
-    accessToken: string,
-    refreshToken: string,
+
+export interface ForgotPasswordDTO {
+    email: string;
+}
+
+export interface ResetPasswordDTO {
+    token: string;
+    newPassword: string;
+}
+
+export interface AuthResponse {
+    accessToken: string;
+    refreshToken: string;
     user: {
-        username: string,
-        createdAt: Date,
+        id: number;
+        email: string;
+        name: string;
+        avatarUrl?: string;
+        phone?: string;
+        gender?: string;
+        birthday?: string;
+        createdAt: Date;
     }
 }
