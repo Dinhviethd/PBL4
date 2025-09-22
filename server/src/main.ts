@@ -6,7 +6,6 @@ import { WebSocketServer } from 'ws'
 import router from './routes/index'
 import { initDatabase } from '@/configs/database.config'
 import errorHandler from "@/middlewares/errorHandlermiddleware"
-import { setupVideoCallWebSocket } from '@/services/websocket.service'
 
 dotenv.config()
 
@@ -27,7 +26,6 @@ app.use("/api", router)
 app.use(errorHandler.notFound)
 app.use(errorHandler.errorHandler)
 
-setupVideoCallWebSocket(wss)
 
 const PORT = process.env.PORT || 3000
 

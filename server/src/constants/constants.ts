@@ -5,6 +5,10 @@ export enum NotiType {
 }
 
 export enum MessageType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  FILE = 'file',
+  VOICE = 'voice',
   AUDIO = 'audio',
   VIDEO = 'video',
   MESSAGE = 'message',
