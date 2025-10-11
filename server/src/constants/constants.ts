@@ -46,3 +46,13 @@ export enum verifiedCodeType{
   EmailVerification = "email_verification",
   PasswordVerification = "password_reset"
 }
+
+export enum WSMessageType {
+  AUTH = 'auth',
+  PRIVATE_MESSAGE = 'private_message',
+  GROUP_MESSAGE = 'group_message',
+  TYPING = 'typing',
+  MESSAGE_READ = 'message_read',
+  USER_ONLINE = 'user_online',
+  USER_OFFLINE = 'user_offline'
+}

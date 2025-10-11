@@ -31,6 +31,9 @@ export class User {
   @Column({ nullable: true })
   gender?: string;
 
+  // @Column({ type: 'varchar', length: 255, default: "Xin Chào, Mình muốn kết bạn với bạn!!" })
+  // bio?: string; //text giới thiệu của người dùng
+
   @CreateDateColumn()
   createdAt?: Date;
 
