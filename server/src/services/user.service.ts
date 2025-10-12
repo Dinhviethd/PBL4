@@ -6,6 +6,7 @@ import { UpdateUserDTO, UserResponse } from '@/DTOs/user.dto';
 import { deleteOldAvatar } from '@/middlewares/upload.middleware';
 import { StatusUser } from '@/constants/constants';
 import { passwordCompare } from '@/utils/password';
+import notificationService from '@/services/notification.service';
 
 class UserService {
   private userRepository: Repository<User>;
@@ -124,6 +125,15 @@ class UserService {
       { password: hashedPassword }
     );
     if (result.affected === 0) throw new AppError(404, "User not found");
+    
+    // Tạo thông báo đổi mật khẩu thành công
+    try {
+      await notificationService.createPasswordChangeNotification(userIdFromToken);
+    } catch (error) {
+      console.error('Failed to create password change notification:', error);
+      // Không throw error để không ảnh hưởng đến quá trình đổi mật khẩu
+    }
+    
     return true;
   }
 

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthInit } from "@/hooks/useAuthInit";
-import { NavLink } from "react-router-dom";
-import { MessageCircle, Users, Bell, UserPlus, Settings } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { MessageCircle, Users, Bell, UserPlus, Settings, LogOut } from "lucide-react";
 import PopupInfo from "../components/profile/PopupInfor"; // popup component của bạn
+import authService from "@/services/auth.service";
 
 const links = [
   { to: "/", label: "Tin nhắn", icon: <MessageCircle size={22} /> },
@@ -13,9 +14,36 @@ const links = [
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Khởi tạo auth và lấy user data
   const { user } = useAuthInit();
+
+  // Xử lý đăng xuất
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Vẫn navigate về login page ngay cả khi có lỗi
+      navigate("/auth/login");
+    }
+  };
+
+  // Xử lý sự kiện đóng trang
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Gọi logout để clear local state và gửi API request
+      authService.logout();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
   
   const userData = {
     avatar: user?.avatarUrl ? `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.avatarUrl}` : "/images/avatar-default-icon.png",
@@ -68,8 +96,20 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom setting */}
-      <div className="flex justify-center">
+      {/* Bottom logout and setting */}
+      <div className="flex flex-col items-center gap-3">
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          className="w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group text-gray-600 hover:bg-red-50 hover:text-red-600"
+        >
+          <LogOut size={22} />
+          <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+            Đăng xuất
+          </span>
+        </button>
+
+        {/* Settings */}
         <NavLink
           to="/settings"
           className={({ isActive }) =>
