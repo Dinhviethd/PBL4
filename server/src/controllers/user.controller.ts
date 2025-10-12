@@ -38,7 +38,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
       throw new AppError(400, "Không có file ảnh nào được tải lên");
     }
 
-    const updatedUser = await userService.updateAvatar(userId, req.file.filename);
+    const updatedUser = await userService.updateAvatar(userId, req.file.path, "avatars");
     res.json({ success: true, data: updatedUser, message: "Cập nhật avatar thành công" });
   } catch (error: any) {
     throw error;

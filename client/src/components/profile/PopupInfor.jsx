@@ -6,6 +6,7 @@ import { useNotification } from "@/hooks/useNotification";
 export default function ProfilePopup({ isOpen, onClose }) {
   const { user, setAuth } = useAuthStore();
   const { showSuccess, showError, showWarning } = useNotification();
+
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({});
@@ -13,7 +14,7 @@ export default function ProfilePopup({ isOpen, onClose }) {
   const [avatarFile, setAvatarFile] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Helper function để set form data từ user object
+  // Helper để đồng bộ formData với user
   const setFormDataFromUser = (userData) => {
     let day = "01", month = "01", year = "2000";
     if (userData.birthday) {
@@ -34,22 +35,12 @@ export default function ProfilePopup({ isOpen, onClose }) {
     });
   };
 
-  // Tự động set formData khi có user trong store
-  useEffect(() => {
-    if (user && user.name && isOpen) {
-      console.log("Setting formData from authStore user:", user);
-      setFormDataFromUser(user);
-    }
-  }, [user, isOpen]);
-
-  // Load user profile khi mở popup (chỉ khi chưa có user)
+  // Khi popup mở -> load thông tin user
   useEffect(() => {
     if (isOpen && (!user || !user.name)) {
-      console.log("Fetching user profile from API...");
       setLoading(true);
       userService.getProfile()
         .then((userData) => {
-          console.log("Loaded user profile:", userData);
           setAuth({
             user: userData,
             accessToken: useAuthStore.getState().accessToken
@@ -58,18 +49,23 @@ export default function ProfilePopup({ isOpen, onClose }) {
         })
         .catch((err) => {
           console.error("Error loading profile:", err);
-          setFormData({});
         })
         .finally(() => {
           setLoading(false);
         });
     } else if (!isOpen) {
-      // Reset edit mode khi đóng popup
       setIsEdit(false);
     }
   }, [isOpen, user, setAuth]);
 
-  // Tạo form ban đầu để so sánh
+  // Đồng bộ form với user khi mở
+  useEffect(() => {
+    if (user && user.name && isOpen) {
+      setFormDataFromUser(user);
+    }
+  }, [user, isOpen]);
+
+  // Form ban đầu để so sánh khi chỉnh sửa
   const initialForm = useMemo(() => {
     if (!user) return formData;
     let day = "01", month = "01", year = "2000";
@@ -91,16 +87,12 @@ export default function ProfilePopup({ isOpen, onClose }) {
     };
   }, [user, formData]);
 
-  // Kiểm tra form đã thay đổi chưa
   const isChanged = useMemo(() => {
     return Object.keys(initialForm).some(key => formData[key] !== initialForm[key]);
   }, [formData, initialForm]);
 
   if (!isOpen) return null;
 
-  console.log("Popup render - user:", user?.name, "formData:", formData?.name, "isEdit:", isEdit);
-
-  // Chỉ hiển thị loading khi thực sự đang fetch và chưa có gì
   if (loading && !user) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
@@ -118,51 +110,45 @@ export default function ProfilePopup({ isOpen, onClose }) {
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      // Kiểm tra loại file
-      if (!file.type.startsWith('image/')) {
-        showWarning('Chọn file', 'Vui lòng chọn file ảnh!');
-        return;
-      }
-      
-      // Kiểm tra kích thước file (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        showError('File quá lớn', 'File quá lớn! Vui lòng chọn file nhỏ hơn 5MB.');
-        return;
-      }
+    if (!file) return;
 
-      setAvatarFile(file);
-      
-      // Tạo preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      showWarning("Chọn file", "Vui lòng chọn file ảnh!");
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showError("File quá lớn", "Vui lòng chọn file nhỏ hơn 5MB.");
+      return;
+    }
+
+    setAvatarFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatarPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUploadAvatar = async () => {
     if (!avatarFile) return;
-    
     try {
       setUploadingAvatar(true);
       const updatedUser = await userService.uploadAvatar(avatarFile);
-      
-      // Cập nhật authStore
+
       setAuth({
         user: updatedUser,
         accessToken: useAuthStore.getState().accessToken
       });
-      
-      // Reset states
+
       setAvatarFile(null);
       setAvatarPreview(null);
-      
-      showSuccess('Thành công', 'Cập nhật avatar thành công!');
+      showSuccess("Thành công", "Cập nhật avatar thành công!");
     } catch (err) {
-      console.error('Error uploading avatar:', err);
-      showError('Lỗi', 'Cập nhật avatar thất bại!');
+      console.error("Error uploading avatar:", err);
+      const msg = err?.response?.data?.message || "Cập nhật avatar thất bại!";
+      showError("Lỗi", msg);
     } finally {
       setUploadingAvatar(false);
     }
@@ -184,84 +170,81 @@ export default function ProfilePopup({ isOpen, onClose }) {
     };
     try {
       const updatedUser = await userService.updateProfile(updateData);
-      console.log("Profile updated successfully:", updatedUser);
-      
-      // Cập nhật authStore
       setAuth({
         user: updatedUser,
         accessToken: useAuthStore.getState().accessToken
       });
-
-      // Đồng bộ formData với helper function
       setFormDataFromUser(updatedUser);
       setIsEdit(false);
-      showSuccess('Thành công', 'Cập nhật thông tin thành công!');
+      showSuccess("Thành công", "Cập nhật thông tin thành công!");
     } catch (err) {
       console.error("Error updating profile:", err);
-      showError('Lỗi', "Cập nhật thất bại!");
+      showError("Lỗi", "Cập nhật thất bại!");
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative transform scale-95 transition-all duration-300 ease-out hover:scale-100"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Nút đóng */}
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative" onClick={(e) => e.stopPropagation()}>
         <button
-          className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors duration-200"
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors"
           onClick={onClose}
         >
           ✖
         </button>
 
         {!isEdit ? (
-          // Chế độ xem
           <>
+            {/* Banner */}
             <div className="h-36 bg-gray-200 rounded-2xl -mx-8 -mt-8 overflow-hidden">
-              <img
-                className="h-full w-full object-cover"
-                src="https://picsum.photos/800/300"
-                alt="cover"
-              />
+              <img src="https://picsum.photos/800/300" alt="cover" className="h-full w-full object-cover" />
             </div>
 
-            <div className="flex justify-center -mt-20 mb-4">
+            {/* Avatar */}
+            <div className="flex justify-center -mt-20 mb-4 relative">
               <div className="relative">
                 <img
                   className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover"
-                  src={avatarPreview || (user?.avatarUrl ? `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.avatarUrl}` : "/images/avatar-default-icon.png")}
+                  src={
+                    avatarPreview ||
+                    (user?.avatarUrl
+                      ? user.avatarUrl.startsWith("http")
+                        ? user.avatarUrl
+                        : `${import.meta.env.VITE_API_URL.replace("/api", "")}${user.avatarUrl}`
+                      : "/images/avatar-default-icon.png")
+                  }
                   alt="avatar"
-                  onError={e => { e.target.onerror = null; e.target.src = "/images/avatar-default-icon.png"; }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/images/avatar-default-icon.png";
+                  }}
                 />
-                
-                {/* Upload avatar button */}
+
+                {/* Loading overlay khi upload */}
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
+                    <div className="animate-spin border-4 border-white border-t-transparent rounded-full w-8 h-8"></div>
+                  </div>
+                )}
+
+                {/* Nút upload */}
                 <div className="absolute bottom-0 right-0">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                    id="avatar-upload"
-                  />
+                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" id="avatar-upload" />
                   <label
                     htmlFor="avatar-upload"
-                    className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-lg"
+                    className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg"
                   >
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0z" />
                     </svg>
                   </label>
                 </div>
               </div>
             </div>
 
-            {/* Avatar upload controls */}
+            {/* Avatar controls */}
             {avatarFile && (
               <div className="text-center mb-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600 mb-2">Ảnh mới đã được chọn</p>
@@ -271,7 +254,7 @@ export default function ProfilePopup({ isOpen, onClose }) {
                     disabled={uploadingAvatar}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                   >
-                    {uploadingAvatar ? 'Đang tải...' : 'Cập nhật'}
+                    {uploadingAvatar ? "Đang tải..." : "Cập nhật"}
                   </button>
                   <button
                     onClick={handleCancelAvatarUpload}
@@ -283,6 +266,7 @@ export default function ProfilePopup({ isOpen, onClose }) {
               </div>
             )}
 
+            {/* Thông tin người dùng */}
             <div className="text-center mt-4">
               <h2 className="font-bold text-3xl text-gray-800">{user?.name || "Người dùng"}</h2>
               <div className="flex flex-col items-center mt-6 space-y-4">
@@ -292,9 +276,9 @@ export default function ProfilePopup({ isOpen, onClose }) {
               </div>
             </div>
 
-            <div className="mt-8 flex justify-center gap-4">
+            <div className="mt-8 flex justify-center">
               <button
-                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50"
+                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
                 onClick={handleUpdateClick}
               >
                 Cập nhật hồ sơ
@@ -302,7 +286,7 @@ export default function ProfilePopup({ isOpen, onClose }) {
             </div>
           </>
         ) : (
-          // Chế độ chỉnh sửa
+          // Form chỉnh sửa
           <form onSubmit={handleSubmit}>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Cập nhật thông tin cá nhân</h2>
 
@@ -317,28 +301,8 @@ export default function ProfilePopup({ isOpen, onClose }) {
 
             <label className="block text-gray-700 font-medium mb-1">Giới tính</label>
             <div className="flex items-center mb-4 space-x-4">
-              <label>
-                <input
-                  type="radio"
-                  name="gender"
-                  value="Nam"
-                  checked={formData.gender === "Nam"}
-                  onChange={handleChange}
-                  className="mr-1"
-                />
-                Nam
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="gender"
-                  value="Nữ"
-                  checked={formData.gender === "Nữ"}
-                  onChange={handleChange}
-                  className="mr-1"
-                />
-                Nữ
-              </label>
+              <label><input type="radio" name="gender" value="Nam" checked={formData.gender === "Nam"} onChange={handleChange} className="mr-1" />Nam</label>
+              <label><input type="radio" name="gender" value="Nữ" checked={formData.gender === "Nữ"} onChange={handleChange} className="mr-1" />Nữ</label>
             </div>
 
             <label className="block text-gray-700 font-medium mb-1">Ngày sinh</label>
@@ -362,18 +326,8 @@ export default function ProfilePopup({ isOpen, onClose }) {
             </div>
 
             <div className="flex justify-between mt-6">
-              <button
-                type="button"
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                onClick={() => setIsEdit(false)}
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className={`px-6 py-2 rounded-lg text-white ${isChanged ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"}`}
-                disabled={!isChanged}
-              >
+              <button type="button" className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" onClick={() => setIsEdit(false)}>Hủy</button>
+              <button type="submit" className={`px-6 py-2 rounded-lg text-white ${isChanged ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"}`} disabled={!isChanged}>
                 Cập nhật
               </button>
             </div>
