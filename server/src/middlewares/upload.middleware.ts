@@ -16,7 +16,7 @@ const avatarStorage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     // Tạo tên file unique với timestamp và user ID
-    const userId = req.user?.id || 'unknown';
+    const userId = req.user?.userId || 'unknown';
     const timestamp = Date.now();
     const extension = path.extname(file.originalname);
     const filename = `avatar-${userId}-${timestamp}${extension}`;

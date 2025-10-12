@@ -6,7 +6,7 @@ import { User } from "@/models/users.model";
 import { StatusUser } from "@/constants/constants";
 
 interface JwtPayload {
-  id: number;
+  userId: number;
 }
 
 declare global {
@@ -37,7 +37,7 @@ export const authMiddleware = (
     const decoded = jwt.verify(token, secret) as JwtPayload;
 
   req.user = {
-    id: (decoded as any).userId,
+    userId: decoded.userId
   };
 
     next();
@@ -59,7 +59,7 @@ export const checkAccountStatus = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) throw new AppError(401, "Unauthorized");
 
     const userRepository = AppDataSource.getRepository(User);

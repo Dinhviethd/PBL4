@@ -19,4 +19,7 @@ export class FriendShip {
 
   @CreateDateColumn()
   requestAt!: Date;
+
+  @Column()
+  message?: string; //Text gửi kèm khi gửi lời mời kết bạn
 }
