@@ -71,6 +71,55 @@ class NotificationService {
 
         return savedNotification;
     }
+
+    async createMessageNotification(senderId: number, receiverId: number, messageContent: string, messageId: number): Promise<Notification> {
+        // Lấy thông tin người gửi
+        const sender = await this.userRepository.findOne({ where: { idUser: senderId } });
+        const receiver = await this.userRepository.findOne({ where: { idUser: receiverId } });
+        
+        if (!sender || !receiver) {
+            throw new Error("User not found");
+        }
+
+        // Tạo nội dung thông báo
+        const truncatedContent = messageContent.length > 50 
+            ? messageContent.substring(0, 50) + "..." 
+            : messageContent;
+        
+        const notificationContent = `Tin nhắn từ ${sender.name || sender.email}: "${truncatedContent}"`;
+
+        const notification = this.notificationRepository.create({
+            user_id: receiver,
+            content: notificationContent,
+            status: StatusNoti.PENDING,
+            type: NotiType.MESSAGE,
+            type_id: messageId, // ID của tin nhắn
+        });
+
+        const savedNotification = await this.notificationRepository.save(notification);
+
+        // Gửi thông báo real-time qua WebSocket bất kể online hay offline
+        // (WebSocket service sẽ xử lý việc user có online không)
+        try {
+            wsService.sendToUser(receiverId, {
+                type: 'NOTIFICATION',
+                data: {
+                    id: savedNotification.idNotification,
+                    content: savedNotification.content,
+                    type: savedNotification.type,
+                    status: savedNotification.status,
+                    createdAt: savedNotification.createdAt,
+                    senderId: senderId,
+                    senderName: sender.name || sender.email,
+                    messageId: messageId
+                }
+            });
+        } catch (error) {
+            console.error('Failed to send real-time notification:', error);
+        }
+
+        return savedNotification;
+    }
 }
 
 export default new NotificationService();
