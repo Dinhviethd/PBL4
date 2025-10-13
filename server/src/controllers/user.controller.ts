@@ -151,3 +151,16 @@ export const getAccountStatus = async (req: Request, res: Response) => {
     throw error;
   }
 };
+
+export const lookupUser = async (req: Request, res: Response) => {
+  try {
+    const { email, phone } = req.query as any;
+    if (!email && !phone) {
+      return res.status(400).json({ success: false, message: 'Provide email or phone' });
+    }
+    const user = await userService.findByEmailOrPhone(email, phone);
+    res.json({ success: true, data: user });
+  } catch (error: any) {
+    throw error;
+  }
+};

@@ -17,7 +17,7 @@ class UserService {
 
   private mapUserResponse(user: User): UserResponse {
     return {
-      id: user.idUser,
+      idUser: user.idUser,
       name: user.name,
       email: user.email,
       avatarUrl: user.avatarUrl,
@@ -120,6 +120,21 @@ class UserService {
     });
     if (!user) throw new AppError(404, "Không tìm thấy người dùng");
     return user.status || StatusUser.OFFLINE;
+  }
+
+  async findByEmailOrPhone(email?: string, phone?: string): Promise<UserResponse | null> {
+    if (!email && !phone) return null;
+    const whereClause: any = [];
+    if (email) whereClause.push({ email });
+    if (phone) whereClause.push({ phone });
+
+    const user = await this.userRepository.findOne({
+      where: whereClause,
+      select: ["idUser", "name", "email", "phone", "avatarUrl"],
+    } as any,
+    );
+    if (!user) return null;
+    return this.mapUserResponse(user as User);
   }
 
   private extractPublicId(url: string): string | null {

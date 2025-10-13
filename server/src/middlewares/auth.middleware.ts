@@ -60,7 +60,7 @@ export const checkAccountStatus = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    if (!userId) throw new AppError(401, "Unauthorized");
+  if (!userId) throw new AppError(401, "Unauthorized");
 
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOne({

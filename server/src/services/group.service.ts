@@ -5,15 +5,30 @@ import { UserRole } from '@/constants/constants';
 
 class GroupService {
   async createGroup(creatorId: number, data: CreateGroupDTO) {
-    const { name, memberIds } = data;
+    const { name, memberIds = [] } = data as any;
     const group = await groupRepository.createGroup(name, creatorId);
-    await groupRepository.addMember(group.idGroup, creatorId, UserRole.ADMIN);
-    for (const memberId of memberIds) {
-      if (memberId !== creatorId) {
-        await groupRepository.addMember(group.idGroup, memberId, UserRole.USER);
-      }
+    if (!group) {
+      throw new AppError(500, 'Failed to create group');
     }
 
+    await groupRepository.addMember(group.idGroup, creatorId, UserRole.ADMIN);
+
+    // sanitize memberIds and add members defensively
+    const ids = Array.isArray(memberIds)
+      ? memberIds.map((m: any) => (m === null || m === undefined ? null : Number(m))).filter((n: any) => Number.isFinite(n))
+      : [];
+
+    for (const m of ids) {
+      const memberId = Number(m);
+      if (memberId !== creatorId) {
+        try {
+          await groupRepository.addMember(group.idGroup, memberId, UserRole.USER);
+        } catch (err: any) {
+          // skip failing member adds (log if needed)
+          console.warn(`Failed to add member ${memberId} to group ${group.idGroup}:`, err?.message || err);
+        }
+      }
+    }
     return group;
   }
 
@@ -71,6 +86,10 @@ class GroupService {
 
   async getUserGroups(userId: number) {
     return await groupRepository.getUserGroups(userId);
+  }
+  
+  async getUserGroupsPaginated(userId: number, page = 1, limit = 10, q?: string, sort: 'asc'|'desc' = 'asc') {
+    return await groupRepository.getUserGroupsPaginated(userId, page, limit, q, sort);
   }
   async updateGroup(userId: number, groupId: number, data: UpdateGroupDTO) {
     const role = await groupRepository.getMemberRole(groupId, userId);

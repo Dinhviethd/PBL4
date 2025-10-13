@@ -46,6 +46,14 @@ const userService = {
     const res = await instance.delete("/users/me", { data });
     return res.data;
   },
+ 
+  async lookup({ email, phone } = {}) {
+    const params = {};
+    if (email) params.email = email;
+    if (phone) params.phone = phone;
+    const res = await instance.get('/users/lookup', { params });
+    return res.data?.data;
+  }
 };
 
 export default userService;
