@@ -18,6 +18,9 @@ export class VerifiedCode{
     @Column({type: "enum" ,enum: verifiedCodeType})
     type!: verifiedCodeType;
 
+    @Column({ nullable: true })
+    code?: string;
+
     @ManyToOne(()=> User, (user) => user.verifiedCodes)
     user!: User;
 }

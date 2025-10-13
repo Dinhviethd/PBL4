@@ -36,7 +36,6 @@ const ForgotPassword = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [step, setStep] = useState("request"); // "request" or "reset"
   const navigate = useNavigate();
 
   const onSubmit = async (data) => {
@@ -44,15 +43,20 @@ const ForgotPassword = () => {
       setIsLoading(true);
       setError("");
       
-      if (step === "request") {
-        await authService.forgotPassword(data.email);
-        setStep("reset");
-      } else {
-        await authService.resetPassword(data.email, data.password);
-        navigate('/auth/login', { 
-          state: { message: 'Mật khẩu đã được thay đổi thành công! Vui lòng đăng nhập.' }
-        });
-      }
+      // Store password data temporarily for confirmation
+      sessionStorage.setItem('pendingPasswordReset', JSON.stringify({
+        email: data.email,
+        newPassword: data.password
+      }));
+      
+      // Send password reset request with confirmation email directly
+      await authService.resetPasswordRequest(data.email, data.password, data.confirmPassword);
+      navigate('/auth/login', { 
+        state: { 
+          message: 'Email xác nhận đã được gửi! Vui lòng kiểm tra email của bạn để xác nhận thay đổi mật khẩu.',
+          type: 'info'
+        }
+      });
     } catch (err) {
       setError(err.message || 'Yêu cầu thất bại');
     } finally {
@@ -144,7 +148,7 @@ const ForgotPassword = () => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Đang xử lý..." : (step === "request" ? "Gửi yêu cầu" : "Đổi mật khẩu")}
+                {isLoading ? "Đang xử lý..." : "Gửi email xác nhận"}
               </Button>
 
               <div className="flex justify-center space-x-4 text-sm text-gray-600">

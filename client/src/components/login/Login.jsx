@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import Button from "@/components/ui/button";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import authService from "@/services/auth.service";
 import { useNotification } from "@/hooks/useNotification";
 
@@ -35,7 +35,26 @@ const Login = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { showSuccess, showError } = useNotification();
+  const location = useLocation();
+  const { showSuccess, showError, showInfo } = useNotification();
+
+  // Show message from navigation state
+  useEffect(() => {
+    if (location.state?.message) {
+      const { message, type = 'success' } = location.state;
+      
+      if (type === 'success') {
+        showSuccess("Thành công", message);
+      } else if (type === 'info') {
+        showInfo("Thông báo", message);
+      } else if (type === 'error') {
+        showError("Lỗi", message);
+      }
+      
+      // Clear the state to prevent showing the message again
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, showSuccess, showError, showInfo, navigate, location.pathname]);
 
   const onSubmit = async (data) => {
     try {

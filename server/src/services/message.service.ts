@@ -6,6 +6,7 @@ import { wsService } from './websocket.service';
 import { WSMessageType } from '@/constants/constants';
 import { PaginationResult } from '@/utils/pagination';
 import { Message } from '@/models/message.model';
+import notificationService from './notification.service';
 
 class MessageService {
   async sendPrivateMessage(senderId: number, data: SendPrivateMessageDTO) {
@@ -27,6 +28,21 @@ class MessageService {
       type: WSMessageType.PRIVATE_MESSAGE,
       message
     });
+
+    // Tạo thông báo cho người nhận (chỉ khi không phải tin nhắn từ chính mình)
+    if (senderId !== receiverId) {
+      try {
+        await notificationService.createMessageNotification(
+          senderId,
+          receiverId,
+          content,
+          message.idMessage
+        );
+      } catch (error) {
+        console.error('Failed to create message notification:', error);
+        // Không throw error để không ảnh hưởng đến việc gửi tin nhắn
+      }
+    }
 
     return message;
   }
@@ -63,6 +79,27 @@ class MessageService {
       message,
       groupId
     });
+
+    // Tạo thông báo cho tất cả thành viên khác trong nhóm
+    try {
+      const otherMemberIds = memberIds.filter(memberId => memberId !== senderId);
+      const groupName = group.name || 'Nhóm';
+      
+      // Tạo thông báo cho từng thành viên
+      const notificationPromises = otherMemberIds.map(memberId => 
+        notificationService.createMessageNotification(
+          senderId,
+          memberId,
+          `[${groupName}] ${content}`, // Thêm tên nhóm vào nội dung
+          message.idMessage
+        )
+      );
+      
+      await Promise.allSettled(notificationPromises);
+    } catch (error) {
+      console.error('Failed to create group message notifications:', error);
+      // Không throw error để không ảnh hưởng đến việc gửi tin nhắn
+    }
 
     return message;
   }
