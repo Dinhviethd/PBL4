@@ -4,7 +4,6 @@ import authService from '@/services/auth.service';
 import { AppError } from '@/utils/error.response';
 
 export const register = async (req: Request, res: Response) => {
-    try {
         const validatedData = registerSchema.parse(req.body);
 
         const data = await authService.register({
@@ -25,16 +24,9 @@ export const register = async (req: Request, res: Response) => {
             user: data.user,
             accessToken: data.accessToken
         });
-    } catch (error: any) {
-        if (error.name === 'ZodError') {
-            throw new AppError(400, 'Validation failed');
-        }
-        throw error;
-    }
 };
 
 export const login = async (req: Request, res: Response) => {
-    try {
         const validatedData = loginSchema.parse(req.body);
 
         const data = await authService.login({
@@ -55,13 +47,7 @@ export const login = async (req: Request, res: Response) => {
             user: data.user,
             accessToken: data.accessToken
         });
-    } catch (error: any) {
-        if (error.name === 'ZodError') {
-            throw new AppError(400, 'Validation failed');
-        }
-        throw error;
-    }
-};
+    } ;
 
 export const forgotPassword = async (req: Request, res: Response) => {
     try {

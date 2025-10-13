@@ -1,5 +1,5 @@
 import express from "express";
-import { getMyInfo, updateMyInfo, deleteMyAccount, uploadAvatar, changePassword, deactivateAccount, reactivateAccount, getAccountStatus } from "@/controllers/user.controller.";
+import { getMyInfo, updateMyInfo, deleteMyAccount, uploadAvatar, changePassword, deactivateAccount, reactivateAccount, getAccountStatus } from "@/controllers/user.controller";
 import { authMiddleware, checkAccountStatus } from "@/middlewares/auth.middleware";
 import { uploadAvatar as uploadMiddleware } from "@/middlewares/upload.middleware";
 

@@ -39,6 +39,10 @@ app.use(errorHandler.notFound)
 app.use(errorHandler.errorHandler)
 
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
+
+wss.on('connection', (ws) => {
+    console.log("Connect to websocket successfully")
+})
+server.listen(PORT, () => {
     console.log(`Server run at http://localhost:${PORT}`)
 })
