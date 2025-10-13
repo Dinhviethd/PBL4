@@ -2,6 +2,7 @@ export enum NotiType {
   MESSAGE = 'message',
   FRIEND_REQUEST = 'friendRequest',
   CALL = 'call',
+  PASSWORD_CHANGE = 'passwordChange',
 }
 
 export enum MessageType {

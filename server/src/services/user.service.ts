@@ -7,6 +7,7 @@ import { UpdateUserDTO, UserResponse } from "@/DTOs/user.dto";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/utils/upload"
 import { StatusUser } from "@/constants/constants";
 import { passwordCompare } from "@/utils/password";
+import notificationService from '@/services/notification.service';
 
 class UserService {
   private userRepository: Repository<User>;

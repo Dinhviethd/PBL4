@@ -5,9 +5,11 @@ import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
 import cookieParser from 'cookie-parser'
 import path from 'path'
+import jwt from 'jsonwebtoken'
 import router from './routes/index'
 import { initDatabase } from '@/configs/database.config'
 import errorHandler from "@/middlewares/errorHandlermiddleware";
+import { wsService } from '@/services/websocket.service'
 
 dotenv.config()
 const app = express()
@@ -41,8 +43,59 @@ app.use(errorHandler.errorHandler)
 const PORT = process.env.PORT || 3000
 
 wss.on('connection', (ws) => {
-    console.log("Connect to websocket successfully")
-})
+    console.log("New WebSocket connection");
+    
+    // Xử lý tin nhắn từ client
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message.toString());
+            
+            if (data.type === 'auth') {
+                // Xác thực user
+                const token = data.token;
+                const userId = data.userId;
+                
+                if (!token || !userId) {
+                    ws.close(1008, 'Authentication required');
+                    return;
+                }
+                
+                try {
+                    // Verify JWT token
+                    jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'access_secret');
+                    
+                    // Thêm client vào WebSocket service
+                    wsService.addClient(userId, ws);
+                    
+                    // Gửi xác nhận authentication thành công
+                    ws.send(JSON.stringify({
+                        type: 'auth_success',
+                        message: 'Authentication successful'
+                    }));
+                    
+                } catch (error) {
+                    console.error('WebSocket authentication failed:', error);
+                    ws.close(1008, 'Invalid token');
+                    return;
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+        }
+    });
+    
+    // Xử lý khi connection đóng
+    ws.on('close', () => {
+        console.log("WebSocket disconnected");
+        // wsService sẽ tự động xử lý việc remove client khi socket đóng
+    });
+    
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+    });
+});
+
 server.listen(PORT, () => {
     console.log(`Server run at http://localhost:${PORT}`)
 })

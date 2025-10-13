@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '@/schemas/auth.schema';
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, resetPasswordRequestSchema, confirmPasswordResetSchema } from '@/schemas/auth.schema';
 import authService from '@/services/auth.service';
 import { AppError } from '@/utils/error.response';
 
@@ -85,6 +85,45 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
+export const resetPasswordRequest = async (req: Request, res: Response) => {
+    try {
+        const validatedData = resetPasswordRequestSchema.parse(req.body);
+
+        await authService.resetPasswordRequest(validatedData.email, validatedData.newPassword);
+
+        res.status(200).json({
+            success: true,
+            message: "Password reset confirmation email has been sent. Please check your email to confirm the change."
+        });
+    } catch (error: any) {
+        if (error.name === 'ZodError') {
+            throw new AppError(400, 'Validation failed');
+        }
+        throw error;
+    }
+};
+
+export const confirmPasswordReset = async (req: Request, res: Response) => {
+    try {
+        const validatedData = confirmPasswordResetSchema.parse(req.body);
+
+        await authService.confirmPasswordReset(
+            validatedData.verificationId, 
+            validatedData.email
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Password has been successfully changed!"
+        });
+    } catch (error: any) {
+        if (error.name === 'ZodError') {
+            throw new AppError(400, 'Validation failed');
+        }
+        throw error;
+    }
+};
+
 /** Controller cho refresh-token */
 export const refreshToken = async (req: Request, res: Response) => {
     try {
@@ -98,6 +137,27 @@ export const refreshToken = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             accessToken
+        });
+    } catch (error) {
+        throw error;
+    }
+};
+
+/** Controller cho logout */
+export const logout = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        
+        if (userId) {
+            await authService.logout(userId);
+        }
+
+        // Xóa refresh token cookie
+        res.clearCookie("refreshToken");
+
+        res.status(200).json({
+            success: true,
+            message: "Logged out successfully"
         });
     } catch (error) {
         throw error;

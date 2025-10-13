@@ -4,11 +4,15 @@ import Sidebar from "@/components/Sidebar";
 import useAuthStore from "../zustand/authStore";
 import authService from "@/services/auth.service";
 import userService from "@/services/user.service";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 export default function MainLayout() {
   const { user, accessToken, setAuth } = useAuthStore();
   const [checking, setChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(!!user && !!accessToken);
+  
+  // Khởi tạo WebSocket connection
+  useWebSocket();
 
   useEffect(() => {
     // Nếu đã có accessToken và user thì xác thực luôn
