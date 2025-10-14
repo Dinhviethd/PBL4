@@ -7,14 +7,12 @@ const authService = {
       const response = await instance.post(
         "/auth/login",
         { email, password, remember },
-        { isLoginRequest: true }
+        { isLoginRequest: true } // interceptor sẽ không gắn Authorization
       );
-
       if (response.data.accessToken) {
         useAuthStore.getState().setAuth(response.data);
         console.log("Login successful, user data:", response.data);
       }
-
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Đã có lỗi xảy ra" };
@@ -23,7 +21,9 @@ const authService = {
 
   register: async (userData) => {
     try {
-      const response = await instance.post("/auth/register", userData);
+      const response = await instance.post("/auth/register", userData, {
+        isLoginRequest: true,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Đã có lỗi xảy ra" };
@@ -32,7 +32,9 @@ const authService = {
 
   forgotPassword: async (email) => {
     try {
-      const response = await instance.post("/auth/forgot-password", { email });
+      const response = await instance.post("/auth/forgot-password", { email }, {
+        isLoginRequest: true,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Đã có lỗi xảy ra" };
@@ -44,7 +46,7 @@ const authService = {
       const response = await instance.post("/auth/reset-password", {
         email,
         password,
-      });
+      }, { isLoginRequest: true });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Đã có lỗi xảy ra" };
@@ -56,13 +58,15 @@ const authService = {
       const response = await instance.post(
         "/auth/refresh-token",
         {},
-        { isRefreshRequest: true }
+        { isRefreshRequest: true } // không gắn Authorization, có withCredentials
       );
       if (response.data.accessToken) {
         useAuthStore.getState().setAuth(response.data);
       }
       return response.data;
     } catch (error) {
+      // Nếu 403/401 ở đây => refresh token hết hạn/không hợp lệ
+      useAuthStore.getState().clearAuth?.();
       throw error.response?.data || { message: "Không thể làm mới token" };
     }
   },

@@ -1,64 +1,90 @@
 import axios from "axios";
-import authService from "./auth.service.js";
-import useAuthStore from "@/zustand/authStore";
-
-const apiUrl = import.meta.env.VITE_API_URL;
+import useAuthStore from "../zustand/authStore";
 
 const instance = axios.create({
-  baseURL: apiUrl,
-  timeout: 10000,
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
+  withCredentials: true, // gửi cookie refresh token
+  timeout: 15000,
 });
 
-// Request interceptor
+// Tránh vòng lặp refresh
+let refreshPromise = null;
+
 instance.interceptors.request.use(
   (config) => {
     const { accessToken } = useAuthStore.getState();
-
-    if (accessToken && !config.isRefreshRequest && !config.isLoginRequest) {
-      config.headers["Authorization"] = `Bearer ${accessToken}`;
+    // Không đính kèm Authorization cho login/refresh
+    if (!config.isLoginRequest && !config.isRefreshRequest && accessToken) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
-
+    if (config.isRefreshRequest) {
+      // đảm bảo không có Authorization khi refresh
+      if (config.headers && config.headers.Authorization) {
+        delete config.headers.Authorization;
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
 instance.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   async (error) => {
-    const originalRequest = error.config;
+    const original = error.config || {};
+    const status = error.response?.status;
 
-    if (originalRequest?.isLoginRequest) {
+    // Nếu 401/403 và chưa retry, thử refresh
+    const shouldTryRefresh =
+      (status === 401 || status === 403) &&
+      !original._retry &&
+      !original.isLoginRequest &&
+      !original.isRefreshRequest;
+
+    if (!shouldTryRefresh) {
       return Promise.reject(error);
     }
 
-    if (originalRequest?.isRefreshRequest) {
-      console.error("Refresh token không hợp lệ:", error);
-      useAuthStore.getState().clearAuth();
-      window.location.href = "/auth/login";
-      return Promise.reject(error);
-    }
+    try {
+      original._retry = true;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      try {
-        await authService.refreshToken();
-        console.log("Refresh token thành công ✅");
-        return instance(originalRequest);
-      } catch (refreshError) {
-        console.error("Lỗi khi refresh token:", refreshError);
-        useAuthStore.getState().clearAuth();
-        window.location.href = "/auth/login";
-        return Promise.reject(refreshError);
+      // Chia sẻ 1 promise refresh cho tất cả request cùng lúc
+      if (!refreshPromise) {
+        refreshPromise = instance
+          .post("/auth/refresh-token", {}, { isRefreshRequest: true })
+          .then((res) => {
+            const data = res.data;
+            if (data?.accessToken) {
+              useAuthStore.getState().setAuth(data); // cập nhật accessToken + user
+            }
+            return data?.accessToken;
+          })
+          .catch((e) => {
+            // Refresh fail: xoá auth và chuyển hướng login nếu cần
+            console.warn("Refresh token không hợp lệ:", e);
+            useAuthStore.getState().clearAuth?.();
+            throw e;
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
       }
-    }
 
-    return Promise.reject(error);
+      const newAccessToken = await refreshPromise;
+
+      // Gắn token mới và retry request gốc
+      original.headers = original.headers || {};
+      if (newAccessToken) {
+        original.headers.Authorization = `Bearer ${newAccessToken}`;
+      } else {
+        delete original.headers.Authorization;
+      }
+
+      return instance.request(original);
+    } catch (e) {
+      return Promise.reject(e);
+    }
   }
 );
 

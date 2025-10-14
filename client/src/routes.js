@@ -9,7 +9,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import ContactPage from "./pages/contact/ContactPage";
 import NotificationPage from "./pages/publics/NotificationPage";
-
+import ChatPage from '@/pages/chat/ChatPage'
 const routes = [
   {
     path: "/",
@@ -19,7 +19,7 @@ const routes = [
         path: "/",
         Component: MainLayout,
         children: [
-          { path: "", Component: HomePage },
+          { path: "", Component: ChatPage },
           { path: "contact", Component: ContactPage },
           { path: "settings", Component: SettingsPage },
           { path: "notifications", Component: NotificationPage},

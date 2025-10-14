@@ -12,8 +12,8 @@ const userService = {
 		return res.data.data; // Trả về user data trực tiếp
 	},
 
-	async uploadAvatar(file) {
-		const formData = new FormData();
+	uploadAvatar: async(file) => {
+		try {const formData = new FormData();
 		formData.append('avatar', file);
 		
 		const res = await instance.post("/users/avatar", formData, {
@@ -21,8 +21,13 @@ const userService = {
 				'Content-Type': 'multipart/form-data'
 			}
 		});
-		return res.data.data; // Trả về user data với avatarUrl mới
+		return res.data.data; 
+		}
+		catch(error){
+			console.log("Loi update avatar")
+		}
 	},
+	
 
 	async changePassword(data) {
 		const res = await instance.put("/users/change-password", data);

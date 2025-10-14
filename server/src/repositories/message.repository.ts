@@ -146,34 +146,38 @@ class MessageRepository {
     });
   }
 
-  async getRecentConversations(userId: number, limit: number = 20) {
-    // Lấy cuộc trò chuyện 1 - 1gần đây
-    const recentPrivate = await this.repository
+  async getRecentConversations(userId: number) {
+    // Lấy tin nhắn gần nhất với từng bạn bè
+    const messages = await this.repository
       .createQueryBuilder('message')
       .leftJoinAndSelect('message.sentBy', 'sender')
       .leftJoinAndSelect('message.sendToUser', 'receiver')
-      .where('(message.sentBy = :userId OR message.sendToUser = :userId)', { userId })
-      .andWhere('message.sendToUser IS NOT NULL')
+      .where(
+        '((message.sentBy = :userId AND message.sendToUser IS NOT NULL) OR (message.sendToUser = :userId AND message.sentBy IS NOT NULL))',
+        { userId }
+      )
       .andWhere('message.isDeleted = false')
       .orderBy('message.createdAt', 'DESC')
-      .limit(limit)
       .getMany();
 
-    // Lấy cuộc trò chuyện nhóm gần đây
-    const recentGroup = await this.repository
-      .createQueryBuilder('message')
-      .leftJoinAndSelect('message.sentBy', 'sender')
-      .leftJoinAndSelect('message.sendToGroup', 'group')
-      .innerJoin('Group_User', 'gu', 'gu.idGroup = group.idGroup AND gu.idUser = :userId', { userId })
-      .where('message.sendToGroup IS NOT NULL')
-      .andWhere('message.isDeleted = false')
-      .orderBy('message.createdAt', 'DESC')
-      .limit(limit)
-      .getMany();
+    // Group by conversation partner và lấy message mới nhất
+    const conversationMap = new Map();
+    
+    messages.forEach(message => {
+      const partnerId = message.sentBy.idUser === userId 
+        ? message.sendToUser?.idUser 
+        : message.sentBy.idUser;
+      
+      if (partnerId && !conversationMap.has(partnerId)) {
+        conversationMap.set(partnerId, message);
+      }
+    });
 
-    return { privateMessages: recentPrivate, groupMessages: recentGroup };
+    return {
+      privateMessages: Array.from(conversationMap.values()),
+      groupMessages: [] // Tạm thời empty
+    };
   }
-
   // Hàm đếm tin nhắn chưa đọc
   async getUnreadPrivateMessageCount(userId: number, friendId: number): Promise<number> {
     // Cần thêm trường isRead vào Message model hoặc tạo bảng MessageRead riêng

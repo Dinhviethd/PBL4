@@ -136,7 +136,7 @@ class MessageService {
     return { message: 'Message deleted successfully' };
   }
 
-  async getRecentConversations(userId: number) {
+ async getRecentConversations(userId: number) {
     return await messageRepository.getRecentConversations(userId);
   }
 }

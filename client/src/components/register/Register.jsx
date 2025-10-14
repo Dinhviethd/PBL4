@@ -55,7 +55,7 @@ const Register = () => {
         state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' }
       });
     } catch (err) {
-      console.log(err.message || 'Đăng ký thất bại');
+      console.log(err || 'Đăng ký thất bại');
       // Có thể xử lý lỗi ở đây nếu muốn hiển thị
     }
   }
