@@ -20,7 +20,8 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
   useEffect(() => {
     let mounted = true;
     if (isOpen) {
-      getFriends(1, 200).then(res => {
+      // server validates `limit` and rejects values >100; request 100 to avoid silent failure
+      getFriends(1, 100).then(res => {
         if (!mounted) return;
         const items = res.items || [];
         const normalized = items.map(u => ({
@@ -31,10 +32,13 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
           phone: u.phone,
         }));
         setFriends(normalized);
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error('Failed to load friends for CreateGroupModal', err);
+        showError?.('Lấy danh sách bạn bè thất bại', err?.response?.data?.message || err?.message || 'Lỗi mạng');
+      });
     }
     return () => { mounted = false };
-  }, [isOpen]);
+  }, [isOpen, showError]);
 
   useEffect(() => {
     if (!searchTerm.trim()) return setSearchResults([]);
@@ -89,7 +93,7 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
       try {
         window.dispatchEvent(new CustomEvent('groups:created', { detail: created }));
       } catch {
-        // ignore if dispatching event fails in non-browser contexts
+        console.warn('Failed to dispatch groups:created event');
       }
       setGroupName(''); setSearchTerm(''); setSearchResults([]); setSelectedUsers([]);
       onClose();

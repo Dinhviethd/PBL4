@@ -131,7 +131,7 @@ class UserService {
 
     const user = await this.userRepository.findOne({
       where: whereClause,
-      select: ["idUser", "name", "email", "phone", "avatarUrl"],
+      select: ["idUser", "name", "email", "phone", "avatarUrl", "gender", "birthday"],
     } as any,
     );
     if (!user) return null;

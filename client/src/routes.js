@@ -9,6 +9,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ConfirmPasswordResetPage from "./pages/auth/ConfirmPasswordResetPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import ContactPage from "./pages/contact/ContactPage";
+import AddFriendPage from "./pages/contact/AddFriendPage";
 import NotificationPage from "./pages/publics/NotificationPage";
 
 const routes = [
@@ -22,6 +23,7 @@ const routes = [
         children: [
           { path: "", Component: HomePage },
           { path: "contact", Component: ContactPage },
+          { path: "add-friend", Component: AddFriendPage },
           { path: "settings", Component: SettingsPage },
           { path: "notifications", Component: NotificationPage},
         ],

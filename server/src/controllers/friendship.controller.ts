@@ -103,3 +103,13 @@ export const unblockFriend = async (req: Request, res: Response) => {
   const result = await friendshipService.unblockFriend(userId, parseInt(friendId));
   res.json({ success: true, message: result.message });
 };
+
+export const getRelationStatus = async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  const targetId = parseInt(req.params.targetId);
+
+  if (!userId) throw new AppError(401, 'Unauthorized');
+
+  const result = await friendshipService.getRelationStatus(userId, targetId);
+  res.json({ success: true, data: result });
+};

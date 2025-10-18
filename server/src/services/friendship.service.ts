@@ -129,6 +129,37 @@ class FriendshipService {
     return PaginationUtil.createPagination(data, total, page, limit);
   }
 
+  /**
+   * Get relation status between userId and targetId.
+   * Returns an object: { status: 'none'|'sent'|'received'|'friend'|'self', requestId?: number }
+   */
+  async getRelationStatus(userId: number, targetId: number) {
+    if (!targetId) throw new AppError(400, "Missing targetId");
+    if (userId === targetId) return { status: 'self' };
+
+    // Try to find any friendship record between the two users
+    const friendship = await this.friendshipRepository.findFriendship(userId, targetId);
+    if (!friendship) return { status: 'none' };
+
+    // If accepted
+    if (friendship.status === FriendStatus.ACCEPTED) {
+      return { status: 'friend', requestId: friendship.idFriendShip };
+    }
+
+    if (friendship.status === FriendStatus.PENDING) {
+      // Determine who is sender/receiver
+      if (friendship.sender_id.idUser === userId) {
+        return { status: 'sent', requestId: friendship.idFriendShip };
+      }
+      if (friendship.friend_id.idUser === userId) {
+        return { status: 'received', requestId: friendship.idFriendShip };
+      }
+    }
+
+    // Other statuses (e.g., blocked)
+    return { status: 'none' };
+  }
+
   async deleteRequest(userId: number, requestId: number) {
     const request = await this.friendshipRepository.findFriendshipById(requestId);
     if (!request) throw new AppError(404, "Không tìm thấy lời mời");

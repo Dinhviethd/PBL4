@@ -4,6 +4,7 @@ import {
   acceptFriendRequest,
   getReceivedRequests,
   getSentRequests,
+  getRelationStatus,
   deleteFriendship,
   getFriends,
   getPendingRequests,
@@ -70,6 +71,13 @@ router.get(
   authMiddleware,
   checkAccountStatus,
   asyncHandler(getSentRequests)
+);
+
+router.get(
+  "/status/:targetId",
+  authMiddleware,
+  checkAccountStatus,
+  asyncHandler(getRelationStatus)
 );
 
 router.put(

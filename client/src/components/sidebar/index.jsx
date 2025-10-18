@@ -49,6 +49,7 @@ export default function Sidebar() {
                 `w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group
                  ${isActive ? "bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-md" : "text-gray-600 hover:bg-gray-100"}`
               }
+              title={link.label}
             >
               {link.icon}
               <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
@@ -85,8 +86,8 @@ export default function Sidebar() {
         </NavLink>
       </div>
 
-      {/* Create Group Modal */}
-      <CreateGroupModal isOpen={showCreate} onClose={() => setShowCreate(false)} currentUser={user} />
+  {/* Create Group Modal */}
+  <CreateGroupModal isOpen={showCreate} onClose={() => setShowCreate(false)} currentUser={user} />
     </nav>
   );
 }

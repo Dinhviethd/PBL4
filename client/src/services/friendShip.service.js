@@ -69,3 +69,9 @@ export const unblockFriend = async (friendId) => {
   const res = await instance.delete(`/friendship/unblock/${friendId}`);
   return res.data;
 };
+
+export const getRelationStatus = async (targetId) => {
+  if (!targetId) throw new Error('targetId is required');
+  const res = await instance.get(`/friendship/status/${targetId}`);
+  return res.data?.data;
+};

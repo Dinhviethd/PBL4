@@ -59,7 +59,8 @@ export default function MainLayout() {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar />
-      <div style={{ flex: 1, padding: 20, background: "#f0f4ff" }}>
+      {/* make the main content a positioned container so child absolute overlays center inside it */}
+      <div style={{ flex: 1, padding: 20, background: "#f0f4ff", position: 'relative' }}>
         <Outlet />
       </div>
     </div>
