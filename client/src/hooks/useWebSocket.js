@@ -6,7 +6,7 @@ import NotificationContext from '@/contexts/NotificationContext';
 
 export const useWebSocket = () => {
   const { user, accessToken } = useAuthStore();
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const { showInfo } = useContext(NotificationContext);
 
   useEffect(() => {

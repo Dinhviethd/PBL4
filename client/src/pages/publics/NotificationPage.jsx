@@ -24,7 +24,7 @@ const getNotificationIcon = (type) => {
 };
 
 const NotificationPage = () => {
-  const { user, accessToken } = useAuthInit();
+  const { _user, accessToken } = useAuthInit();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
 
