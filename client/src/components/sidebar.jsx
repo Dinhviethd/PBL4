@@ -28,6 +28,7 @@ export default function Sidebar() {
   const [createError, setCreateError] = useState(null);
   const { user } = useAuthInit();
   const { showSuccess, showError } = useContext(NotificationContext);
+  const navigate = useNavigate(); // Di chuyển lên đầu
 
   useEffect(() => {
     let mounted = true;
@@ -96,8 +97,7 @@ export default function Sidebar() {
     } else {
       setSelectedUsers(prev => [...prev, userObj]);
     }
-  const navigate = useNavigate();
-
+  }; // Thêm dấu chấm phẩy
 
   // Xử lý đăng xuất
   const handleLogout = async () => {
@@ -124,10 +124,6 @@ export default function Sidebar() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
-  
-  const userData = {
-    avatar: user?.avatarUrl ? `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.avatarUrl}` : "/images/avatar-default-icon.png",
-  };
 
   return (
     <nav className="w-20 h-screen bg-white border-r border-gray-200 flex flex-col justify-between py-4 shadow-sm relative">
@@ -299,26 +295,40 @@ export default function Sidebar() {
 
             {/* Buttons */}
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)} className="px-3 py-2 rounded border">Hủy</button>
+              <button 
+                onClick={() => {
+                  setShowCreate(false);
+                  setGroupName('');
+                  setSearchTerm('');
+                  setSearchResults([]);
+                  setSelectedUsers([]);
+                  setCreateError(null);
+                }} 
+                className="px-3 py-2 rounded border hover:bg-gray-50"
+              >
+                Hủy
+              </button>
               <button
                 disabled={creating}
                 onClick={async () => {
                   setCreateError(null);
                   if (!groupName.trim()) return setCreateError('Tên nhóm không được để trống');
-                  if (selectedUsers.length < 2) return setCreateError('Vui lòng chọn ít nhất 2 thành viên');
-                  const memberIds = selectedUsers.map(u => u.idUser);
+                  if (selectedUsers.length < 1) return setCreateError('Vui lòng chọn ít nhất 1 thành viên');
+                  
                   setCreating(true);
                   try {
-                    // Ensure we don't send the creator's id in memberIds
-                    const filteredMemberIds = memberIds.filter(id => id !== user?.idUser);
-                    const created = await groupService.createGroup(groupName.trim(), filteredMemberIds);
+                    const memberIds = selectedUsers.map(u => u.idUser).filter(id => id !== user?.idUser);
+                    const created = await groupService.createGroup(groupName.trim(), memberIds);
                     showSuccess('Tạo nhóm', `Nhóm "${groupName.trim()}" đã được tạo thành công.`);
-                    // notify other parts of the app to refresh the groups list
+                    
+                    // Dispatch event to refresh groups list
                     try {
                       window.dispatchEvent(new CustomEvent('groups:created', { detail: created }));
-                    } catch {
-                      // ignore in non-browser environments
+                    } catch (e) {
+                      console.log('Event dispatch failed:', e);
                     }
+                    
+                    // Reset form
                     setShowCreate(false);
                     setGroupName('');
                     setSearchTerm('');
@@ -333,7 +343,7 @@ export default function Sidebar() {
                     setCreating(false);
                   }
                 }}
-                className="px-3 py-2 rounded bg-blue-500 text-white disabled:opacity-60"
+                className="px-3 py-2 rounded bg-blue-500 text-white disabled:opacity-60 hover:bg-blue-600 disabled:hover:bg-blue-500"
               >
                 {creating ? 'Đang tạo...' : 'Tạo'}
               </button>
