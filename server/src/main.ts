@@ -38,7 +38,8 @@ app.get("/", (req, res) => {
 app.use(errorHandler.notFound)
 app.use(errorHandler.errorHandler)
 
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 8000
+ 
 
 wss.on('connection', (ws) => {
     console.log("Connect to websocket successfully")

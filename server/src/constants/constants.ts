@@ -4,15 +4,16 @@ export enum NotiType {
   CALL = 'call',
 }
 
+
 export enum MessageType {
-  TEXT = 'text',
-  IMAGE = 'image',
-  FILE = 'file',
-  VOICE = 'voice',
-  AUDIO = 'audio',
-  VIDEO = 'video',
-  MESSAGE = 'message',
+  TEXT = 'TEXT',
+  IMAGE = 'IMAGE',
+  FILE = 'FILE',
+  VIDEO = 'VIDEO',
+  AUDIO = 'AUDIO'
 }
+
+
 
 export enum StatusNoti {
   DELETED = 'deleted',
@@ -35,6 +36,7 @@ export enum FriendStatus {
 export enum UserRole {
   ADMIN = 'admin',
   USER = 'user',
+  PENDING= "pending",
 }
 
 export enum CallStatus {

@@ -18,7 +18,7 @@ const errorHandler: ErrorRequestHandler = (err: any, req, res, next) => {
     if (err instanceof ZodError) return handleZodError(res, err);
     
     // Ensure statusCode exists
-    const statusCode = err.statusCode || 500;
+    const statusCode = err.statusCode === 200 ? err.statusCode : 500;
     const message = err.message || 'Internal Server Error';
     
     return res.status(statusCode).json({

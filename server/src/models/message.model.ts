@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDa
 import { User } from './users.model'
 import { Group } from './group.model'
 import { MessageType } from '@/constants/constants'
+
 @Entity('Message')
 export class Message {
   @PrimaryGeneratedColumn()
@@ -14,10 +15,10 @@ export class Message {
   @JoinColumn({ name: 'sentBy' })
   sentBy!: User;
 
-  @Column({ type: 'enum', enum: MessageType })
+  @Column({ type: 'enum', enum: MessageType, default: MessageType.TEXT })
   type!: MessageType;
 
-  @Column()
+  @Column({ type: 'text' })
   content!: string;
 
   @CreateDateColumn()

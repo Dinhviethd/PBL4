@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn} from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, OneToOne} from "typeorm"
 import { UserRole } from '@/constants/constants'
 import { User } from './users.model'
 import { Group } from './group.model'
@@ -9,7 +9,7 @@ export class GroupUser {
 
   @ManyToOne(() => Group)
   @JoinColumn({ name: 'idGroup' })
-  idGroup?: Group;
+  idGroup!: Group;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'idUser' })
@@ -17,4 +17,8 @@ export class GroupUser {
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role?: UserRole;
+
+  @OneToOne(()=> User)
+  @JoinColumn({ name: 'actionBy' })
+  actionBy?: User;
 }

@@ -4,7 +4,8 @@ import { AppError } from "@/utils/error.response";
 import { AppDataSource } from "@/configs/database.config";
 import { User } from "@/models/users.model";
 import { StatusUser } from "@/constants/constants";
-
+import dotenv from "dotenv"
+dotenv.config()
 interface JwtPayload {
   userId: number;
 }

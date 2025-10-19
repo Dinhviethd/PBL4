@@ -1,7 +1,7 @@
 import  jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
-
+dotenv.config()
 const JWT_KEY= process.env.JWT_SECRET 
 const ACCESS_EXPIRE= process.env.ACCESS_EXPIRE
 const REFRESH_EXPIRE= process.env.REFRESH_EXPIRE

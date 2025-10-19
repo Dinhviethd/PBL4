@@ -4,11 +4,13 @@ import { CreateGroupSchema, AddMemberSchema, UpdateGroupSchema } from '@/schemas
 import { asyncHandler } from '@/utils/error.response';
 
 class GroupController {
+  private readonly groupService = groupService;
+
   createGroup = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.idUser;
     const data = CreateGroupSchema.parse(req.body);
 
-    const group = await groupService.createGroup(userId, data);
+    const group = await this.groupService.createGroup(userId, data);
 
     res.status(201).json({
       success: true,
@@ -22,11 +24,56 @@ class GroupController {
     const groupId = parseInt(req.params.groupId);
     const data = AddMemberSchema.parse(req.body);
 
-    const result = await groupService.addMember(userId, groupId, data);
+    const result = await this.groupService.addMember(userId, groupId, data, userId);
 
     res.status(200).json({
       success: true,
-      data: result
+      message: result.message,
+      data: {
+        userId: data.userId,
+        role: result.role,
+        status: result.role,
+      }
+    });
+  });
+
+  approveMember = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.idUser;
+    const groupId = parseInt(req.params.groupId);
+    const memberId = parseInt(req.params.memberId);
+
+    const result = await this.groupService.approveMember(userId, groupId, memberId);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: { memberId, newRole: 'USER' }
+    });
+  });
+
+  rejectMember = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.idUser;
+    const groupId = parseInt(req.params.groupId);
+    const memberId = parseInt(req.params.memberId);
+
+    const result = await this.groupService.rejectMember(userId, groupId, memberId);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: { memberId, action: 'rejected' }
+    });
+  });
+
+  getPendingMembers = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.idUser;
+    const groupId = parseInt(req.params.groupId);
+
+    const members = await this.groupService.getPendingMembers(userId, groupId);
+
+    res.status(200).json({
+      success: true,
+      data: members
     });
   });
 
@@ -35,11 +82,12 @@ class GroupController {
     const groupId = parseInt(req.params.groupId);
     const memberId = parseInt(req.params.memberId);
 
-    const result = await groupService.removeMember(userId, groupId, memberId);
+    const result = await this.groupService.removeMember(userId, groupId, memberId);
 
     res.status(200).json({
       success: true,
-      data: result
+      message: result.message,
+      data: { memberId, action: 'removed' }
     });
   });
 
@@ -47,7 +95,7 @@ class GroupController {
     const userId = (req as any).user.idUser;
     const groupId = parseInt(req.params.groupId);
 
-    const group = await groupService.getGroupDetails(userId, groupId);
+    const group = await this.groupService.getGroupDetails(userId, groupId);
 
     res.status(200).json({
       success: true,
@@ -58,7 +106,7 @@ class GroupController {
   getUserGroups = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.idUser;
 
-    const groups = await groupService.getUserGroups(userId);
+    const groups = await this.groupService.getUserGroups(userId);
 
     res.status(200).json({
       success: true,
@@ -71,10 +119,11 @@ class GroupController {
     const groupId = parseInt(req.params.groupId);
     const data = UpdateGroupSchema.parse(req.body);
 
-    const result = await groupService.updateGroup(userId, groupId, data);
+    const result = await this.groupService.updateGroup(userId, groupId, data);
 
     res.status(200).json({
       success: true,
+      message: result.message,
       data: result
     });
   });
@@ -83,10 +132,11 @@ class GroupController {
     const userId = (req as any).user.idUser;
     const groupId = parseInt(req.params.groupId);
 
-    const result = await groupService.deleteGroup(userId, groupId);
+    const result = await this.groupService.deleteGroup(userId, groupId);
 
     res.status(200).json({
       success: true,
+      message: result.message,
       data: result
     });
   });
@@ -95,7 +145,7 @@ class GroupController {
     const userId = (req as any).user.idUser;
     const groupId = parseInt(req.params.groupId);
 
-    const result = await groupService.removeMember(userId, groupId, userId);
+    const result = await this.groupService.removeMember(userId, groupId, userId);
 
     res.status(200).json({
       success: true,
