@@ -19,7 +19,7 @@ const useWebSocket = () => {
   const connect = () => {
     if (!token || !user) return;
 
-    const ws = new WebSocket('ws://localhost:3000');
+    const ws = new WebSocket('ws://localhost:8000');
     
     ws.onopen = () => {
       console.log('WebSocket connected');

@@ -4,7 +4,6 @@ import MessageInput from './MessageInput';
 import useWebSocket from '@/hooks/useWebSocket';
 
 const ChatInterface = () => {
-  // Initialize WebSocket connection
   useWebSocket();
 
   return (
