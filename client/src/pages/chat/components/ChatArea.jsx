@@ -27,8 +27,24 @@ import {
 import useChatStore from '@/zustand/chatStore';
 import useAuthStore from '@/zustand/authStore';
 import messageService from '@/services/message.service';
-import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+
+// Helper function to format time
+const formatTimeAgo = (date) => {
+  const now = new Date();
+  const messageDate = new Date(date);
+  const diffInMinutes = Math.floor((now - messageDate) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return 'Vừa xong';
+  if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} giờ trước`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} ngày trước`;
+  
+  return messageDate.toLocaleDateString('vi-VN');
+};
 
 export const ChatArea = ({ conversation }) => {
   const [message, setMessage] = useState('');
@@ -225,7 +241,12 @@ export const ChatArea = ({ conversation }) => {
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {conversationMessages.map((msg) => {
-            const isOwn = msg.sender.idUser === user?.idUser;
+            // Sửa lại logic kiểm tra isOwn - sử dụng 'sender' thay vì 'sentBy'
+            const currentUserId = user?.idUser || user?.id;
+            const messageUserId = msg.sender?.idUser || msg.sender?.id;
+            const isOwn = currentUserId && messageUserId && (currentUserId === messageUserId);
+   
+
             const isEditing = editingMessage === msg.idMessage;
 
             return (
@@ -236,9 +257,9 @@ export const ChatArea = ({ conversation }) => {
                 <div className={`flex items-start max-w-[70%] ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
                   {!isOwn && (
                     <Avatar className="w-8 h-8 mr-2">
-                      <AvatarImage src={msg.sender.avatarUrl} />
+                      <AvatarImage src={msg.sender?.avatarUrl} />
                       <AvatarFallback>
-                        {msg.sender.name?.charAt(0)?.toUpperCase() || 'U'}
+                        {msg.sender?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   )}
@@ -246,28 +267,36 @@ export const ChatArea = ({ conversation }) => {
                   <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                     {!isOwn && conversation.type === 'group' && (
                       <span className="text-xs text-gray-500 mb-1 px-3">
-                        {msg.sender.name}
+                        {msg.sender?.name}
                       </span>
                     )}
 
                     <div
                       className={`relative group px-4 py-2 rounded-2xl max-w-full ${
                         isOwn
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-900'
+                          ? 'text-white shadow-md'
+                          : 'bg-gray-100 text-gray-900 border border-gray-200'
                       } ${msg.isDeleted ? 'opacity-50 italic' : ''}`}
+                      style={isOwn ? {
+                        background: 'linear-gradient(135deg, #0084ff 0%, #0066cc 100%)',
+                        borderRadius: '18px 18px 4px 18px'
+                      } : {
+                        background: '#f1f3f4',
+                        borderRadius: '18px 18px 18px 4px'
+                      }}
                     >
                       {isEditing ? (
                         <div className="flex items-center space-x-2">
                           <Input
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
-                            className="text-sm"
+                            className="text-sm bg-white text-gray-900"
                             autoFocus
                           />
                           <Button
                             size="sm"
                             onClick={() => handleSaveEdit(msg.idMessage)}
+                            className="bg-white text-gray-900 hover:bg-gray-100"
                           >
                             <Check className="w-3 h-3" />
                           </Button>
@@ -279,7 +308,9 @@ export const ChatArea = ({ conversation }) => {
                           </p>
                           
                           {msg.isEdited && !msg.isDeleted && (
-                            <span className={`text-xs ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                            <span className={`text-xs mt-1 block ${
+                              isOwn ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
                               (đã chỉnh sửa)
                             </span>
                           )}
@@ -288,11 +319,11 @@ export const ChatArea = ({ conversation }) => {
 
                       {/* Message actions */}
                       {isOwn && !msg.isDeleted && !isEditing && (
-                        <div className="absolute top-0 right-0 -mr-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className={`absolute top-0 ${isOwn ? 'left-0 -ml-8' : 'right-0 -mr-8'} opacity-0 group-hover:opacity-100 transition-opacity`}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
-                                <MoreVertical className="w-3 h-3" />
+                              <Button variant="ghost" size="sm" className="w-6 h-6 p-0 hover:bg-gray-200">
+                                <MoreVertical className="w-3 h-3 text-gray-600" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -302,7 +333,7 @@ export const ChatArea = ({ conversation }) => {
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleDeleteMessage(msg.idMessage)}
-                                className="text-red-600"
+                                className="text-red-600 focus:text-red-600"
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Thu hồi
@@ -316,10 +347,7 @@ export const ChatArea = ({ conversation }) => {
                     {/* Message info */}
                     <div className={`flex items-center mt-1 space-x-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
                       <span className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(msg.createdAt), {
-                          addSuffix: true,
-                          locale: vi
-                        })}
+                        {formatTimeAgo(msg.createdAt)}
                       </span>
                       
                       {isOwn && (
@@ -369,7 +397,7 @@ export const ChatArea = ({ conversation }) => {
                     {conversation.partner?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="bg-gray-100 rounded-2xl px-4 py-2">
+                <div className="bg-gray-100 rounded-2xl px-4 py-2" style={{ borderRadius: '18px 18px 18px 4px' }}>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75" />
@@ -387,7 +415,7 @@ export const ChatArea = ({ conversation }) => {
       {/* Message Input */}
       <div className="p-4 border-t border-gray-200 bg-white">
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 hover:bg-gray-100">
             <Paperclip className="w-4 h-4" />
           </Button>
           
@@ -403,12 +431,13 @@ export const ChatArea = ({ conversation }) => {
                   handleSendMessage();
                 }
               }}
-              className="pr-10"
+              className="pr-10 rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              style={{ borderRadius: '20px' }}
             />
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
             >
               <Smile className="w-4 h-4" />
             </Button>
@@ -417,7 +446,12 @@ export const ChatArea = ({ conversation }) => {
           <Button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="bg-blue-500 hover:bg-blue-600"
+            className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10 p-0 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ 
+              background: message.trim() 
+                ? 'linear-gradient(135deg, #0084ff 0%, #0066cc 100%)' 
+                : undefined 
+            }}
           >
             <Send className="w-4 h-4" />
           </Button>
