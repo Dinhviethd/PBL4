@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ConversationList } from './components/ConversationList';
 import { ChatArea } from './components/ChatArea';
 import { CreateGroupDialog } from './components/CreateGroupDialog';
-import { AddMemberDialog } from './components/AddMemberDialog';
 import { MessageCircle } from 'lucide-react';
 import useChatStore from '@/zustand/chatStore';
 import useWebSocket from '@/hooks/useWebSocket';
 
 const ChatPage = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [selectedGroupForAddMember, setSelectedGroupForAddMember] = useState(null);
 
   const {
     conversations,
@@ -21,18 +18,14 @@ const ChatPage = () => {
   // Initialize WebSocket
   useWebSocket();
 
-  // Load initial data when component mounts - ĐẢM BẢO GỌI KHI KHỞI ĐỘNG
+  // Load initial data when component mounts
   useEffect(() => {
+    console.log('ChatPage mounted, loading initial data...');
     loadInitialData();
-  }, []); // Empty dependency array để chỉ gọi 1 lần khi mount
+  }, []);
 
   const handleCreateGroup = () => {
     setShowCreateGroup(true);
-  };
-
-  const handleAddMember = (group) => {
-    setSelectedGroupForAddMember(group);
-    setShowAddMember(true);
   };
 
   return (
@@ -41,7 +34,7 @@ const ChatPage = () => {
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <ConversationList 
           onCreateGroup={handleCreateGroup}
-          onAddMember={handleAddMember}
+          onAddMember={() => {}} // Không cần nữa vì đã có trong GroupSettingsDialog
         />
       </div>
 
@@ -70,12 +63,6 @@ const ChatPage = () => {
       <CreateGroupDialog
         open={showCreateGroup}
         onClose={() => setShowCreateGroup(false)}
-      />
-      
-      <AddMemberDialog
-        open={showAddMember}
-        onClose={() => setShowAddMember(false)}
-        group={selectedGroupForAddMember}
       />
     </div>
   );

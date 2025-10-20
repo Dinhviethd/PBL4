@@ -22,6 +22,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { StartConversationDialog } from './StartConversationDialog';
+import { GroupSettingsDialog } from './GroupSettingsDialog';
 import useChatStore from '@/zustand/chatStore';
 import useAuthStore from '@/zustand/authStore';
 
@@ -51,6 +52,8 @@ const formatLastMessageTime = (time) => {
 export const ConversationList = ({ onCreateGroup, onAddMember }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showStartConversation, setShowStartConversation] = useState(false);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   
   const { user } = useAuthStore();
   const {
@@ -63,36 +66,31 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
     getConversationKey
   } = useChatStore();
 
-
   const filteredConversations = conversations.filter(conv =>
     conv.type === 'private'
       ? conv.partner?.name?.toLowerCase().includes(searchQuery.toLowerCase())
       : conv.group?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-
   const handleConversationClick = (conversation) => {
+    console.log('Clicked conversation:', conversation);
     setActiveConversation(conversation);
-    
-    // Clear unread count
-    const conversationKey = getConversationKey(conversation);
-    // clearUnreadCount(conversationKey);
+  };
+
+  const handleGroupSettings = (group) => {
+    setSelectedGroup(group);
+    setShowGroupSettings(true);
   };
 
   const handleGroupAction = (group, action) => {
+    console.log('Group action:', action, group);
     
     switch (action) {
+      case 'settings':
+        handleGroupSettings(group);
+        break;
       case 'addMember':
         onAddMember(group);
-        break;
-      case 'settings':
-        // Handle group settings
-        break;
-      case 'leave':
-        // Handle leave group
-        break;
-      case 'delete':
-        // Handle delete group
         break;
       default:
         break;
@@ -149,7 +147,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
             return (
               <div
                 key={conversationKey}
-                className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                className={`group flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors relative ${
                   isActive ? 'bg-blue-50 border-r-2 border-blue-500' : ''
                 }`}
                 onClick={() => handleConversationClick(conversation)}
@@ -194,44 +192,19 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                         {formatLastMessageTime(conversation.lastMessageTime)}
                       </span>
                       
-                      {/* Group actions */}
+                      {/* Group actions - THAY ĐỔI: Click vào icon sẽ mở modal settings */}
                       {conversation.type === 'group' && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-gray-200"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleGroupAction(conversation.group, 'addMember')}>
-                              <UserPlus className="w-4 h-4 mr-2" />
-                              Thêm thành viên
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleGroupAction(conversation.group, 'settings')}>
-                              <Settings className="w-4 h-4 mr-2" />
-                              Cài đặt nhóm
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleGroupAction(conversation.group, 'leave')}>
-                              <LogOut className="w-4 h-4 mr-2" />
-                              Rời nhóm
-                            </DropdownMenuItem>
-                            {/* Show delete option only for group admin */}
-                            {groups.find(g => g.idGroup === conversation.group?.idGroup)?.role === 'admin' && (
-                              <DropdownMenuItem 
-                                onClick={() => handleGroupAction(conversation.group, 'delete')}
-                                className="text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Xóa nhóm
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-gray-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGroupSettings(conversation.group);
+                          }}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -270,10 +243,16 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
         </div>
       </ScrollArea>
 
-      {/* Start Conversation Dialog */}
+      {/* Dialogs */}
       <StartConversationDialog
         open={showStartConversation}
         onClose={() => setShowStartConversation(false)}
+      />
+      
+      <GroupSettingsDialog
+        open={showGroupSettings}
+        onClose={() => setShowGroupSettings(false)}
+        group={selectedGroup}
       />
     </div>
   );
