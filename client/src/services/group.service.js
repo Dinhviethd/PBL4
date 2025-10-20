@@ -1,83 +1,97 @@
-import api from './axios.config';
+import instance from './axios.config';
 
-class GroupService {
-  async createGroup(name, memberIds) {
-    const response = await api.post('/groups', {
-      name,
-      memberIds
-    });
-    return response.data;
+const groupService = {
+  // Create group
+  createGroup: async (name) => {
+    try {
+      const response = await instance.post('/groups', { name });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to create group' };
+    }
+  },
+
+  // Add member to group
+  addMember: async (groupId, userId) => {
+    try {
+      const response = await instance.post(`/groups/${groupId}/members`, { userId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to add member' };
+    }
+  },
+
+  // Approve pending member
+  approveMember: async (groupId, userId) => {
+    try {
+      const response = await instance.patch(`/groups/${groupId}/members/approve`, { userId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to approve member' };
+    }
+  },
+
+  // Leave group
+  leaveGroup: async (groupId) => {
+    try {
+      const response = await instance.delete(`/groups/${groupId}/leave`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to leave group' };
+    }
+  },
+
+  // Kick member
+  kickMember: async (groupId, userId) => {
+    try {
+      const response = await instance.delete(`/groups/${groupId}/members`, { 
+        data: { userId } 
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to kick member' };
+    }
+  },
+
+  // Delete group
+  deleteGroup: async (groupId) => {
+    try {
+      const response = await instance.delete(`/groups/${groupId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to delete group' };
+    }
+  },
+
+  // Get group members
+  getGroupMembers: async (groupId) => {
+    try {
+      const response = await instance.get(`/groups/${groupId}/members`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch members' };
+    }
+  },
+
+  // Get user groups
+  getUserGroups: async () => {
+    try {
+      const response = await instance.get('/groups/my-groups');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch groups' };
+    }
+  },
+
+  // Get pending members
+  getPendingMembers: async (groupId) => {
+    try {
+      const response = await instance.get(`/groups/${groupId}/pending`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch pending members' };
+    }
   }
+};
 
-  async getUserGroups() {
-    const response = await api.get('/groups');
-    return response.data;
-  }
-
-  async getGroupDetails(groupId) {
-    const response = await api.get(`/groups/${groupId}`);
-    return response.data;
-  }
-
-  async addMember(groupId, data) {
-    const response = await api.post(`/groups/${groupId}/members`, data);
-    return response.data;
-  }
-
-  async removeMember(groupId, memberId) {
-    const response = await api.delete(`/groups/${groupId}/members/${memberId}`);
-    return response.data;
-  }
-
-  async getPendingMembers(groupId) {
-    const response = await api.get(`/groups/${groupId}/pending`);
-    return response.data;
-  }
-
-  async approveMember(groupId, memberId) {
-    const response = await api.post(`/groups/${groupId}/members/${memberId}/approve`);
-    return response.data;
-  }
-
-  async rejectMember(groupId, memberId) {
-    const response = await api.post(`/groups/${groupId}/members/${memberId}/reject`);
-    return response.data;
-  }
-
-  async updateGroup(groupId, data) {
-    const response = await api.put(`/groups/${groupId}`, data);
-    return response.data;
-  }
-
-  async deleteGroup(groupId) {
-    const response = await api.delete(`/groups/${groupId}`);
-    return response.data;
-  }
-
-  async leaveGroup(groupId) {
-    const response = await api.post(`/groups/${groupId}/leave`);
-    return response.data;
-  }
-
-  // Group message methods
-  async getGroupMessages(groupId, page = 1, limit = 20) {
-    const response = await api.get(`/messages/group/${groupId}`, {
-      params: { page, limit }
-    });
-    return response.data;
-  }
-
-  async sendGroupMessage(data) {
-    const response = await api.post('/messages/group', data);
-    return response.data;
-  }
-
-  async getOlderGroupMessages(groupId, beforeMessageId, limit = 20) {
-    const response = await api.get(`/messages/group/${groupId}/older`, {
-      params: { beforeMessageId, limit }
-    });
-    return response.data;
-  }
-}
-
-export default new GroupService();
+export default groupService;

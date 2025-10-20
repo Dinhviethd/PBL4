@@ -9,7 +9,7 @@
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/configs/database.config.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/configs/database.config.ts",
     "migration:show": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:show -d src/configs/database.config.ts",
-     "seed:friends": "ts-node -r tsconfig-paths/register src/seeds/seed-friends.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/seeds/seeds.ts" 
   },
   "author": "",
   "license": "ISC",

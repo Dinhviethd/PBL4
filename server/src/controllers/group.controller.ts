@@ -1,75 +1,152 @@
 import { Request, Response } from 'express';
-import groupService from '@/services/group.service';
-import { CreateGroupSchema, AddMemberSchema, UpdateGroupSchema } from '@/schemas/group.schema';
+import { GroupService } from '@/services/group.service';
 import { asyncHandler } from '@/utils/error.response';
+import { AppError } from '@/utils/error.response';
 
-class GroupController {
-  private readonly groupService = groupService;
+export class GroupController {
+  private groupService: GroupService;
+
+  constructor() {
+    this.groupService = new GroupService();
+  }
 
   createGroup = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const data = CreateGroupSchema.parse(req.body);
+    const { name } = req.body;
+    const userId = req.user?.userId;
 
-    const group = await this.groupService.createGroup(userId, data);
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!name || name.trim() === '') {
+      throw new AppError(400, 'Group name is required');
+    }
+
+    const result = await this.groupService.createGroup(name.trim(), userId);
 
     res.status(201).json({
       success: true,
       message: 'Group created successfully',
-      data: group
+      data: result
     });
   });
 
   addMember = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const data = AddMemberSchema.parse(req.body);
+    const { groupId } = req.params;
+    const { userId: targetUserId } = req.body;
+    const requesterId = req.user?.userId;
 
-    const result = await this.groupService.addMember(userId, groupId, data, userId);
+    if (!requesterId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!targetUserId) {
+      throw new AppError(400, 'Target user ID is required');
+    }
+
+    const result = await this.groupService.addMemberToGroup(
+      parseInt(groupId),
+      targetUserId,
+      requesterId
+    );
 
     res.status(200).json({
       success: true,
-      message: result.message,
-      data: {
-        userId: data.userId,
-        role: result.role,
-        status: result.role,
-      }
+      ...result
     });
   });
 
   approveMember = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const memberId = parseInt(req.params.memberId);
+    const { groupId } = req.params;
+    const { userId: targetUserId } = req.body;
+    const adminId = req.user?.userId;
 
-    const result = await this.groupService.approveMember(userId, groupId, memberId);
+    if (!adminId) {
+      throw new AppError(401, 'Unauthorized');
+    }
 
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      data: { memberId, newRole: 'USER' }
-    });
-  });
+    if (!targetUserId) {
+      throw new AppError(400, 'Target user ID is required');
+    }
 
-  rejectMember = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const memberId = parseInt(req.params.memberId);
-
-    const result = await this.groupService.rejectMember(userId, groupId, memberId);
+    const result = await this.groupService.approvePendingMember(
+      parseInt(groupId),
+      targetUserId,
+      adminId
+    );
 
     res.status(200).json({
       success: true,
-      message: result.message,
-      data: { memberId, action: 'rejected' }
+      ...result
     });
   });
 
-  getPendingMembers = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
+  leaveGroup = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const userId = req.user?.userId;
 
-    const members = await this.groupService.getPendingMembers(userId, groupId);
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.groupService.leaveGroup(parseInt(groupId), userId);
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  kickMember = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const { userId: targetUserId } = req.body;
+    const adminId = req.user?.userId;
+
+    if (!adminId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!targetUserId) {
+      throw new AppError(400, 'Target user ID is required');
+    }
+
+    const result = await this.groupService.kickMember(
+      parseInt(groupId),
+      targetUserId,
+      adminId
+    );
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  deleteGroup = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const adminId = req.user?.userId;
+
+    if (!adminId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.groupService.deleteGroup(parseInt(groupId), adminId);
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  getGroupMembers = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const members = await this.groupService.getGroupMembers(parseInt(groupId), userId);
 
     res.status(200).json({
       success: true,
@@ -77,34 +154,12 @@ class GroupController {
     });
   });
 
-  removeMember = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const memberId = parseInt(req.params.memberId);
-
-    const result = await this.groupService.removeMember(userId, groupId, memberId);
-
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      data: { memberId, action: 'removed' }
-    });
-  });
-
-  getGroupDetails = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-
-    const group = await this.groupService.getGroupDetails(userId, groupId);
-
-    res.status(200).json({
-      success: true,
-      data: group
-    });
-  });
-
   getUserGroups = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
 
     const groups = await this.groupService.getUserGroups(userId);
 
@@ -114,45 +169,19 @@ class GroupController {
     });
   });
 
-  updateGroup = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const data = UpdateGroupSchema.parse(req.body);
+  getPendingMembers = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const adminId = req.user?.userId;
 
-    const result = await this.groupService.updateGroup(userId, groupId, data);
+    if (!adminId) {
+      throw new AppError(401, 'Unauthorized');
+    }
 
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      data: result
-    });
-  });
-
-  deleteGroup = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-
-    const result = await this.groupService.deleteGroup(userId, groupId);
+    const pendingMembers = await this.groupService.getPendingMembers(parseInt(groupId), adminId);
 
     res.status(200).json({
       success: true,
-      message: result.message,
-      data: result
-    });
-  });
-
-  leaveGroup = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-
-    const result = await this.groupService.removeMember(userId, groupId, userId);
-
-    res.status(200).json({
-      success: true,
-      message: 'Left group successfully',
-      data: result
+      data: pendingMembers
     });
   });
 }
-
-export default new GroupController();

@@ -6,11 +6,11 @@ export enum NotiType {
 
 
 export enum MessageType {
-  TEXT = 'TEXT',
-  IMAGE = 'IMAGE',
-  FILE = 'FILE',
-  VIDEO = 'VIDEO',
-  AUDIO = 'AUDIO'
+  TEXT = 'text',
+  IMAGE = 'image',
+  FILE = 'file',
+  AUDIO = 'audio',
+  VIDEO = 'video'
 }
 
 
@@ -50,11 +50,17 @@ export enum verifiedCodeType{
 }
 
 export enum WSMessageType {
-  AUTH = 'auth',
-  PRIVATE_MESSAGE = 'private_message',
-  GROUP_MESSAGE = 'group_message',
-  TYPING = 'typing',
-  MESSAGE_READ = 'message_read',
-  USER_ONLINE = 'user_online',
-  USER_OFFLINE = 'user_offline'
+  PRIVATE_MESSAGE = 'PRIVATE_MESSAGE',
+  GROUP_MESSAGE = 'GROUP_MESSAGE',
+  TYPING = 'TYPING',
+  MESSAGE_READ = 'MESSAGE_READ',
+  MESSAGE_EDITED = 'MESSAGE_EDITED',
+  MESSAGE_DELETED = 'MESSAGE_DELETED',
+  USER_ONLINE = 'USER_ONLINE',
+  USER_OFFLINE = 'USER_OFFLINE',
+  GROUP_ADDED = 'GROUP_ADDED',
+  GROUP_APPROVED = 'GROUP_APPROVED',
+  USER_LEFT_GROUP = 'USER_LEFT_GROUP',
+  KICKED_FROM_GROUP = 'KICKED_FROM_GROUP',
+  GROUP_DELETED = 'GROUP_DELETED'
 }

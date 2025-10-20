@@ -1,23 +1,35 @@
 import { Router } from 'express';
-import groupController from '@/controllers/group.controller';
-import { authMiddleware } from '@/middlewares/auth.middleware';
+import { GroupController } from '@/controllers/group.controller';
+import { authMiddleware, checkAccountStatus } from '@/middlewares/auth.middleware';
 
 const router = Router();
+const groupController = new GroupController();
 
-router.post('/', authMiddleware, groupController.createGroup);
-router.get('/', authMiddleware, groupController.getUserGroups);
-router.get('/:groupId', authMiddleware, groupController.getGroupDetails);
-router.put('/:groupId', authMiddleware, groupController.updateGroup);
-router.delete('/:groupId', authMiddleware, groupController.deleteGroup);
+// Tạo group
+router.post('/', authMiddleware, checkAccountStatus, groupController.createGroup);
 
-// Member management
-router.post('/:groupId/members', authMiddleware, groupController.addMember);
-router.delete('/:groupId/members/:memberId', authMiddleware, groupController.removeMember);
-router.post('/:groupId/leave', authMiddleware, groupController.leaveGroup);
+// Thêm thành viên vào group
+router.post('/:groupId/members', authMiddleware, checkAccountStatus, groupController.addMember);
 
-// Pending member management
-router.get('/:groupId/pending', authMiddleware, groupController.getPendingMembers);
-router.post('/:groupId/members/:memberId/approve', authMiddleware, groupController.approveMember);
-router.post('/:groupId/members/:memberId/reject', authMiddleware, groupController.rejectMember);
+// Duyệt thành viên pending
+router.patch('/:groupId/members/approve', authMiddleware, checkAccountStatus, groupController.approveMember);
+
+// Rời nhóm
+router.delete('/:groupId/leave', authMiddleware, checkAccountStatus, groupController.leaveGroup);
+
+// Kick thành viên (chỉ admin)
+router.delete('/:groupId/members', authMiddleware, checkAccountStatus, groupController.kickMember);
+
+// Xóa group (chỉ admin)
+router.delete('/:groupId', authMiddleware, checkAccountStatus, groupController.deleteGroup);
+
+// Lấy danh sách thành viên group
+router.get('/:groupId/members', authMiddleware, checkAccountStatus, groupController.getGroupMembers);
+
+// Lấy danh sách group của user
+router.get('/my-groups', authMiddleware, checkAccountStatus, groupController.getUserGroups);
+
+// Lấy danh sách thành viên pending (chỉ admin)
+router.get('/:groupId/pending', authMiddleware, checkAccountStatus, groupController.getPendingMembers);
 
 export default router;

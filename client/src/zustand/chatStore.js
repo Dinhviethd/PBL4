@@ -1,90 +1,147 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-const useChatStore = create((set, get) => ({
-  // Conversations
-  conversations: [],
-  currentConversation: null,
-  
-  // Messages
-  messages: [],
-  isLoadingMessages: false,
-  messagesPage: 1,
-  hasMoreMessages: false,
-  
-  // Groups
-  groups: [],
-  currentGroup: null,
-  
-  // WebSocket
-  socket: null,
-  isConnected: false,
-  
-  // Online users
-  onlineUsers: [],
-  
-  // UI states
-  selectedChatType: 'private', // 'private' | 'group'
-  typingUsers: new Map(),
-  
-  // Actions
-  setConversations: (conversations) => set({ conversations }),
-  
-  setCurrentConversation: (conversation) => set({ 
-    currentConversation: conversation,
-    selectedChatType: 'private',
-    messages: [],
-    messagesPage: 1
-  }),
-  
-  setCurrentGroup: (group) => set({ 
-    currentGroup: group,
-    selectedChatType: 'group',
-    messages: [],
-    messagesPage: 1
-  }),
-  
-  setMessages: (messages, hasMore = false) => set({ 
-    messages,
-    hasMoreMessages: hasMore,
-    isLoadingMessages: false
-  }),
-  
-  addMessage: (message) => set((state) => ({
-    messages: [...state.messages, message]
-  })),
-  
-  prependMessages: (messages) => set((state) => ({
-    messages: [...messages, ...state.messages]
-  })),
-  
-  setSocket: (socket) => set({ socket }),
-  setIsConnected: (isConnected) => set({ isConnected }),
-  
-  setOnlineUsers: (users) => set({ onlineUsers: users }),
-  
-  setTyping: (userId, isTyping) => set((state) => {
-    const newTypingUsers = new Map(state.typingUsers);
-    if (isTyping) {
-      newTypingUsers.set(userId, true);
-    } else {
-      newTypingUsers.delete(userId);
+const useChatStore = create(
+  persist(
+    (set, get) => ({
+      // WebSocket connection
+      socket: null,
+      isConnected: false,
+      
+      // Conversations
+      conversations: [],
+      activeConversation: null,
+      
+      // Messages
+      messages: {},
+      
+      // Groups
+      groups: [],
+      
+      // Online users
+      onlineUsers: [],
+      
+      // Typing indicators
+      typingUsers: {},
+      
+      // Unread counts
+      unreadCounts: {},
+
+      // Actions
+      setSocket: (socket) => set({ socket }),
+      
+      setIsConnected: (isConnected) => set({ isConnected }),
+      
+      setConversations: (conversations) => set({ conversations }),
+      
+      setActiveConversation: (conversation) => set({ activeConversation: conversation }),
+      
+      addConversation: (conversation) =>
+        set((state) => ({
+          conversations: [conversation, ...state.conversations.filter(c => 
+            c.type !== conversation.type || 
+            (c.partnerId !== conversation.partnerId && c.groupId !== conversation.groupId)
+          )]
+        })),
+      
+      setMessages: (conversationKey, messages) =>
+        set((state) => ({
+          messages: { ...state.messages, [conversationKey]: messages }
+        })),
+      
+      addMessage: (conversationKey, message) =>
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [conversationKey]: [...(state.messages[conversationKey] || []), message]
+          }
+        })),
+      
+      updateMessage: (conversationKey, messageId, updates) =>
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [conversationKey]: state.messages[conversationKey]?.map(msg =>
+              msg.idMessage === messageId ? { ...msg, ...updates } : msg
+            )
+          }
+        })),
+      
+      deleteMessage: (conversationKey, messageId) =>
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [conversationKey]: state.messages[conversationKey]?.map(msg =>
+              msg.idMessage === messageId ? { ...msg, isDeleted: true } : msg
+            )
+          }
+        })),
+      
+      setGroups: (groups) => set({ groups }),
+      
+      addGroup: (group) =>
+        set((state) => ({ groups: [group, ...state.groups] })),
+      
+      updateGroup: (groupId, updates) =>
+        set((state) => ({
+          groups: state.groups.map(g => g.idGroup === groupId ? { ...g, ...updates } : g)
+        })),
+      
+      removeGroup: (groupId) =>
+        set((state) => ({ groups: state.groups.filter(g => g.idGroup !== groupId) })),
+      
+      setOnlineUsers: (users) => set({ onlineUsers: users }),
+      
+      setTyping: (userId, isTyping) =>
+        set((state) => ({
+          typingUsers: {
+            ...state.typingUsers,
+            [userId]: isTyping
+          }
+        })),
+      
+      setUnreadCount: (conversationKey, count) =>
+        set((state) => ({
+          unreadCounts: { ...state.unreadCounts, [conversationKey]: count }
+        })),
+      
+      clearUnreadCount: (conversationKey) =>
+        set((state) => {
+          const newCounts = { ...state.unreadCounts };
+          delete newCounts[conversationKey];
+          return { unreadCounts: newCounts };
+        }),
+
+      // Helper functions
+      getConversationKey: (conversation) => {
+        return conversation.type === 'private' 
+          ? `private_${conversation.partnerId}`
+          : `group_${conversation.groupId}`;
+      },
+
+      clearAll: () =>
+        set({
+          socket: null,
+          isConnected: false,
+          conversations: [],
+          activeConversation: null,
+          messages: {},
+          groups: [],
+          onlineUsers: [],
+          typingUsers: {},
+          unreadCounts: {}
+        })
+    }),
+    {
+      name: 'chat-storage',
+      partialize: (state) => ({
+        conversations: state.conversations,
+        messages: state.messages,
+        groups: state.groups,
+        unreadCounts: state.unreadCounts
+      })
     }
-    return { typingUsers: newTypingUsers };
-  }),
-  
-  setGroups: (groups) => set({ groups }),
-  
-  setLoadingMessages: (loading) => set({ isLoadingMessages: loading }),
-  
-  incrementPage: () => set((state) => ({ messagesPage: state.messagesPage + 1 })),
-  
-  resetChat: () => set({
-    currentConversation: null,
-    currentGroup: null,
-    messages: [],
-    messagesPage: 1,
-    hasMoreMessages: false
-  })
-}));
+  )
+);
 
 export default useChatStore;

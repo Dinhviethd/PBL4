@@ -1,185 +1,284 @@
-import groupRepository from '@/repositories/group.repository'
+import { GroupRepository } from '@/repositories/group.repository';
+import { AppDataSource } from '@/configs/database.config';
+import { User } from '@/models/users.model';
 import { AppError } from '@/utils/error.response';
-import { CreateGroupDTO, AddMemberDTO, UpdateGroupDTO } from '@/schemas/group.schema';
 import { UserRole } from '@/constants/constants';
+import { wsService } from './websocket.service';
 
-class GroupService {
-  private readonly groupRepository = groupRepository;
+export class GroupService {
+  private groupRepository: GroupRepository;
+  private userRepository;
 
-  async createGroup(creatorId: number, data: CreateGroupDTO) {
-    const { name, memberIds } = data;
-    const group = await this.groupRepository.createGroup(name, creatorId);
-    
-    for (const memberId of memberIds) {
-      if (memberId !== creatorId) {
-        await this.groupRepository.addMember(group.idGroup, memberId, UserRole.USER, creatorId);
-      }
-    }
-
-    return group;
+  constructor() {
+    this.groupRepository = new GroupRepository();
+    this.userRepository = AppDataSource.getRepository(User);
   }
 
-  async addMember(userId: number, groupId: number, data: AddMemberDTO, addedById: number) {
-    const group = await this.groupRepository.getGroupById(groupId);
+  async createGroup(name: string, creatorId: number) {
+    const creator = await this.userRepository.findOne({
+      where: { idUser: creatorId }
+    });
+
+    if (!creator) {
+      throw new AppError(404, 'User not found');
+    }
+
+    // Tạo group
+    const group = await this.groupRepository.createGroup(name, creator);
+
+    // Thêm người tạo làm admin
+    await this.groupRepository.addUserToGroup(group, creator, UserRole.ADMIN);
+
+    return {
+      idGroup: group.idGroup,
+      name: group.name,
+      createdAt: group.createdAt,
+      createdBy: {
+        idUser: creator.idUser,
+        name: creator.name,
+        email: creator.email
+      }
+    };
+  }
+
+  async addMemberToGroup(groupId: number, targetUserId: number, requesterId: number) {
+    // Kiểm tra group tồn tại
+    const group = await this.groupRepository.findGroupById(groupId);
     if (!group) {
       throw new AppError(404, 'Group not found');
     }
 
-    // Kiểm tra người thêm có phải là member không
-    const adderIsMember = await this.groupRepository.checkMembership(groupId, addedById);
-    if (!adderIsMember) {
+    // Kiểm tra quyền của người thêm
+    const requesterMember = await this.groupRepository.findGroupMember(groupId, requesterId);
+    if (!requesterMember) {
       throw new AppError(403, 'You are not a member of this group');
     }
 
-    // Kiểm tra người được thêm đã là member chưa
-    const isExist = await this.groupRepository.checkMembership(groupId, data.userId);
-    if (isExist) {
-      throw new AppError(400, 'User is already a member');
+    // Kiểm tra user được thêm có tồn tại
+    const targetUser = await this.userRepository.findOne({
+      where: { idUser: targetUserId }
+    });
+    if (!targetUser) {
+      throw new AppError(404, 'User not found');
     }
 
-    // Lấy role của người thêm
-    const adderRole = await this.groupRepository.getMemberRole(groupId, addedById);
-    
-    let newMemberRole: UserRole;
-    let message: string;
+    // Kiểm tra user đã trong group chưa
+    const existingMember = await this.groupRepository.findGroupMember(groupId, targetUserId);
+    if (existingMember) {
+      throw new AppError(400, 'User is already in the group');
+    }
 
-    if (adderRole === UserRole.ADMIN) {
-      // Admin thêm → role USER luôn
-      newMemberRole = UserRole.USER;
-      message = 'Member added successfully';
-    } else if (adderRole === UserRole.USER) {
-      // User thường thêm → role PENDING, cần admin duyệt
-      newMemberRole = UserRole.PENDING;
-      message = 'Member added to pending list, waiting for admin approval';
+    // Xác định role dựa trên người thêm
+    let role: UserRole;
+    if (requesterMember.role === UserRole.ADMIN) {
+      role = UserRole.USER;
+    } else if (requesterMember.role === UserRole.USER) {
+      role = UserRole.PENDING;
     } else {
       throw new AppError(403, 'You do not have permission to add members');
     }
 
-    await this.groupRepository.addMember(groupId, data.userId, newMemberRole, addedById);
-    return { message, role: newMemberRole };
-  }
+    await this.groupRepository.addUserToGroup(group, targetUser, role, requesterMember.idUser);
 
-  async approveMember(userId: number, groupId: number, memberId: number) {
-    const group = await this.groupRepository.getGroupById(groupId);
-    if (!group) {
-      throw new AppError(404, 'Group not found');
+    // Gửi thông báo qua WebSocket
+    if (role === UserRole.USER) {
+      // Thông báo cho user được thêm
+      wsService.sendToUser(targetUserId, {
+        type: 'GROUP_ADDED',
+        data: {
+          groupId: group.idGroup,
+          groupName: group.name,
+          addedBy: requesterMember.idUser
+        }
+      });
     }
-
-    // Chỉ admin mới có thể duyệt
-    const role = await this.groupRepository.getMemberRole(groupId, userId);
-    if (role !== UserRole.ADMIN) {
-      throw new AppError(403, 'Only admins can approve members');
-    }
-
-    // Kiểm tra member có ở trạng thái pending không
-    const memberRole = await this.groupRepository.getMemberRole(groupId, memberId);
-    if (memberRole !== UserRole.PENDING) {
-      throw new AppError(400, 'Member is not in pending status');
-    }
-
-    // Cập nhật role thành USER
-    await this.groupRepository.updateMemberRole(groupId, memberId, UserRole.USER);
-    return { message: 'Member approved successfully' };
-  }
-
-  async rejectMember(userId: number, groupId: number, memberId: number) {
-    const group = await this.groupRepository.getGroupById(groupId);
-    if (!group) {
-      throw new AppError(404, 'Group not found');
-    }
-
-    // Chỉ admin mới có thể từ chối
-    const role = await this.groupRepository.getMemberRole(groupId, userId);
-    if (role !== UserRole.ADMIN) {
-      throw new AppError(403, 'Only admins can reject members');
-    }
-
-    // Kiểm tra member có ở trạng thái pending không
-    const memberRole = await this.groupRepository.getMemberRole(groupId, memberId);
-    if (memberRole !== UserRole.PENDING) {
-      throw new AppError(400, 'Member is not in pending status');
-    }
-
-    // Xóa khỏi nhóm
-    await this.groupRepository.removeMember(groupId, memberId);
-    return { message: 'Member rejected and removed' };
-  }
-
-  async getPendingMembers(userId: number, groupId: number) {
-    // Chỉ admin mới có thể xem danh sách pending
-    const role = await this.groupRepository.getMemberRole(groupId, userId);
-    if (role !== UserRole.ADMIN) {
-      throw new AppError(403, 'Only admins can view pending members');
-    }
-
-    return await this.groupRepository.getPendingMembers(groupId);
-  }
-
-  async removeMember(userId: number, groupId: number, memberId: number) {
-    const group = await this.groupRepository.getGroupById(groupId);
-    if (!group) {
-      throw new AppError(404, 'Group not found');
-    }
-
-    const role = await this.groupRepository.getMemberRole(groupId, userId);
-    if (role !== UserRole.ADMIN && userId !== memberId) {
-      throw new AppError(403, 'You do not have permission to remove this member');
-    }
-
-    await this.groupRepository.removeMember(groupId, memberId);
-    return { message: 'Member removed successfully' };
-  }
-
-  async getGroupDetails(userId: number, groupId: number) {
-    const isMember = await this.groupRepository.checkMembership(groupId, userId);
-    if (!isMember) {
-      throw new AppError(403, 'You are not a member of this group');
-    }
-
-    const group = await this.groupRepository.getGroupById(groupId);
-    if (!group) {
-      throw new AppError(404, 'Group not found');
-    }
-
-    const members = await this.groupRepository.getGroupMembers(groupId);
-    const userRole = await this.groupRepository.getMemberRole(groupId, userId);
 
     return {
-      ...group,
-      members: members.map(m => ({
-        ...m.idUser,
-        role: m.role
-      })),
-      userRole
+      message: role === UserRole.USER ? 'User added to group successfully' : 'User invitation sent, waiting for admin approval',
+      role
     };
   }
 
-  async getUserGroups(userId: number) {
-    return await this.groupRepository.getUserGroups(userId);
+  async approvePendingMember(groupId: number, targetUserId: number, adminId: number) {
+    // Kiểm tra admin có quyền không
+    const adminMember = await this.groupRepository.findGroupMember(groupId, adminId);
+    if (!adminMember || adminMember.role !== UserRole.ADMIN) {
+      throw new AppError(403, 'Only admin can approve members');
+    }
+
+    // Kiểm tra pending member
+    const pendingMember = await this.groupRepository.findGroupMember(groupId, targetUserId);
+    if (!pendingMember) {
+      throw new AppError(404, 'Pending member not found');
+    }
+
+    if (pendingMember.role !== UserRole.PENDING) {
+      throw new AppError(400, 'User is not pending approval');
+    }
+
+    // Cập nhật role
+    await this.groupRepository.updateMemberRole(pendingMember.idGroup_User, UserRole.USER);
+
+    // Thông báo cho user được duyệt
+    wsService.sendToUser(targetUserId, {
+      type: 'GROUP_APPROVED',
+      data: {
+        groupId: groupId,
+        approvedBy: adminId
+      }
+    });
+
+    return { message: 'Member approved successfully' };
   }
 
-  async updateGroup(userId: number, groupId: number, data: UpdateGroupDTO) {
-    const role = await this.groupRepository.getMemberRole(groupId, userId);
-    if (role !== UserRole.ADMIN) {
-      throw new AppError(403, 'Only admins can update group');
+  async leaveGroup(groupId: number, userId: number) {
+    const member = await this.groupRepository.findGroupMember(groupId, userId);
+    if (!member) {
+      throw new AppError(404, 'You are not a member of this group');
     }
 
-    await this.groupRepository.updateGroup(groupId, data.name!);
-    return { message: 'Group updated successfully' };
+    // Admin không thể rời nhóm nếu còn thành viên khác
+    if (member.role === UserRole.ADMIN) {
+      const allMembers = await this.groupRepository.getGroupMembers(groupId);
+      const otherMembers = allMembers.filter(m => m.idUser.idUser !== userId);
+      
+      if (otherMembers.length > 0) {
+        throw new AppError(400, 'Admin cannot leave group while there are other members. Please delete the group or transfer admin role first.');
+      }
+    }
+
+    await this.groupRepository.removeUserFromGroup(groupId, userId);
+
+    // Thông báo cho các thành viên khác
+    const members = await this.groupRepository.getGroupMembers(groupId);
+    members.forEach(member => {
+      wsService.sendToUser(member.idUser.idUser, {
+        type: 'USER_LEFT_GROUP',
+        data: {
+          groupId: groupId,
+          leftUserId: userId
+        }
+      });
+    });
+
+    return { message: 'Left group successfully' };
   }
 
-  async deleteGroup(userId: number, groupId: number) {
-    const group = await groupRepository.getGroupById(groupId);
-    if (!group) {
-      throw new AppError(404, 'Group not found');
-    }
-    if (group.createdBy?.idUser !== userId) {
-      throw new AppError(403, 'Only group creator can delete the group');
+  async kickMember(groupId: number, targetUserId: number, adminId: number) {
+    // Kiểm tra quyền admin
+    const adminMember = await this.groupRepository.findGroupMember(groupId, adminId);
+    if (!adminMember || adminMember.role !== UserRole.ADMIN) {
+      throw new AppError(403, 'Only admin can kick members');
     }
 
+    // Kiểm tra member được kick
+    const targetMember = await this.groupRepository.findGroupMember(groupId, targetUserId);
+    if (!targetMember) {
+      throw new AppError(404, 'Member not found in group');
+    }
+
+    if (targetMember.role === UserRole.ADMIN) {
+      throw new AppError(400, 'Cannot kick another admin');
+    }
+
+    await this.groupRepository.removeUserFromGroup(groupId, targetUserId);
+
+    // Thông báo cho user bị kick
+    wsService.sendToUser(targetUserId, {
+      type: 'KICKED_FROM_GROUP',
+      data: {
+        groupId: groupId,
+        kickedBy: adminId
+      }
+    });
+
+    return { message: 'Member kicked successfully' };
+  }
+
+  async deleteGroup(groupId: number, adminId: number) {
+    // Kiểm tra quyền admin
+    const adminMember = await this.groupRepository.findGroupMember(groupId, adminId);
+    if (!adminMember || adminMember.role !== UserRole.ADMIN) {
+      throw new AppError(403, 'Only admin can delete group');
+    }
+
+    // Lấy danh sách thành viên để thông báo
+    const members = await this.groupRepository.getGroupMembers(groupId);
+
+    // Xóa group
     await this.groupRepository.deleteGroup(groupId);
+
+    // Thông báo cho tất cả thành viên
+    members.forEach(member => {
+      if (member.idUser.idUser !== adminId) {
+        wsService.sendToUser(member.idUser.idUser, {
+          type: 'GROUP_DELETED',
+          data: {
+            groupId: groupId,
+            deletedBy: adminId
+          }
+        });
+      }
+    });
+
     return { message: 'Group deleted successfully' };
   }
-}
 
-export default new GroupService();
+  async getGroupMembers(groupId: number, userId: number) {
+    // Kiểm tra user có trong group không
+    const member = await this.groupRepository.findGroupMember(groupId, userId);
+    if (!member) {
+      throw new AppError(403, 'You are not a member of this group');
+    }
+
+    const members = await this.groupRepository.getGroupMembers(groupId);
+    
+    return members.map(member => ({
+      idUser: member.idUser.idUser,
+      name: member.idUser.name,
+      email: member.idUser.email,
+      avatarUrl: member.idUser.avatarUrl,
+      role: member.role,
+      addedBy: member.actionBy ? {
+        idUser: member.actionBy.idUser,
+        name: member.actionBy.name
+      } : null
+    }));
+  }
+
+  async getUserGroups(userId: number) {
+    const userGroups = await this.groupRepository.getUserGroups(userId);
+    
+    return userGroups.map(ug => ({
+      idGroup: ug.idGroup.idGroup,
+      name: ug.idGroup.name,
+      createdAt: ug.idGroup.createdAt,
+      role: ug.role,
+      createdBy: {
+        idUser: ug.idGroup.createdBy?.idUser,
+        name: ug.idGroup.createdBy?.name
+      }
+    }));
+  }
+
+  async getPendingMembers(groupId: number, adminId: number) {
+    // Kiểm tra quyền admin
+    const adminMember = await this.groupRepository.findGroupMember(groupId, adminId);
+    if (!adminMember || adminMember.role !== UserRole.ADMIN) {
+      throw new AppError(403, 'Only admin can view pending members');
+    }
+
+    const pendingMembers = await this.groupRepository.getPendingMembers(groupId);
+    
+    return pendingMembers.map(member => ({
+      idUser: member.idUser.idUser,
+      name: member.idUser.name,
+      email: member.idUser.email,
+      avatarUrl: member.idUser.avatarUrl,
+      addedBy: member.actionBy ? {
+        idUser: member.actionBy.idUser,
+        name: member.actionBy.name
+      } : null
+    }));
+  }
+}

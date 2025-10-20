@@ -55,6 +55,48 @@ const userService = {
 		});
 		return res.data;
 	},
+
+	// Search users
+	searchUsers: async (query) => {
+		try {
+			const response = await instance.get("/users/search", {
+				params: { q: query, limit: 20 }
+			});
+			return response.data;
+		} catch (error) {
+			throw error.response?.data || { message: "Failed to search users" };
+		}
+	},
+
+	// Get user profile
+	getProfile: async () => {
+		try {
+			const response = await instance.get("/users/profile");
+			return response.data;
+		} catch (error) {
+			throw error.response?.data || { message: "Failed to get profile" };
+		}
+	},
+
+	// Get account status
+	getAccountStatus: async () => {
+		try {
+			const response = await instance.get("/users/status");
+			return response.data;
+		} catch (error) {
+			throw error.response?.data || { message: "Failed to get account status" };
+		}
+	},
+
+	// Reactivate account
+	reactivateAccount: async () => {
+		try {
+			const response = await instance.post("/users/reactivate");
+			return response.data;
+		} catch (error) {
+			throw error.response?.data || { message: "Failed to reactivate account" };
+		}
+	}
 };
 
 export default userService;

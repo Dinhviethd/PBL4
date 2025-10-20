@@ -2,94 +2,233 @@
 import { useEffect, useRef } from 'react';
 import useAuthStore from '@/zustand/authStore';
 import useChatStore from '@/zustand/chatStore';
-
 const useWebSocket = () => {
-  const { token, user } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const { 
     setSocket, 
     setIsConnected, 
-    addMessage, 
+    addMessage,
+    updateMessage,
+    deleteMessage,
     setOnlineUsers,
-    setTyping 
+    setTyping,
+    getConversationKey,
+    addConversation
   } = useChatStore();
   
   const socketRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const reconnectAttempts = useRef(0);
 
   const connect = () => {
-    if (!token || !user) return;
+    if (!accessToken || !user) return;
 
-    const ws = new WebSocket('ws://localhost:8000');
-    
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      setIsConnected(true);
-      setSocket(ws);
+    try {
+      const ws = new WebSocket('ws://localhost:8000');
       
-      // Authenticate
-      ws.send(JSON.stringify({
-        type: 'auth',
-        token: token
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+        setSocket(ws);
+        reconnectAttempts.current = 0;
         
-        switch (data.type) {
-          case 'auth_success':
-            setOnlineUsers(data.onlineUsers);
-            break;
+        // Authenticate
+        ws.send(JSON.stringify({
+          type: 'auth',
+          token: accessToken
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'auth_success':
+              console.log('WebSocket authenticated successfully');
+              setOnlineUsers(data.onlineUsers || []);
+              break;
+              
+            case 'PRIVATE_MESSAGE':
+              handlePrivateMessage(data.data);
+              break;
+              
+            case 'GROUP_MESSAGE':
+              handleGroupMessage(data.data);
+              break;
+              
+            case 'MESSAGE_EDITED':
+              handleMessageEdited(data.data);
+              break;
+              
+            case 'MESSAGE_DELETED':
+              handleMessageDeleted(data.data);
+              break;
+              
+            case 'MESSAGE_READ':
+              handleMessageRead(data.data);
+              break;
+              
+            case 'TYPING':
+              setTyping(data.from, data.data.isTyping);
+              break;
+              
+            case 'USER_ONLINE':
+              setOnlineUsers(prev => [...new Set([...prev, data.userId])]);
+              break;
+              
+            case 'USER_OFFLINE':
+              setOnlineUsers(prev => prev.filter(id => id !== data.userId));
+              break;
+
+            case 'GROUP_ADDED':
+              handleGroupAdded(data.data);
+              break;
+
+            case 'GROUP_APPROVED':
+              handleGroupApproved(data.data);
+              break;
+
+            case 'USER_LEFT_GROUP':
+              handleUserLeftGroup(data.data);
+              break;
+
+            case 'KICKED_FROM_GROUP':
+              handleKickedFromGroup(data.data);
+              break;
+
+            case 'GROUP_DELETED':
+              handleGroupDeleted(data.data);
+              break;
             
-          case 'private_message':
-            addMessage(data.message);
-            break;
-            
-          case 'group_message':
-            addMessage(data.message);
-            break;
-            
-          case 'typing':
-            setTyping(data.from, data.data.isTyping);
-            break;
-            
-          case 'user_online':
-            setOnlineUsers(prev => [...prev, data.userId]);
-            break;
-            
-          case 'user_offline':
-            setOnlineUsers(prev => prev.filter(id => id !== data.userId));
-            break;
-            
-          default:
-            console.log('Unknown message type:', data.type);
+            default:
+              console.log('Unknown WebSocket message type:', data.type);
+          }
+        } catch (error) {
+          console.error('WebSocket message parsing error:', error);
         }
-      } catch (error) {
-        console.error('WebSocket message error:', error);
-      }
-    };
+      };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      setIsConnected(false);
-      setSocket(null);
-      
-      // Reconnect after 3 seconds
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
-      }, 3000);
-    };
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        setIsConnected(false);
+        setSocket(null);
+        
+        // Reconnect with exponential backoff
+        if (reconnectAttempts.current < 5) {
+          const delay = Math.pow(2, reconnectAttempts.current) * 1000;
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttempts.current++;
+            connect();
+          }, delay);
+        }
+      };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-    socketRef.current = ws;
+      socketRef.current = ws;
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+    }
+  };
+
+  const handlePrivateMessage = (data) => {
+    const conversationKey = `private_${data.sender.idUser}`;
+    addMessage(conversationKey, data);
+    
+    // Add to conversations if not exists
+    addConversation({
+      type: 'private',
+      partnerId: data.sender.idUser,
+      partner: data.sender,
+      lastMessage: data.content,
+      lastMessageTime: data.createdAt,
+      unreadCount: 1
+    });
+  };
+
+  const handleGroupMessage = (data) => {
+    const conversationKey = `group_${data.groupId}`;
+    addMessage(conversationKey, data);
+    
+    // Add to conversations if not exists
+    addConversation({
+      type: 'group',
+      groupId: data.groupId,
+      group: {
+        idGroup: data.groupId,
+        name: data.groupName
+      },
+      lastMessage: data.content,
+      lastMessageTime: data.createdAt,
+      unreadCount: 1
+    });
+  };
+
+  const handleMessageEdited = (data) => {
+    const conversationKey = data.groupId 
+      ? `group_${data.groupId}` 
+      : `private_${user.idUser === data.senderId ? data.receiverId : data.senderId}`;
+    
+    updateMessage(conversationKey, data.messageId, {
+      content: data.newContent,
+      isEdited: true,
+      editedAt: data.editedAt
+    });
+  };
+
+  const handleMessageDeleted = (data) => {
+    const conversationKey = data.groupId 
+      ? `group_${data.groupId}` 
+      : `private_${user.idUser === data.senderId ? data.receiverId : data.senderId}`;
+    
+    deleteMessage(conversationKey, data.messageId);
+  };
+
+  const handleMessageRead = (data) => {
+    // Update message read status
+    console.log('Message read:', data);
+  };
+
+  const handleGroupAdded = (data) => {
+    // User was added to a group
+    addConversation({
+      type: 'group',
+      groupId: data.groupId,
+      group: {
+        idGroup: data.groupId,
+        name: data.groupName
+      },
+      lastMessage: null,
+      lastMessageTime: new Date().toISOString(),
+      unreadCount: 0
+    });
+  };
+
+  const handleGroupApproved = (data) => {
+    // User was approved to join a group
+    console.log('Approved to group:', data);
+  };
+
+  const handleUserLeftGroup = (data) => {
+    // Someone left the group
+    console.log('User left group:', data);
+  };
+
+  const handleKickedFromGroup = (data) => {
+    // User was kicked from group
+    console.log('Kicked from group:', data);
+  };
+
+  const handleGroupDeleted = (data) => {
+    // Group was deleted
+    console.log('Group deleted:', data);
   };
 
   useEffect(() => {
-    if (token && user) {
+    if (accessToken && user) {
       connect();
     }
 
@@ -101,16 +240,18 @@ const useWebSocket = () => {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [token, user]);
+  }, [accessToken, user]);
 
   const sendMessage = (message) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(message));
+      return true;
     }
+    return false;
   };
 
   const sendTyping = (toUserId, isTyping) => {
-    sendMessage({
+    return sendMessage({
       type: 'typing',
       to: toUserId,
       isTyping

@@ -1,257 +1,278 @@
+import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
 import { Message } from '@/models/message.model';
+import { MessageRead } from '@/models/message_read.model';
 import { User } from '@/models/users.model';
 import { Group } from '@/models/group.model';
-import { Repository } from 'typeorm';
 import { MessageType } from '@/constants/constants';
+import { createPaginationQuery, PaginationResult, PaginationUtil } from '@/utils/pagination';
 
-class MessageRepository {
-  private repository: Repository<Message>;
+export class MessageRepository {
+  private messageRepo: Repository<Message>;
+  private messageReadRepo: Repository<MessageRead>;
 
   constructor() {
-    this.repository = AppDataSource.getRepository(Message);
+    this.messageRepo = AppDataSource.getRepository(Message);
+    this.messageReadRepo = AppDataSource.getRepository(MessageRead);
   }
 
-     async getRecentConversations(userId: number) {
-    try {
-      const privateMessages = await this.repository
-        .createQueryBuilder('message')
-        .leftJoinAndSelect('message.sentBy', 'sender')
-        .leftJoinAndSelect('message.sendToUser', 'receiver')
-        .where(
-          '((message.sentBy = :userId AND message.sendToUser IS NOT NULL) OR (message.sendToUser = :userId))',
-          { userId }
-        )
-        .andWhere('(message.isDeleted = false OR message.isDeleted IS NULL)')
-        .orderBy('message.createdAt', 'DESC')
-        .getMany();
-
-      const conversationMap = new Map<number, any>();
-      privateMessages.forEach((msg) => {
-        const partnerId = msg.sentBy?.idUser === userId ? msg.sendToUser?.idUser : msg.sentBy?.idUser;
-        if (partnerId && !conversationMap.has(partnerId)) {
-          conversationMap.set(partnerId, msg);
-        }
-      });
-
-      const groupMessages = await this.repository
-        .createQueryBuilder('message')
-        .leftJoinAndSelect('message.sentBy', 'gsender')
-        .leftJoinAndSelect('message.sendToGroup', 'g')
-        .where('message.sendToGroup IS NOT NULL')
-        .andWhere('(message.isDeleted = false OR message.isDeleted IS NULL)')
-        .orderBy('message.createdAt', 'DESC')
-        .getMany();
-
-      const groupConversationMap = new Map<number, any>();
-      groupMessages.forEach((msg) => {
-        const gid = msg.sendToGroup?.idGroup;
-        if (gid && !groupConversationMap.has(gid)) {
-          groupConversationMap.set(gid, msg);
-        }
-      });
-
-      return {
-        privateMessages: Array.from(conversationMap.values()),
-        groupMessages: Array.from(groupConversationMap.values()),
-      };
-    } catch (error) {
-      console.error('Repository getRecentConversations error:', error);
-      return { privateMessages: [], groupMessages: [] };
-    }
-  }
-  async createPrivateMessage(senderId: number, receiverId: number, content: string, type: string = 'TEXT', fileURL?: string) {
-    try {
-      // Create new message instance
-      const message = new Message();
-      message.sentBy = { idUser: senderId } as User;
-      message.sendToUser = { idUser: receiverId } as User;
-      message.content = content;
-      message.type = type as MessageType;
-      message.fileURL = fileURL;
-      message.isDeleted = false;
-
-      const savedMessage = await this.repository.save(message);
-      
-      // Fetch the complete message with relations
-      return await this.repository.findOne({
-        where: { idMessage: savedMessage.idMessage },
-        relations: ['sentBy', 'sendToUser']
-      });
-    } catch (error) {
-      console.error('Repository createPrivateMessage error:', error);
-      throw error;
-    }
+  async createMessage(data: {
+    content: string;
+    type: MessageType;
+    sentBy: User;
+    sendToUser?: User;
+    sendToGroup?: Group;
+    fileURL?: string;
+  }): Promise<Message> {
+    const message = this.messageRepo.create(data);
+    return await this.messageRepo.save(message);
   }
 
   async getPrivateMessages(
-    userId: number,
-    friendId: number,
-    page: number = 1,
-    limit: number = 20,
-    search?: string
-  ) {
-    try {
-      const qb = this.repository
-        .createQueryBuilder('message')
-        .leftJoinAndSelect('message.sentBy', 'sender')
-        .leftJoinAndSelect('message.sendToUser', 'receiver')
-        .where(
-          '((message.sentBy = :userId AND message.sendToUser = :friendId) OR (message.sentBy = :friendId AND message.sendToUser = :userId))',
-          { userId, friendId }
-        )
-        .andWhere('(message.isDeleted = false OR message.isDeleted IS NULL)');
+    userId1: number,
+    userId2: number,
+    page: number,
+    limit: number
+  ): Promise<PaginationResult<Message>> {
+    const { skip, take } = createPaginationQuery(page, limit);
 
-      if (search) {
-        qb.andWhere('message.content LIKE :search', { search: `%${search}%` });
+    const [messages, total] = await this.messageRepo.findAndCount({
+      where: [
+        {
+          sentBy: { idUser: userId1 },
+          sendToUser: { idUser: userId2 },
+          isDeleted: false
+        },
+        {
+          sentBy: { idUser: userId2 },
+          sendToUser: { idUser: userId1 },
+          isDeleted: false
+        }
+      ],
+      relations: ['sentBy', 'sendToUser'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take
+    });
+
+    return PaginationUtil.createPagination(messages.reverse(), total, page, limit);
+  }
+
+  async getGroupMessages(
+    groupId: number,
+    page: number,
+    limit: number
+  ): Promise<PaginationResult<Message>> {
+    const { skip, take } = createPaginationQuery(page, limit);
+
+    const [messages, total] = await this.messageRepo.findAndCount({
+      where: {
+        sendToGroup: { idGroup: groupId },
+        isDeleted: false
+      },
+      relations: ['sentBy', 'sendToGroup'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take
+    });
+
+    return PaginationUtil.createPagination(messages.reverse(), total, page, limit);
+  }
+
+  async findMessageById(messageId: number): Promise<Message | null> {
+    return await this.messageRepo.findOne({
+      where: { idMessage: messageId },
+      relations: ['sentBy', 'sendToUser', 'sendToGroup']
+    });
+  }
+
+  async updateMessage(messageId: number, content: string): Promise<void> {
+    await this.messageRepo.update(messageId, { 
+      content,
+      isEdited: true,
+      editedAt: new Date()
+    });
+  }
+
+  async deleteMessage(messageId: number): Promise<void> {
+    await this.messageRepo.update(messageId, {
+      isDeleted: true,
+      deletedAt: new Date()
+    });
+  }
+
+  async markMessageAsRead(messageId: number, userId: number): Promise<MessageRead> {
+    // Kiểm tra đã đọc chưa
+    const existingRead = await this.messageReadRepo.findOne({
+      where: {
+        message: { idMessage: messageId },
+        user: { idUser: userId }
       }
+    });
 
-      const totalItems = await qb.getCount();
-      const totalPages = Math.ceil(totalItems / limit);
-      const offset = (page - 1) * limit;
-
-      const messages = await qb
-        .orderBy('message.createdAt', 'DESC')
-        .skip(offset)
-        .take(limit)
-        .getMany();
-
-      return {
-        data: messages.reverse(),
-        pagination: { currentPage: page, totalPages, totalItems, itemsPerPage: limit },
-      };
-    } catch (error) {
-      console.error('Repository getPrivateMessages error:', error);
-      throw error;
+    if (existingRead) {
+      return existingRead;
     }
+
+    const messageRead = this.messageReadRepo.create({
+      message: { idMessage: messageId },
+      user: { idUser: userId },
+      readAt: new Date()
+    });
+
+    return await this.messageReadRepo.save(messageRead);
   }
 
-   async getOlderPrivateMessages(userId: number, friendId: number, lastMessageId: number, limit: number = 20) {
-    try {
-      const messages = await this.repository
-        .createQueryBuilder('message')
-        .leftJoinAndSelect('message.sentBy', 'sender')
-        .leftJoinAndSelect('message.sendToUser', 'receiver')
-        .where(
-          '((message.sentBy = :userId AND message.sendToUser = :friendId) OR (message.sentBy = :friendId AND message.sendToUser = :userId))',
-          { userId, friendId }
-        )
-        .andWhere('(message.isDeleted = false OR message.isDeleted IS NULL)')
-        .andWhere('message.idMessage < :lastMessageId', { lastMessageId })
-        .orderBy('message.createdAt', 'DESC')
-        .take(limit)
-        .getMany();
-
-      return messages.reverse();
-    } catch (error) {
-      console.error('Repository getOlderPrivateMessages error:', error);
-      throw error;
-    }
+  async getMessageReaders(messageId: number): Promise<MessageRead[]> {
+    return await this.messageReadRepo.find({
+      where: { message: { idMessage: messageId } },
+      relations: ['user'],
+      order: { readAt: 'ASC' }
+    });
   }
 
-  async createGroupMessage(senderId: number, groupId: number, content: string, type: string = 'TEXT', fileURL?: string) {
-    try {
-      // Create new message instance
-      const message = new Message();
-      message.sentBy = { idUser: senderId } as User;
-      message.sendToGroup = { idGroup: groupId } as Group;
-      message.content = content;
-      message.type = type as MessageType;
-      message.fileURL = fileURL;
-      message.isDeleted = false;
+  async getUnreadMessages(userId: number, partnerId: number): Promise<Message[]> {
+    // Lấy tin nhắn từ partnerId gửi cho userId mà userId chưa đọc
+    const unreadMessages = await this.messageRepo
+      .createQueryBuilder('message')
+      .leftJoin('message.sentBy', 'sender')
+      .leftJoin('message.sendToUser', 'receiver')
+      .leftJoin('MessageRead', 'read', 'read.messageId = message.idMessage AND read.userId = :userId', { userId })
+      .where('sender.idUser = :partnerId', { partnerId })
+      .andWhere('receiver.idUser = :userId', { userId })
+      .andWhere('message.isDeleted = false')
+      .andWhere('read.id IS NULL')
+      .getMany();
 
-      const savedMessage = await this.repository.save(message);
-      
-      // Fetch the complete message with relations
-      return await this.repository.findOne({
-        where: { idMessage: savedMessage.idMessage },
-        relations: ['sentBy', 'sendToGroup']
-      });
-    } catch (error) {
-      console.error('Repository createGroupMessage error:', error);
-      throw error;
-    }
+    return unreadMessages;
   }
 
-   async getGroupMessages(groupId: number, page: number = 1, limit: number = 20, search?: string) {
-    try {
-      const qb = this.repository
-        .createQueryBuilder('message')
-        .leftJoinAndSelect('message.sentBy', 'sender')
-        .leftJoinAndSelect('message.sendToGroup', 'group')
-        .where('group.idGroup = :groupId', { groupId })
-        .andWhere('(message.isDeleted = false OR message.isDeleted IS NULL)');
+  async getUnreadGroupMessages(userId: number, groupId: number): Promise<Message[]> {
+    const unreadMessages = await this.messageRepo
+      .createQueryBuilder('message')
+      .leftJoin('message.sentBy', 'sender')
+      .leftJoin('message.sendToGroup', 'group')
+      .leftJoin('MessageRead', 'read', 'read.messageId = message.idMessage AND read.userId = :userId', { userId })
+      .where('group.idGroup = :groupId', { groupId })
+      .andWhere('sender.idUser != :userId', { userId }) // Không tính tin nhắn của chính mình
+      .andWhere('message.isDeleted = false')
+      .andWhere('read.id IS NULL')
+      .getMany();
 
-      if (search) {
-        qb.andWhere('message.content LIKE :search', { search: `%${search}%` });
+    return unreadMessages;
+  }
+
+  async getRecentConversations(userId: number): Promise<any[]> {
+    // Lấy cuộc hội thoại riêng tư gần nhất
+    const privateConversationsQuery = `
+      SELECT 
+        CASE 
+          WHEN m.sentBy = ? THEN m.sendToUser 
+          ELSE m.sentBy 
+        END as partnerId,
+        MAX(m.createdAt) as lastMessageTime,
+        'private' as type
+      FROM Message m
+      WHERE (m.sentBy = ? OR m.sendToUser = ?)
+        AND m.sendToGroup IS NULL
+        AND m.isDeleted = false
+      GROUP BY partnerId
+      ORDER BY lastMessageTime DESC
+    `;
+
+    const privateConversations = await this.messageRepo.query(privateConversationsQuery, [userId, userId, userId]);
+
+    // Lấy cuộc hội thoại nhóm gần nhất  
+    const groupConversationsQuery = `
+      SELECT 
+        m.sendToGroup as groupId,
+        MAX(m.createdAt) as lastMessageTime,
+        'group' as type
+      FROM Message m
+      INNER JOIN Group_User gu ON gu.idGroup = m.sendToGroup
+      WHERE gu.idUser = ?
+        AND m.sendToGroup IS NOT NULL
+        AND m.isDeleted = false
+      GROUP BY m.sendToGroup
+      ORDER BY lastMessageTime DESC
+    `;
+
+    const groupConversations = await this.messageRepo.query(groupConversationsQuery, [userId]);
+
+    // Kết hợp và sắp xếp theo thời gian
+    const allConversations = [...privateConversations, ...groupConversations];
+    allConversations.sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
+
+    // Lấy thông tin chi tiết cho từng cuộc hội thoại
+    const detailedConversations = [];
+
+    for (const conv of allConversations) {
+      if (conv.type === 'private') {
+        // Lấy tin nhắn gần nhất
+        const lastMessage = await this.messageRepo.findOne({
+          where: [
+            { sentBy: { idUser: userId }, sendToUser: { idUser: conv.partnerId }, isDeleted: false },
+            { sentBy: { idUser: conv.partnerId }, sendToUser: { idUser: userId }, isDeleted: false }
+          ],
+          relations: ['sentBy', 'sendToUser'],
+          order: { createdAt: 'DESC' }
+        });
+
+        // Lấy thông tin partner
+        const partner = await AppDataSource.getRepository(User).findOne({
+          where: { idUser: conv.partnerId }
+        });
+
+        if (lastMessage && partner) {
+          detailedConversations.push({
+            type: 'private',
+            partnerId: conv.partnerId,
+            partner: {
+              idUser: partner.idUser,
+              name: partner.name,
+              avatarUrl: partner.avatarUrl,
+              email: partner.email
+            },
+            lastMessage: lastMessage.content,
+            lastMessageTime: lastMessage.createdAt,
+            lastMessageType: lastMessage.type
+          });
+        }
+      } else if (conv.type === 'group') {
+        // Lấy tin nhắn gần nhất của nhóm
+        const lastMessage = await this.messageRepo.findOne({
+          where: { 
+            sendToGroup: { idGroup: conv.groupId },
+            isDeleted: false 
+          },
+          relations: ['sentBy', 'sendToGroup'],
+          order: { createdAt: 'DESC' }
+        });
+
+        // Lấy thông tin nhóm
+        const group = await AppDataSource.getRepository(Group).findOne({
+          where: { idGroup: conv.groupId },
+          relations: ['createdBy']
+        });
+
+        if (lastMessage && group) {
+          detailedConversations.push({
+            type: 'group',
+            groupId: conv.groupId,
+            group: {
+              idGroup: group.idGroup,
+              name: group.name,
+              createdAt: group.createdAt,
+              createdBy: group.createdBy
+            },
+            lastMessage: lastMessage.content,
+            lastMessageTime: lastMessage.createdAt,
+            lastMessageType: lastMessage.type
+          });
+        }
       }
-
-      const totalItems = await qb.getCount();
-      const totalPages = Math.ceil(totalItems / limit);
-      const offset = (page - 1) * limit;
-
-      const messages = await qb
-        .orderBy('message.createdAt', 'DESC')
-        .skip(offset)
-        .take(limit)
-        .getMany();
-
-      return {
-        data: messages.reverse(),
-        pagination: { currentPage: page, totalPages, totalItems, itemsPerPage: limit },
-      };
-    } catch (error) {
-      console.error('Repository getGroupMessages error:', error);
-      throw error;
     }
-  }
 
-  async getOlderGroupMessages(groupId: number, lastMessageId: number, limit: number = 20) {
-    try {
-      const messages = await this.repository
-        .createQueryBuilder('message')
-        .leftJoinAndSelect('message.sentBy', 'sender')
-        .leftJoinAndSelect('message.sendToGroup', 'group')
-        .where('message.sendToGroup = :groupId', { groupId })
-        .andWhere('message.isDeleted = false')
-        .andWhere('message.idMessage < :lastMessageId', { lastMessageId })
-        .orderBy('message.createdAt', 'DESC')
-        .take(limit)
-        .getMany();
-
-      return messages.reverse(); // Reverse to show oldest first
-    } catch (error) {
-      console.error('Repository getOlderGroupMessages error:', error);
-      throw error;
-    }
-  }
-
-  async deleteMessage(userId: number, messageId: number) {
-    try {
-      const message = await this.repository.findOne({
-        where: { idMessage: messageId },
-        relations: ['sentBy']
-      });
-
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
-      if (message.sentBy.idUser !== userId) {
-        throw new Error('You can only delete your own messages');
-      }
-
-      // Soft delete
-      message.isDeleted = true;
-      message.deletedAt = new Date();
-      await this.repository.save(message);
-
-      return { messageId, deleted: true };
-    } catch (error) {
-      console.error('Repository deleteMessage error:', error);
-      throw error;
-    }
+    return detailedConversations;
   }
 }
-
-export default new MessageRepository();

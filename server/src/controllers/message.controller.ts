@@ -1,134 +1,192 @@
 import { Request, Response } from 'express';
-import messageService from '@/services/message.service';
-import { SendPrivateMessageSchema, SendGroupMessageSchema } from '@/schemas/message.schema';
+import { MessageService } from '@/services/message.service';
 import { asyncHandler } from '@/utils/error.response';
+import { AppError } from '@/utils/error.response';
+import { MessageType } from '@/constants/constants';
 
-class MessageController {
-  // Get recent conversations for sidebar
-  getRecentConversations = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    
-    const result = await messageService.getRecentConversations(userId);
-    
-    res.json({
-      success: true,
-      data: result
-    });
-  });
+export class MessageController {
+  private messageService: MessageService;
 
-  // Send private message
+  constructor() {
+    this.messageService = new MessageService();
+  }
+
   sendPrivateMessage = asyncHandler(async (req: Request, res: Response) => {
-    const senderId = (req as any).user.idUser;
-    const data = SendPrivateMessageSchema.parse(req.body);
-    
-    const result = await messageService.sendPrivateMessage(senderId, data);
-    
+    const { receiverId, content, type = MessageType.TEXT, fileURL } = req.body;
+    const senderId = req.user?.userId;
+
+    if (!senderId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!receiverId || !content) {
+      throw new AppError(400, 'Receiver ID and content are required');
+    }
+
+    const result = await this.messageService.sendPrivateMessage(
+      senderId,
+      receiverId,
+      content,
+      type,
+      fileURL
+    );
+
     res.status(201).json({
       success: true,
-      data: result,
-      message: 'Message sent successfully'
-    });
-  });
-
-  // Get private messages between two users
-  getPrivateMessages = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const friendId = parseInt(req.params.friendId);
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const search = req.query.search as string;
-
-    const result = await messageService.getPrivateMessages(userId, friendId, {
-      page,
-      limit,
-      search
-    });
-    
-    res.json({
-      success: true,
-      data: result.data,
-      pagination: result.pagination
-    });
-  });
-
-  // Get older private messages (for infinite scroll)
-  getOlderPrivateMessages = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const friendId = parseInt(req.params.friendId);
-    const lastMessageId = parseInt(req.query.lastMessageId as string);
-    const limit = parseInt(req.query.limit as string) || 20;
-
-    const result = await messageService.getOlderPrivateMessages(userId, friendId, lastMessageId, limit);
-    
-    res.json({
-      success: true,
+      message: 'Message sent successfully',
       data: result
     });
   });
 
-  // Send group message
   sendGroupMessage = asyncHandler(async (req: Request, res: Response) => {
-    const senderId = (req as any).user.idUser;
-    const data = SendGroupMessageSchema.parse(req.body);
-    
-    const result = await messageService.sendGroupMessage(senderId, data);
-    
+    const { groupId } = req.params;
+    const { content, type = MessageType.TEXT, fileURL } = req.body;
+    const senderId = req.user?.userId;
+
+    if (!senderId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!content) {
+      throw new AppError(400, 'Content is required');
+    }
+
+    const result = await this.messageService.sendGroupMessage(
+      senderId,
+      parseInt(groupId),
+      content,
+      type,
+      fileURL
+    );
+
     res.status(201).json({
       success: true,
-      data: result,
-      message: 'Group message sent successfully'
+      message: 'Message sent successfully',
+      data: result
     });
   });
 
-  // Get group messages
-  getGroupMessages = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const search = req.query.search as string;
+  getPrivateMessages = asyncHandler(async (req: Request, res: Response) => {
+    const { partnerId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const userId = req.user?.userId;
 
-    const result = await messageService.getGroupMessages(userId, groupId, {
-      page,
-      limit,
-      search
-    });
-    
-    res.json({
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.messageService.getPrivateMessages(
+      userId,
+      parseInt(partnerId),
+      parseInt(page as string),
+      parseInt(limit as string)
+    );
+
+    res.status(200).json({
       success: true,
       data: result.data,
       pagination: result.pagination
     });
   });
 
-  // Get older group messages
-  getOlderGroupMessages = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const groupId = parseInt(req.params.groupId);
-    const lastMessageId = parseInt(req.query.lastMessageId as string);
-    const limit = parseInt(req.query.limit as string) || 20;
+  getGroupMessages = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const userId = req.user?.userId;
 
-    const result = await messageService.getOlderGroupMessages(userId, groupId, lastMessageId, limit);
-    
-    res.json({
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.messageService.getGroupMessages(
+      userId,
+      parseInt(groupId),
+      parseInt(page as string),
+      parseInt(limit as string)
+    );
+
+    res.status(200).json({
       success: true,
-      data: result
+      data: result.data,
+      pagination: result.pagination
     });
   });
 
-  // Delete message
-  deleteMessage = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.idUser;
-    const messageId = parseInt(req.params.messageId);
-    
-    const result = await messageService.deleteMessage(userId, messageId);
-    
-    res.json({
+  editMessage = asyncHandler(async (req: Request, res: Response) => {
+    const { messageId } = req.params;
+    const { content } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!content) {
+      throw new AppError(400, 'Content is required');
+    }
+
+    const result = await this.messageService.editMessage(
+      parseInt(messageId),
+      userId,
+      content
+    );
+
+    res.status(200).json({
       success: true,
-      message: 'Message deleted successfully',
-      data: result
+      ...result
+    });
+  });
+
+  deleteMessage = asyncHandler(async (req: Request, res: Response) => {
+    const { messageId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.messageService.deleteMessage(
+      parseInt(messageId),
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  markAsRead = asyncHandler(async (req: Request, res: Response) => {
+    const { messageId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.messageService.markMessageAsRead(
+      parseInt(messageId),
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  getRecentConversations = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const conversations = await this.messageService.getRecentConversations(userId);
+
+    res.status(200).json({
+      success: true,
+      data: conversations
     });
   });
 }
-
-export default new MessageController();

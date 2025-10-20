@@ -1,32 +1,32 @@
 import { Router } from 'express';
-import messageController from '@/controllers/message.controller';
-import { authMiddleware } from '@/middlewares/auth.middleware';
+import { MessageController } from '@/controllers/message.controller';
+import { authMiddleware, checkAccountStatus } from '@/middlewares/auth.middleware';
 
 const router = Router();
+const messageController = new MessageController();
 
-// Test route without auth first
-router.get('/test', (req, res) => {
-  res.json({ message: 'Message routes working' });
-});
+// Gửi tin nhắn riêng tư
+router.post('/private', authMiddleware, checkAccountStatus, messageController.sendPrivateMessage);
 
-// Apply auth middleware to all routes below this line
-router.use(authMiddleware);
+// Gửi tin nhắn nhóm
+router.post('/group/:groupId', authMiddleware, checkAccountStatus, messageController.sendGroupMessage);
 
+// Lấy tin nhắn riêng tư với pagination
+router.get('/private/:partnerId', authMiddleware, checkAccountStatus, messageController.getPrivateMessages);
 
-// Conversations
-router.get('/conversations', messageController.getRecentConversations);
+// Lấy tin nhắn nhóm với pagination
+router.get('/group/:groupId', authMiddleware, checkAccountStatus, messageController.getGroupMessages);
 
-// Private messages
-router.post('/private', messageController.sendPrivateMessage);
-router.get('/private/:friendId', messageController.getPrivateMessages);
-router.get('/private/:friendId/older', messageController.getOlderPrivateMessages);
+// Chỉnh sửa tin nhắn
+router.put('/:messageId', authMiddleware, checkAccountStatus, messageController.editMessage);
 
-// Group messages
-router.post('/group', messageController.sendGroupMessage);
-router.get('/group/:groupId', messageController.getGroupMessages);
-router.get('/group/:groupId/older', messageController.getOlderGroupMessages);
+// Xóa tin nhắn
+router.delete('/:messageId', authMiddleware, checkAccountStatus, messageController.deleteMessage);
 
-// Message actions
-router.delete('/:messageId', messageController.deleteMessage);
+// Đánh dấu đã đọc
+router.post('/:messageId/read', authMiddleware, checkAccountStatus, messageController.markAsRead);
+
+// Lấy cuộc hội thoại gần đây
+router.get('/conversations/recent', authMiddleware, checkAccountStatus, messageController.getRecentConversations);
 
 export default router;

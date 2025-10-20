@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn} from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { Group } from './group.model'
 import { MessageType } from '@/constants/constants'
@@ -24,6 +24,9 @@ export class Message {
   @CreateDateColumn()
   createdAt!: Date;
 
+  @UpdateDateColumn()
+  updatedAt!: Date;
+
   @ManyToOne(() => Group, { nullable: true })
   @JoinColumn({ name: 'sendToGroup' })
   sendToGroup?: Group;
@@ -37,4 +40,10 @@ export class Message {
 
   @Column({ nullable: true })
   deletedAt?: Date;
+
+  @Column({ default: false })
+  isEdited!: boolean;
+
+  @Column({ nullable: true })
+  editedAt?: Date;
 }

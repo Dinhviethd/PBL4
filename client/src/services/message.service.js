@@ -1,54 +1,98 @@
 import instance from './axios.config';
 
-export const messageService = {
-  // Private messages
-  sendPrivateMessage: async (data) => {
-    const response = await instance.post('/messages/private', data);
-    return response.data;
+const messageService = {
+  // Send private message
+  sendPrivateMessage: async (receiverId, content, type = 'text', fileURL = null) => {
+    try {
+      const response = await instance.post('/messages/private', {
+        receiverId,
+        content,
+        type,
+        fileURL
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send message' };
+    }
   },
 
-  getPrivateMessages: async (friendId, page = 1, limit = 20, search = '') => {
-    const response = await instance.get(`/messages/private/${friendId}`, {
-      params: { page, limit, search }
-    });
-    return response.data;
+  // Send group message
+  sendGroupMessage: async (groupId, content, type = 'text', fileURL = null) => {
+    try {
+      const response = await instance.post(`/messages/group/${groupId}`, {
+        content,
+        type,
+        fileURL
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send message' };
+    }
   },
 
-  getOlderPrivateMessages: async (friendId, lastMessageId, limit = 20) => {
-    const response = await instance.get(`/messages/private/${friendId}/older`, {
-      params: { lastMessageId, limit }
-    });
-    return response.data;
+  // Get private messages
+  getPrivateMessages: async (partnerId, page = 1, limit = 20) => {
+    try {
+      const response = await instance.get(`/messages/private/${partnerId}`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch messages' };
+    }
   },
 
-  // Group messages
-  sendGroupMessage: async (data) => {
-    const response = await instance.post('/messages/group', data);
-    return response.data;
+  // Get group messages
+  getGroupMessages: async (groupId, page = 1, limit = 20) => {
+    try {
+      const response = await instance.get(`/messages/group/${groupId}`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch messages' };
+    }
   },
 
-  getGroupMessages: async (groupId, page = 1, limit = 20, search = '') => {
-    const response = await instance.get(`/messages/group/${groupId}`, {
-      params: { page, limit, search }
-    });
-    return response.data;
+  // Edit message
+  editMessage: async (messageId, content) => {
+    try {
+      const response = await instance.put(`/messages/${messageId}`, { content });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to edit message' };
+    }
   },
 
-  getOlderGroupMessages: async (groupId, lastMessageId, limit = 20) => {
-    const response = await instance.get(`/messages/group/${groupId}/older`, {
-      params: { lastMessageId, limit }
-    });
-    return response.data;
-  },
-
-  // Other
+  // Delete message
   deleteMessage: async (messageId) => {
-    const response = await instance.delete(`/messages/${messageId}`);
-    return response.data;
+    try {
+      const response = await instance.delete(`/messages/${messageId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to delete message' };
+    }
   },
 
+  // Mark as read
+  markAsRead: async (messageId) => {
+    try {
+      const response = await instance.post(`/messages/${messageId}/read`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to mark as read' };
+    }
+  },
+
+  // Get recent conversations
   getRecentConversations: async () => {
-    const response = await instance.get('/messages/conversations');
-    return response.data;
+    try {
+      const response = await instance.get('/messages/conversations/recent');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch conversations' };
+    }
   }
 };
+
+export default messageService;
