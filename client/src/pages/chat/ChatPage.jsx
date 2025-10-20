@@ -6,8 +6,6 @@ import { AddMemberDialog } from './components/AddMemberDialog';
 import { MessageCircle } from 'lucide-react';
 import useChatStore from '@/zustand/chatStore';
 import useWebSocket from '@/hooks/useWebSocket';
-import messageService from '@/services/message.service';
-import groupService from '@/services/group.service';
 
 const ChatPage = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -17,31 +15,16 @@ const ChatPage = () => {
   const {
     conversations,
     activeConversation,
-    setConversations,
-    setGroups
+    loadInitialData
   } = useChatStore();
 
   // Initialize WebSocket
   useWebSocket();
 
-  // Load initial data
+  // Load initial data when component mounts - ĐẢM BẢO GỌI KHI KHỞI ĐỘNG
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        // Load conversations
-        const conversationsData = await messageService.getRecentConversations();
-        setConversations(conversationsData.data || []);
-
-        // Load user groups
-        const groupsData = await groupService.getUserGroups();
-        setGroups(groupsData.data || []);
-      } catch (error) {
-        console.error('Failed to load initial data:', error);
-      }
-    };
-
     loadInitialData();
-  }, []);
+  }, []); // Empty dependency array để chỉ gọi 1 lần khi mount
 
   const handleCreateGroup = () => {
     setShowCreateGroup(true);

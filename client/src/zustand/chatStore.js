@@ -37,12 +37,22 @@ const useChatStore = create(
       setActiveConversation: (conversation) => set({ activeConversation: conversation }),
       
       addConversation: (conversation) =>
-        set((state) => ({
-          conversations: [conversation, ...state.conversations.filter(c => 
-            c.type !== conversation.type || 
-            (c.partnerId !== conversation.partnerId && c.groupId !== conversation.groupId)
-          )]
-        })),
+        set((state) => {
+          const existingIndex = state.conversations.findIndex(c => 
+            c.type === conversation.type && 
+            (c.partnerId === conversation.partnerId || c.groupId === conversation.groupId)
+          );
+          
+          if (existingIndex >= 0) {
+            // Update existing conversation
+            const updatedConversations = [...state.conversations];
+            updatedConversations[existingIndex] = { ...updatedConversations[existingIndex], ...conversation };
+            return { conversations: updatedConversations };
+          } else {
+            // Add new conversation to the beginning
+            return { conversations: [conversation, ...state.conversations] };
+          }
+        }),
       
       setMessages: (conversationKey, messages) =>
         set((state) => ({
@@ -80,7 +90,14 @@ const useChatStore = create(
       setGroups: (groups) => set({ groups }),
       
       addGroup: (group) =>
-        set((state) => ({ groups: [group, ...state.groups] })),
+        set((state) => {
+          // Kiểm tra xem group đã tồn tại chưa
+          const existingGroup = state.groups.find(g => g.idGroup === group.idGroup);
+          if (existingGroup) {
+            return state; // Không thêm nếu đã tồn tại
+          }
+          return { groups: [group, ...state.groups] };
+        }),
       
       updateGroup: (groupId, updates) =>
         set((state) => ({
@@ -88,7 +105,13 @@ const useChatStore = create(
         })),
       
       removeGroup: (groupId) =>
-        set((state) => ({ groups: state.groups.filter(g => g.idGroup !== groupId) })),
+        set((state) => ({ 
+          groups: state.groups.filter(g => g.idGroup !== groupId),
+          // Also remove related conversations
+          conversations: state.conversations.filter(c => 
+            !(c.type === 'group' && c.groupId === groupId)
+          )
+        })),
       
       setOnlineUsers: (users) => set({ onlineUsers: users }),
       
@@ -117,6 +140,74 @@ const useChatStore = create(
         return conversation.type === 'private' 
           ? `private_${conversation.partnerId}`
           : `group_${conversation.groupId}`;
+      },
+
+      // SỬA LẠI LOGIC loadInitialData
+      loadInitialData: async () => {
+        try {
+          const messageService = await import('@/services/message.service');
+          const groupService = await import('@/services/group.service');
+          
+          // Load conversations and groups in parallel
+          const [conversationsResponse, groupsResponse] = await Promise.all([
+            messageService.default.getRecentConversations(),
+            groupService.default.getUserGroups()
+          ]);
+          
+          const recentConversations = conversationsResponse.data || [];
+          const userGroups = groupsResponse.data || [];
+          
+    
+          
+          // Set groups
+          set({ groups: userGroups });
+          
+          // Transform userGroups to conversations - SỬA LẠI ĐÂY
+          const groupConversations = userGroups.map(group => {
+            return {
+              type: 'group',
+              groupId: group.idGroup, // Trực tiếp sử dụng group.idGroup
+              group: {
+                idGroup: group.idGroup,
+                name: group.name,
+                createdAt: group.createdAt,
+                createdBy: group.createdBy
+              },
+              lastMessage: null,
+              lastMessageTime: group.createdAt,
+              lastMessageType: null,
+              unreadCount: 0,
+              memberCount: 1 // Default, có thể fetch riêng sau
+            };
+          });
+          
+          
+          // Merge recent conversations with group conversations
+          const allConversations = [...recentConversations];
+          
+          // Add group conversations that are not in recent conversations
+          groupConversations.forEach(groupConv => {
+            const exists = allConversations.find(conv => 
+              conv.type === 'group' && conv.groupId === groupConv.groupId
+            );
+            if (!exists) {
+              allConversations.push(groupConv);
+            } else {
+              console.log('Group conversation already exists:', groupConv.groupId);
+            }
+          });
+          
+          // Sort by lastMessageTime
+          allConversations.sort((a, b) => 
+            new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+          );
+          
+          
+          set({ conversations: allConversations });
+          
+        } catch (error) {
+          console.error('Failed to load initial data:', error);
+        }
       },
 
       clearAll: () =>

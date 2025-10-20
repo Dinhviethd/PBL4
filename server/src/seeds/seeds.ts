@@ -40,7 +40,6 @@ async function main() {
     bob = await userRepo.save(bob);
   }
 
-  console.log('Users ready:', { alice: alice.idUser, bob: bob.idUser });
 
   // 2) Create friendship (accepted) if not exists (either direction)
   const existingFriendship =
@@ -61,7 +60,6 @@ async function main() {
       message: 'Kết bạn nhé!',
     });
     await friendshipRepo.save(friendship);
-    console.log('Friendship created (ACCEPTED)');
   } else {
     // Ensure status is ACCEPTED
     if (existingFriendship.status !== FriendStatus.ACCEPTED) {

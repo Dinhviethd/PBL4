@@ -41,21 +41,25 @@ export class GroupRepository {
   }
 
   async findGroupMember(idGroup: number, idUser: number): Promise<GroupUser | null> {
-    return await this.groupUserRepo.findOne({
-      where: {
-        idGroup: { idGroup },
-        idUser: { idUser }
-      },
-      relations: ['idGroup', 'idUser', 'actionBy']
-    });
+    return await this.groupUserRepo
+      .createQueryBuilder('gu')
+      .leftJoinAndSelect('gu.idGroup', 'g')
+      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.actionBy', 'actionBy')
+      .where('g.idGroup = :idGroup', { idGroup })
+      .andWhere('u.idUser = :idUser', { idUser })
+      .getOne();
   }
 
   async getGroupMembers(idGroup: number): Promise<GroupUser[]> {
-    return await this.groupUserRepo.find({
-      where: { idGroup: { idGroup } },
-      relations: ['idUser', 'actionBy'],
-      order: { role: 'DESC' }
-    });
+    return await this.groupUserRepo
+      .createQueryBuilder('gu')
+      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.actionBy', 'actionBy')
+      .leftJoinAndSelect('gu.idGroup', 'g')
+      .where('g.idGroup = :idGroup', { idGroup })
+      .orderBy('gu.role', 'DESC')
+      .getMany();
   }
 
   async updateMemberRole(idGroupUser: number, role: UserRole): Promise<void> {
@@ -63,10 +67,13 @@ export class GroupRepository {
   }
 
   async removeUserFromGroup(idGroup: number, idUser: number): Promise<void> {
-    await this.groupUserRepo.delete({
-      idGroup: { idGroup },
-      idUser: { idUser }
-    });
+    await this.groupUserRepo
+      .createQueryBuilder()
+      .delete()
+      .from(GroupUser)
+      .where('idGroup = :idGroup', { idGroup })
+      .andWhere('idUser = :idUser', { idUser })
+      .execute();
   }
 
   async deleteGroup(idGroup: number): Promise<void> {
@@ -77,20 +84,26 @@ export class GroupRepository {
   }
 
   async getUserGroups(idUser: number): Promise<GroupUser[]> {
-    return await this.groupUserRepo.find({
-      where: { idUser: { idUser } },
-      relations: ['idGroup', 'idGroup.createdBy'],
-      order: { idGroup: { createdAt: 'DESC' } }
-    });
+    // Sử dụng QueryBuilder thay vì nested where
+    return await this.groupUserRepo
+      .createQueryBuilder('gu')
+      .leftJoinAndSelect('gu.idGroup', 'g')
+      .leftJoinAndSelect('g.createdBy', 'creator')
+      .leftJoinAndSelect('gu.idUser', 'u')
+      .where('u.idUser = :idUser', { idUser })
+      .andWhere('gu.role IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.USER] }) // Chỉ lấy member đã được approve
+      .orderBy('g.createdAt', 'DESC')
+      .getMany();
   }
 
   async getPendingMembers(idGroup: number): Promise<GroupUser[]> {
-    return await this.groupUserRepo.find({
-      where: {
-        idGroup: { idGroup },
-        role: UserRole.PENDING
-      },
-      relations: ['idUser', 'actionBy']
-    });
+    return await this.groupUserRepo
+      .createQueryBuilder('gu')
+      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.actionBy', 'actionBy')
+      .leftJoinAndSelect('gu.idGroup', 'g')
+      .where('g.idGroup = :idGroup', { idGroup })
+      .andWhere('gu.role = :role', { role: UserRole.PENDING })
+      .getMany();
   }
 }

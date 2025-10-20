@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { GroupService } from '@/services/group.service';
 import { asyncHandler } from '@/utils/error.response';
-import { AppError } from '@/utils/error.response';
+import { GroupService } from '@/services/group.service';
 
 export class GroupController {
   private groupService: GroupService;
@@ -15,11 +14,17 @@ export class GroupController {
     const userId = req.user?.userId;
 
     if (!userId) {
-      throw new AppError(401, 'Unauthorized');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     if (!name || name.trim() === '') {
-      throw new AppError(400, 'Group name is required');
+      return res.status(400).json({
+        success: false,
+        message: 'Group name is required'
+      });
     }
 
     const result = await this.groupService.createGroup(name.trim(), userId);
@@ -33,51 +38,50 @@ export class GroupController {
 
   addMember = asyncHandler(async (req: Request, res: Response) => {
     const { groupId } = req.params;
-    const { userId: targetUserId } = req.body;
+    const { userId } = req.body;
     const requesterId = req.user?.userId;
 
     if (!requesterId) {
-      throw new AppError(401, 'Unauthorized');
-    }
-
-    if (!targetUserId) {
-      throw new AppError(400, 'Target user ID is required');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const result = await this.groupService.addMemberToGroup(
-      parseInt(groupId),
-      targetUserId,
+      parseInt(groupId), 
+      userId, 
       requesterId
     );
 
-    res.status(200).json({
+    res.json({
       success: true,
-      ...result
+      message: result.message,
+      data: result
     });
   });
 
   approveMember = asyncHandler(async (req: Request, res: Response) => {
     const { groupId } = req.params;
-    const { userId: targetUserId } = req.body;
+    const { userId } = req.body;
     const adminId = req.user?.userId;
 
     if (!adminId) {
-      throw new AppError(401, 'Unauthorized');
-    }
-
-    if (!targetUserId) {
-      throw new AppError(400, 'Target user ID is required');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const result = await this.groupService.approvePendingMember(
       parseInt(groupId),
-      targetUserId,
+      userId,
       adminId
     );
 
-    res.status(200).json({
+    res.json({
       success: true,
-      ...result
+      message: result.message
     });
   });
 
@@ -86,39 +90,41 @@ export class GroupController {
     const userId = req.user?.userId;
 
     if (!userId) {
-      throw new AppError(401, 'Unauthorized');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const result = await this.groupService.leaveGroup(parseInt(groupId), userId);
 
-    res.status(200).json({
+    res.json({
       success: true,
-      ...result
+      message: result.message
     });
   });
 
   kickMember = asyncHandler(async (req: Request, res: Response) => {
     const { groupId } = req.params;
-    const { userId: targetUserId } = req.body;
+    const { userId } = req.body;
     const adminId = req.user?.userId;
 
     if (!adminId) {
-      throw new AppError(401, 'Unauthorized');
-    }
-
-    if (!targetUserId) {
-      throw new AppError(400, 'Target user ID is required');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const result = await this.groupService.kickMember(
       parseInt(groupId),
-      targetUserId,
+      userId,
       adminId
     );
 
-    res.status(200).json({
+    res.json({
       success: true,
-      ...result
+      message: result.message
     });
   });
 
@@ -127,14 +133,17 @@ export class GroupController {
     const adminId = req.user?.userId;
 
     if (!adminId) {
-      throw new AppError(401, 'Unauthorized');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const result = await this.groupService.deleteGroup(parseInt(groupId), adminId);
 
-    res.status(200).json({
+    res.json({
       success: true,
-      ...result
+      message: result.message
     });
   });
 
@@ -143,12 +152,15 @@ export class GroupController {
     const userId = req.user?.userId;
 
     if (!userId) {
-      throw new AppError(401, 'Unauthorized');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const members = await this.groupService.getGroupMembers(parseInt(groupId), userId);
 
-    res.status(200).json({
+    res.json({
       success: true,
       data: members
     });
@@ -158,12 +170,15 @@ export class GroupController {
     const userId = req.user?.userId;
 
     if (!userId) {
-      throw new AppError(401, 'Unauthorized');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const groups = await this.groupService.getUserGroups(userId);
 
-    res.status(200).json({
+    res.json({
       success: true,
       data: groups
     });
@@ -174,12 +189,15 @@ export class GroupController {
     const adminId = req.user?.userId;
 
     if (!adminId) {
-      throw new AppError(401, 'Unauthorized');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const pendingMembers = await this.groupService.getPendingMembers(parseInt(groupId), adminId);
 
-    res.status(200).json({
+    res.json({
       success: true,
       data: pendingMembers
     });

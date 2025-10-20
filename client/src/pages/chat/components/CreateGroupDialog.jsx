@@ -8,7 +8,7 @@ import {
 import Button from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from "sonner"
+import { toast } from "sonner";
 import groupService from '@/services/group.service';
 import useChatStore from '@/zustand/chatStore';
 import { z } from 'zod';
@@ -24,7 +24,7 @@ export const CreateGroupDialog = ({ open, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   
-  const { addGroup, addConversation } = useChatStore();
+  const { addGroup, addConversation, setActiveConversation } = useChatStore();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,27 +45,45 @@ export const CreateGroupDialog = ({ open, onClose }) => {
     setIsLoading(true);
     try {
       const response = await groupService.createGroup(groupName);
+      const newGroup = response.data;
+      
       
       // Add to groups store
-      addGroup(response.data);
+      addGroup(newGroup);
+      
+      // Create conversation object
+      const newConversation = {
+        type: 'group',
+        groupId: newGroup.idGroup,
+        group: newGroup,
+        lastMessage: null,
+        lastMessageTime: newGroup.createdAt || new Date().toISOString(),
+        lastMessageType: null,
+        unreadCount: 0,
+        memberCount: 1
+      };
+      
       
       // Add to conversations
-      addConversation({
-        type: 'group',
-        groupId: response.data.idGroup,
-        group: response.data,
-        lastMessage: null,
-        lastMessageTime: response.data.createdAt,
-        unreadCount: 0
-      });
+      addConversation(newConversation);
+      
+      // Set as active conversation
+      setActiveConversation(newConversation);
 
-      toast('Nhóm đã được tạo thành công');
+      // KHÔNG GỌI loadInitialData ở đây nữa để tránh duplicate
+
+      toast.success('Thành công', {
+        description: `Nhóm "${newGroup.name}" đã được tạo thành công`
+      });
 
       // Reset and close
       setGroupName('');
       onClose();
     } catch (error) {
-      toast('Lỗi Không thể tạo nhóm',);
+      console.error('Create group error:', error);
+      toast.error('Lỗi', {
+        description: error.message || 'Không thể tạo nhóm'
+      });
     } finally {
       setIsLoading(false);
     }

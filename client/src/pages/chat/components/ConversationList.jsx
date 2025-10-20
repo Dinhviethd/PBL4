@@ -1,41 +1,68 @@
 import React, { useState } from 'react';
-import Button from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Search, 
-  Plus, 
-  Users, 
-  MessageCircle,
-  MoreVertical,
-  UserPlus,
-  MessageSquare
-} from 'lucide-react';
+import Button from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { 
+  Search, 
+  MessageCirclePlus, 
+  Users, 
+  Plus,
+  MoreHorizontal,
+  UserPlus,
+  Settings,
+  LogOut,
+  Trash2
+} from 'lucide-react';
 import { StartConversationDialog } from './StartConversationDialog';
 import useChatStore from '@/zustand/chatStore';
-import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import useAuthStore from '@/zustand/authStore';
+
+// Helper function to format time
+const formatLastMessageTime = (time) => {
+  if (!time) return '';
+  
+  const messageDate = new Date(time);
+  const now = new Date();
+  const diffInHours = (now - messageDate) / (1000 * 60 * 60);
+  
+  if (diffInHours < 24) {
+    return messageDate.toLocaleTimeString('vi-VN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  } else if (diffInHours < 24 * 7) {
+    return messageDate.toLocaleDateString('vi-VN', { weekday: 'short' });
+  } else {
+    return messageDate.toLocaleDateString('vi-VN', { 
+      day: '2-digit', 
+      month: '2-digit' 
+    });
+  }
+};
 
 export const ConversationList = ({ onCreateGroup, onAddMember }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showStartConversation, setShowStartConversation] = useState(false);
   
+  const { user } = useAuthStore();
   const {
     conversations,
     activeConversation,
     setActiveConversation,
     unreadCounts,
     groups,
-    onlineUsers
+    onlineUsers,
+    getConversationKey
   } = useChatStore();
+
 
   const filteredConversations = conversations.filter(conv =>
     conv.type === 'private'
@@ -43,18 +70,33 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
       : conv.group?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+
   const handleConversationClick = (conversation) => {
     setActiveConversation(conversation);
+    
+    // Clear unread count
+    const conversationKey = getConversationKey(conversation);
+    // clearUnreadCount(conversationKey);
   };
 
-  const isUserOnline = (userId) => {
-    return onlineUsers.includes(userId);
-  };
-
-  const getConversationKey = (conversation) => {
-    return conversation.type === 'private' 
-      ? `private_${conversation.partnerId}`
-      : `group_${conversation.groupId}`;
+  const handleGroupAction = (group, action) => {
+    
+    switch (action) {
+      case 'addMember':
+        onAddMember(group);
+        break;
+      case 'settings':
+        // Handle group settings
+        break;
+      case 'leave':
+        // Handle leave group
+        break;
+      case 'delete':
+        // Handle delete group
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -63,146 +105,167 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold text-gray-900">Tin nhắn</h1>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowStartConversation(true)}>
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Bắt đầu trò chuyện
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onCreateGroup}>
-                <Users className="w-4 h-4 mr-2" />
-                Tạo nhóm mới
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowStartConversation(true)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <MessageCirclePlus className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCreateGroup}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
-            placeholder="Tìm kiếm cuộc trò chuyện..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            placeholder="Tìm kiếm cuộc trò chuyện..."
+            className="pl-10 bg-gray-50 border-gray-200 focus:bg-white"
           />
         </div>
       </div>
 
-      {/* Conversation List */}
+      {/* Conversations */}
       <ScrollArea className="flex-1">
-        <div className="p-2">
-          {filteredConversations.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm mb-3">
-                {searchQuery ? 'Không tìm thấy cuộc trò chuyện nào' : 'Chưa có cuộc trò chuyện nào'}
-              </p>
-              {!searchQuery && (
-                <Button 
-                  size="sm" 
-                  onClick={() => setShowStartConversation(true)}
-                >
-                  Bắt đầu trò chuyện
-                </Button>
-              )}
-            </div>
-          ) : (
-            filteredConversations.map((conversation) => {
-              const conversationKey = getConversationKey(conversation);
-              const unreadCount = unreadCounts[conversationKey] || 0;
-              const isActive = activeConversation && 
-                getConversationKey(activeConversation) === conversationKey;
+        <div className="divide-y divide-gray-100">
+          {filteredConversations.map((conversation) => {
+            const conversationKey = getConversationKey(conversation);
+            const isActive = activeConversation && 
+              getConversationKey(activeConversation) === conversationKey;
+            const unreadCount = unreadCounts[conversationKey] || 0;
 
-              return (
-                <div
-                  key={conversationKey}
-                  className={`flex items-center p-3 rounded-lg cursor-pointer hover:bg-gray-50 mb-1 ${
-                    isActive ? 'bg-blue-50 border border-blue-200' : ''
-                  }`}
-                  onClick={() => handleConversationClick(conversation)}
-                >
-                  {/* Avatar */}
-                  <div className="relative mr-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage 
-                        src={conversation.type === 'private' 
-                          ? conversation.partner?.avatarUrl 
-                          : '/images/group-avatar.png'
-                        } 
-                      />
-                      <AvatarFallback>
-                        {conversation.type === 'private' 
-                          ? conversation.partner?.name?.charAt(0)?.toUpperCase() || 'U'
-                          : <Users className="w-5 h-5" />
-                        }
-                      </AvatarFallback>
-                    </Avatar>
-                    {conversation.type === 'private' && isUserOnline(conversation.partnerId) && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                    )}
-                  </div>
+            return (
+              <div
+                key={conversationKey}
+                className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                  isActive ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                }`}
+                onClick={() => handleConversationClick(conversation)}
+              >
+                {/* Avatar */}
+                <div className="relative mr-3">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage 
+                      src={conversation.type === 'private' 
+                        ? conversation.partner?.avatarUrl 
+                        : '/images/group-avatar.png'
+                      } 
+                    />
+                    <AvatarFallback className="bg-gray-200">
+                      {conversation.type === 'private' 
+                        ? conversation.partner?.name?.charAt(0)?.toUpperCase() || 'U'
+                        : <Users className="w-6 h-6 text-gray-500" />
+                      }
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Online indicator for private chats */}
+                  {conversation.type === 'private' && 
+                   onlineUsers.includes(conversation.partnerId) && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                  )}
+                </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-gray-900 truncate">
-                        {conversation.type === 'private' 
-                          ? conversation.partner?.name || 'Unknown User'
-                          : conversation.group?.name || 'Unknown Group'
-                        }
-                      </h3>
-                      <div className="flex items-center space-x-2">
-                        {conversation.lastMessageTime && (
-                          <span className="text-xs text-gray-500">
-                            {formatDistanceToNow(new Date(conversation.lastMessageTime), {
-                              addSuffix: true,
-                              locale: vi
-                            })}
-                          </span>
-                        )}
-                        {conversation.type === 'group' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
-                                <MoreVertical className="w-3 h-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onAddMember(conversation.group);
-                                }}
-                              >
-                                <UserPlus className="w-4 h-4 mr-2" />
-                                Thêm thành viên
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-gray-900 truncate">
+                      {conversation.type === 'private' 
+                        ? conversation.partner?.name || 'Unknown User'
+                        : conversation.group?.name || 'Unknown Group'
+                      }
+                    </h3>
                     
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-sm text-gray-600 truncate">
-                        {conversation.lastMessage || 'Chưa có tin nhắn nào'}
-                      </p>
-                      {unreadCount > 0 && (
-                        <Badge variant="destructive" className="ml-2">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </Badge>
+                    <div className="flex items-center space-x-2">
+                      {/* Time */}
+                      <span className="text-xs text-gray-500">
+                        {formatLastMessageTime(conversation.lastMessageTime)}
+                      </span>
+                      
+                      {/* Group actions */}
+                      {conversation.type === 'group' && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-gray-200"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleGroupAction(conversation.group, 'addMember')}>
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Thêm thành viên
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleGroupAction(conversation.group, 'settings')}>
+                              <Settings className="w-4 h-4 mr-2" />
+                              Cài đặt nhóm
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleGroupAction(conversation.group, 'leave')}>
+                              <LogOut className="w-4 h-4 mr-2" />
+                              Rời nhóm
+                            </DropdownMenuItem>
+                            {/* Show delete option only for group admin */}
+                            {groups.find(g => g.idGroup === conversation.group?.idGroup)?.role === 'admin' && (
+                              <DropdownMenuItem 
+                                onClick={() => handleGroupAction(conversation.group, 'delete')}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Xóa nhóm
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </div>
+                  
+                  {/* Last message */}
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-sm text-gray-600 truncate flex-1">
+                      {conversation.lastMessage || 
+                       (conversation.type === 'group' ? 'Nhóm đã được tạo' : 'Bắt đầu cuộc trò chuyện')
+                      }
+                    </p>
+                    
+                    {/* Unread badge */}
+                    {unreadCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="ml-2 px-2 py-1 text-xs rounded-full min-w-[20px] h-5"
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              );
-            })
+              </div>
+            );
+          })}
+          
+          {filteredConversations.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              <MessageCirclePlus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-sm">
+                {searchQuery ? 'Không tìm thấy cuộc trò chuyện' : 'Chưa có cuộc trò chuyện nào'}
+              </p>
+            </div>
           )}
         </div>
       </ScrollArea>
