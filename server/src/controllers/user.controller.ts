@@ -38,7 +38,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
       throw new AppError(400, "Không có file ảnh nào được tải lên");
     }
 
-    const updatedUser = await userService.updateAvatar(userId, req.file.filename);
+    const updatedUser = await userService.updateAvatar(userId, req.file.path, "avatars");
     res.json({ success: true, data: updatedUser, message: "Cập nhật avatar thành công" });
   } catch (error: any) {
     throw error;
@@ -147,6 +147,19 @@ export const getAccountStatus = async (req: Request, res: Response) => {
     
     const status = await userService.getAccountStatus(userId);
     res.json({ success: true, status });
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export const lookupUser = async (req: Request, res: Response) => {
+  try {
+    const { email, phone } = req.query as any;
+    if (!email && !phone) {
+      return res.status(400).json({ success: false, message: 'Provide email or phone' });
+    }
+    const user = await userService.findByEmailOrPhone(email, phone);
+    res.json({ success: true, data: user });
   } catch (error: any) {
     throw error;
   }

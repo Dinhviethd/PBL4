@@ -6,6 +6,7 @@ import HomePage from "./pages/publics/HomePage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ConfirmPasswordResetPage from "./pages/auth/ConfirmPasswordResetPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import ContactPage from "./pages/contact/ContactPage";
 import NotificationPage from "./pages/publics/NotificationPage";
@@ -32,6 +33,7 @@ const routes = [
           { path: "login", Component: LoginPage },
           { path: "register", Component: RegisterPage },
           { path: "forgot-password", Component: ForgotPasswordPage },
+          { path: "confirm-password-reset", Component: ConfirmPasswordResetPage },
         ],
       },
     ],

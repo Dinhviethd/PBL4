@@ -1,6 +1,6 @@
 
 export interface UserResponse {
-  id: number;
+  idUser: number;
   name?: string;
   email?: string;
   avatarUrl?: string;

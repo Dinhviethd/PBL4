@@ -2,7 +2,6 @@ import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
 import { Group } from '@/models/group.model';
 import { GroupUser } from '@/models/group_user';
-import { User } from '@/models/users.model';
 import { UserRole } from '@/constants/constants';
 
 export class GroupRepository {

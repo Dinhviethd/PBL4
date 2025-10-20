@@ -53,6 +53,31 @@ const authService = {
     }
   },
 
+  resetPasswordRequest: async (email, password, confirmPassword) => {
+    try {
+      const response = await instance.post("/auth/reset-password-request", {
+        email,
+        newPassword: password,
+        confirmPassword,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Đã có lỗi xảy ra" };
+    }
+  },
+
+  confirmPasswordReset: async (verificationId, email) => {
+    try {
+      const response = await instance.post("/auth/confirm-password-reset", {
+        verificationId,
+        email,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Đã có lỗi xảy ra" };
+    }
+  },
+
   refreshToken: async () => {
     try {
       const response = await instance.post(
@@ -71,8 +96,17 @@ const authService = {
     }
   },
 
-  logout: () => {
-    useAuthStore.getState().clearAuth();
+  logout: async () => {
+    try {
+      // Gọi API logout để cập nhật status user thành OFFLINE
+      await instance.post("/auth/logout");
+    } catch (error) {
+      // Nếu API lỗi, vẫn tiếp tục clear auth ở frontend
+      console.error("Logout API error:", error);
+    } finally {
+      // Luôn clear auth ở frontend
+      useAuthStore.getState().clearAuth();
+    }
   },
 
   getCurrentUser: () => {
