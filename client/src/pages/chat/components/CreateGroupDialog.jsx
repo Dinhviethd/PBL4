@@ -62,8 +62,7 @@ export const CreateGroupDialog = ({ open, onClose }) => {
         unreadCount: 0,
         memberCount: 1
       };
-      
-      
+            
       // Add to conversations
       addConversation(newConversation);
       
