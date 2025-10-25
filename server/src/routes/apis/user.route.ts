@@ -1,20 +1,41 @@
 import express from "express";
-import { getMyInfo, updateMyInfo, deleteMyAccount, uploadAvatar, changePassword, deactivateAccount, reactivateAccount, getAccountStatus } from "@/controllers/user.controller";
+import {
+  getMyInfo,
+  updateMyInfo,
+  deleteMyAccount,
+  uploadAvatar,
+  changePassword,
+  deactivateAccount,
+  reactivateAccount,
+  getAccountStatus,
+  lookupUser,
+} from "@/controllers/user.controller";
 import { authMiddleware, checkAccountStatus } from "@/middlewares/auth.middleware";
-import { uploadAvatar as uploadMiddleware } from "@/middlewares/upload.middleware";
+import { upload as uploadMiddleware } from "@/middlewares/upload.middleware";
+import { asyncHandler } from "@/utils/error.response";
 
 const router = express.Router();
 
-// Routes that don't require account status check (allow LOCKED accounts)
-router.get("/me", authMiddleware, getMyInfo);
-router.get("/status", authMiddleware, getAccountStatus);
-router.put("/reactivate", authMiddleware, reactivateAccount);
+//Routes không yêu cầu tài khoản phải ACTIVE 
+router.get("/me", authMiddleware, asyncHandler(getMyInfo));
+router.get('/lookup', authMiddleware, asyncHandler(lookupUser));
+router.get("/status", authMiddleware, asyncHandler(getAccountStatus));
+router.put("/reactivate", authMiddleware, asyncHandler(reactivateAccount));
 
-// Routes that require active account status
-router.put("/me", authMiddleware, checkAccountStatus, updateMyInfo);
-router.put("/change-password", authMiddleware, checkAccountStatus, changePassword);
-router.put("/deactivate", authMiddleware, checkAccountStatus, deactivateAccount);
-router.post("/avatar", authMiddleware, checkAccountStatus, uploadMiddleware.single('avatar'), uploadAvatar);
-router.delete("/me", authMiddleware, checkAccountStatus, deleteMyAccount);
+// Routes yêu cầu tài khoản ACTIVE
+router.put("/me", authMiddleware, checkAccountStatus, asyncHandler(updateMyInfo));
+router.put("/change-password", authMiddleware, checkAccountStatus, asyncHandler(changePassword));
+router.put("/deactivate", authMiddleware, checkAccountStatus, asyncHandler(deactivateAccount));
+
+router.post(
+  "/avatar",
+  authMiddleware,
+  checkAccountStatus,
+  uploadMiddleware.single("avatar"),
+  asyncHandler(uploadAvatar)
+);
+
+
+router.delete("/me", authMiddleware, checkAccountStatus, asyncHandler(deleteMyAccount));
 
 export default router;

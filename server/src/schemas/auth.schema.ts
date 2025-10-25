@@ -30,5 +30,19 @@ export const resetPasswordSchema = z.object({
     path: ["confirmPassword"],
 });
 
+export const resetPasswordRequestSchema = z.object({
+    email: z.string().email(),
+    newPassword: z.string().min(6).max(50),
+    confirmPassword: z.string().min(6).max(50)
+}).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+});
+
+export const confirmPasswordResetSchema = z.object({
+    verificationId: z.number(),
+    email: z.string().email()
+});
+
 
 

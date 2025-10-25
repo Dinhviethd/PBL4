@@ -2,8 +2,8 @@ import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
 import { Group } from '@/models/group.model';
 import { GroupUser } from '@/models/group_user';
-import { User } from '@/models/users.model';
 import { UserRole } from '@/constants/constants';
+import { User } from '@/models/users.model';
 
 export class GroupRepository {
   private groupRepo: Repository<Group>;
@@ -29,7 +29,16 @@ export class GroupRepository {
       relations: ['createdBy']
     });
   }
-
+  async addMember(groupId: number, userId: number, role: UserRole = UserRole.USER) {
+    // Insert raw values to avoid updating related entities
+    const result = await this.groupUserRepo.insert({
+      idGroup: (groupId as any),
+      idUser: (userId as any),
+      role
+    } as any);
+    const insertedId = (result.identifiers && result.identifiers[0] && result.identifiers[0].idGroup_User) || result.raw?.insertId;
+    return await this.groupUserRepo.findOne({ where: { idGroup_User: insertedId } as any, relations: ['idUser', 'idGroup'] });
+  }
   async addUserToGroup(group: Group, user: User, role: UserRole, actionBy?: User): Promise<GroupUser> {
     const groupUser = this.groupUserRepo.create({
       idGroup: group,
@@ -76,6 +85,19 @@ export class GroupRepository {
       .execute();
   }
 
+ async getGroupById(groupId: number) {
+    return await this.groupRepo.findOne({
+      where: { idGroup: groupId, statusGroup: true },
+      relations: ['createdBy']
+    });
+  }
+ async checkMembership(groupId: number, userId: number) {
+    const member = await this.groupUserRepo.createQueryBuilder('gu')
+      .where('gu.idGroup = :groupId', { groupId })
+      .andWhere('gu.idUser = :userId', { userId })
+      .getOne();
+    return !!member;
+  }
   async deleteGroup(idGroup: number): Promise<void> {
     // Xóa tất cả thành viên trước
     await this.groupUserRepo.delete({ idGroup: { idGroup } });

@@ -21,6 +21,8 @@ const useWebSocket = () => {
   const reconnectAttempts = useRef(0);
 
   const connect = () => {
+        const { user, accessToken } = useAuthStore.getState();
+
     if (!accessToken || !user) return;
 
     try {
@@ -35,7 +37,8 @@ const useWebSocket = () => {
         // Authenticate
         ws.send(JSON.stringify({
           type: 'auth',
-          token: accessToken
+          token: accessToken,
+          userId: user.idUser
         }));
       };
 

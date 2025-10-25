@@ -32,6 +32,11 @@ class WebSocketService {
 
     // Thông báo cho tất cả users khác rằng user này đã online
     this.broadcastUserStatus(userId, WSMessageType.USER_ONLINE);
+    
+    // Thêm event listener để tự động remove khi socket đóng
+    socket.on('close', () => {
+      this.removeClient(userId);
+    });
   }
 
   removeClient(userId: number) {

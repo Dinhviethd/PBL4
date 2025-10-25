@@ -5,7 +5,6 @@ import { CreateGroupDialog } from './components/CreateGroupDialog';
 import { MessageCircle } from 'lucide-react';
 import useChatStore from '@/zustand/chatStore';
 import useWebSocket from '@/hooks/useWebSocket';
-
 const ChatPage = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
 
@@ -14,8 +13,6 @@ const ChatPage = () => {
     activeConversation,
     loadInitialData
   } = useChatStore();
-
-  // Initialize WebSocket
   useWebSocket();
 
   // Load initial data when component mounts

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useAuthInit } from "@/hooks/useAuthInit";
 import { NavLink } from "react-router-dom";
-import { MessageCircle, Users, Bell, UserPlus, Settings } from "lucide-react";
-import PopupInfo from "../components/profile/PopupInfor"; // popup component của bạn
+import { MessageCircle, Users, Bell, UserPlus, Settings, PlusSquare } from "lucide-react";
+import PopupInfo from "@/components/profile/PopupInfor";
+import CreateGroupModal from './CreateGroupModal';
 
 const links = [
   { to: "/", label: "Tin nhắn", icon: <MessageCircle size={22} /> },
@@ -13,39 +14,31 @@ const links = [
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
-
-  // Khởi tạo auth và lấy user data
+  const [showCreate, setShowCreate] = useState(false);
   const { user } = useAuthInit();
-  
-  const userData = {
-    avatar: user?.avatarUrl ? `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.avatarUrl}` : "/images/avatar-default-icon.png",
-  };
-  console.log(userData.avatar);
+
+  const avatarUrl = user?.avatarUrl
+    ? user.avatarUrl.startsWith("http")
+      ? user.avatarUrl
+      : `${import.meta.env.VITE_API_URL.replace("/api", "")}${user.avatarUrl}`
+    : "/images/avatar-default-icon.png";
 
   return (
     <nav className="w-20 h-screen bg-white border-r border-gray-200 flex flex-col justify-between py-4 shadow-sm relative">
-      {/* Top avatar */}
+      {/* Avatar */}
       <div>
         <div className="flex justify-center mb-6 relative">
           <img
-            src={userData.avatar}
+            src={avatarUrl}
             alt="avatar"
             className="w-12 h-12 rounded-full border-2 border-blue-500 object-cover shadow-md cursor-pointer"
             onClick={() => setIsOpen(true)}
             onError={(e) => { e.target.onerror = null; e.target.src = "/images/avatar-default-icon.png"; }}
           />
-
-          {/* Popup Info */}
-          {isOpen && (
-            <PopupInfo
-              isOpen={isOpen}
-              onClose={() => setIsOpen(false)}
-              {...userData}
-            />
-          )}
+          {isOpen && <PopupInfo isOpen={isOpen} onClose={() => setIsOpen(false)} />}
         </div>
 
-        {/* Navigation */}
+        {/* Nav links */}
         <div className="flex flex-col items-center gap-3">
           {links.map((link) => (
             <NavLink
@@ -54,10 +47,9 @@ export default function Sidebar() {
               end={link.to === "/"}
               className={({ isActive }) =>
                 `w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group
-                 ${isActive
-                   ? "bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-md"
-                   : "text-gray-600 hover:bg-gray-100"}`
+                 ${isActive ? "bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-md" : "text-gray-600 hover:bg-gray-100"}`
               }
+              title={link.label}
             >
               {link.icon}
               <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
@@ -65,18 +57,26 @@ export default function Sidebar() {
               </span>
             </NavLink>
           ))}
+
+          {/* Create group button */}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group text-gray-600 hover:bg-gray-100"
+            title="Tạo nhóm"
+          >
+            <PlusSquare size={22} />
+            <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">Tạo nhóm</span>
+          </button>
         </div>
       </div>
 
-      {/* Bottom setting */}
+      {/* Settings */}
       <div className="flex justify-center">
         <NavLink
           to="/settings"
           className={({ isActive }) =>
             `w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group
-             ${isActive
-               ? "bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-md"
-               : "text-gray-600 hover:bg-gray-100"}`
+             ${isActive ? "bg-blue-50 text-blue-600 border-2 border-blue-500 shadow-md" : "text-gray-600 hover:bg-gray-100"}`
           }
         >
           <Settings size={22} />
@@ -85,6 +85,9 @@ export default function Sidebar() {
           </span>
         </NavLink>
       </div>
+
+  {/* Create Group Modal */}
+  <CreateGroupModal isOpen={showCreate} onClose={() => setShowCreate(false)} currentUser={user} />
     </nav>
   );
 }

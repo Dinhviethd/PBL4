@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, Navigate } from "react-router-dom";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from '@/components/sidebar/index';
 import useAuthStore from "../zustand/authStore";
 import authService from "@/services/auth.service";
 import userService from "@/services/user.service";
+import  useWebSocket  from "@/hooks/useWebSocket";
 
 export default function MainLayout() {
   const { user, accessToken, setAuth } = useAuthStore();
   const [checking, setChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(!!user && !!accessToken);
+  
+  // Khởi tạo WebSocket connection
+  useWebSocket();
 
   useEffect(() => {
     // Nếu đã có accessToken và user thì xác thực luôn
@@ -55,7 +59,8 @@ export default function MainLayout() {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar />
-      <div style={{ flex: 1, padding: 20, background: "#f0f4ff" }}>
+      {/* make the main content a positioned container so child absolute overlays center inside it */}
+      <div style={{ flex: 1, padding: 20, background: "#f0f4ff", position: 'relative' }}>
         <Outlet />
       </div>
     </div>
