@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useAuthInit } from "@/hooks/useAuthInit";
-import { NavLink } from "react-router-dom";
-import { MessageCircle, Users, Bell, UserPlus, Settings, PlusSquare } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { MessageCircle, Users, Bell, UserPlus, Settings, PlusSquare, LogOut } from "lucide-react";
 import PopupInfo from "@/components/profile/PopupInfor";
 import CreateGroupModal from './CreateGroupModal';
+import authService from "@/services/auth.service";
 
 const links = [
   { to: "/", label: "Tin nhắn", icon: <MessageCircle size={22} /> },
@@ -16,6 +17,18 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const { user } = useAuthInit();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Vẫn redirect đến login ngay cả khi có lỗi
+      navigate("/login");
+    }
+  };
 
   const avatarUrl = user?.avatarUrl
     ? user.avatarUrl.startsWith("http")
@@ -71,8 +84,8 @@ export default function Sidebar() {
       </div>
 
       {/* Settings */}
-      <div className="flex justify-center">
-        <NavLink
+<div className="flex flex-col items-center gap-3">
+          <NavLink
           to="/settings"
           className={({ isActive }) =>
             `w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group
@@ -84,6 +97,17 @@ export default function Sidebar() {
             Cài đặt
           </span>
         </NavLink>
+         {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          className="w-12 h-12 flex items-center justify-center rounded-xl transition-all relative group text-gray-600 hover:bg-red-50 hover:text-red-600"
+          title="Đăng xuất"
+        >
+          <LogOut size={22} />
+          <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
+            Đăng xuất
+          </span>
+        </button>
       </div>
 
   {/* Create Group Modal */}
