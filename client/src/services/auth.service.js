@@ -7,11 +7,14 @@ const authService = {
       const response = await instance.post(
         "/auth/login",
         { email, password, remember },
-        { isLoginRequest: true } // interceptor sẽ không gắn Authorization
+        { isLoginRequest: true }
       );
+      
       if (response.data.accessToken) {
+        console.log("Login response data:", response.data);
+        console.log("User object:", response.data.user);
+        
         useAuthStore.getState().setAuth(response.data);
-        console.log("Login successful, user data:", response.data);
       }
       return response.data;
     } catch (error) {
@@ -83,14 +86,15 @@ const authService = {
       const response = await instance.post(
         "/auth/refresh-token",
         {},
-        { isRefreshRequest: true } // không gắn Authorization, có withCredentials
+        { isRefreshRequest: true }
       );
+      
       if (response.data.accessToken) {
+        console.log("Refresh token response:", response.data);
         useAuthStore.getState().setAuth(response.data);
       }
       return response.data;
     } catch (error) {
-      // Nếu 403/401 ở đây => refresh token hết hạn/không hợp lệ
       useAuthStore.getState().clearAuth?.();
       throw error.response?.data || { message: "Không thể làm mới token" };
     }
@@ -98,19 +102,18 @@ const authService = {
 
   logout: async () => {
     try {
-      // Gọi API logout để cập nhật status user thành OFFLINE
       await instance.post("/auth/logout");
     } catch (error) {
-      // Nếu API lỗi, vẫn tiếp tục clear auth ở frontend
       console.error("Logout API error:", error);
     } finally {
-      // Luôn clear auth ở frontend
       useAuthStore.getState().clearAuth();
     }
   },
 
   getCurrentUser: () => {
-    return useAuthStore.getState().user;
+    const user = useAuthStore.getState().user;
+    console.log("getCurrentUser:", user);
+    return user;
   },
 };
 

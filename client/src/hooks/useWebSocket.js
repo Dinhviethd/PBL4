@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import useAuthStore from '@/zustand/authStore';
 import useChatStore from '@/zustand/chatStore';
+
 const useWebSocket = () => {
   const { accessToken, user } = useAuthStore();
   const { 
@@ -21,9 +22,24 @@ const useWebSocket = () => {
   const reconnectAttempts = useRef(0);
 
   const connect = () => {
-        const { user, accessToken } = useAuthStore.getState();
+    const { user, accessToken } = useAuthStore.getState();
 
-    if (!accessToken || !user) return;
+    console.log('WebSocket connect - user:', user);
+    console.log('WebSocket connect - accessToken:', accessToken);
+
+    if (!accessToken || !user) {
+      console.log('Missing auth data for WebSocket connection');
+      return;
+    }
+
+    // KIỂM TRA USERID - có thể là user.id hoặc user.userId thay vì user.idUser
+    const userId = user.idUser || user.id || user.userId;
+    console.log('Extracted userId:', userId);
+
+    if (!userId) {
+      console.error('Cannot extract userId from user object:', user);
+      return;
+    }
 
     try {
       const ws = new WebSocket('ws://localhost:8000');
@@ -33,13 +49,16 @@ const useWebSocket = () => {
         setIsConnected(true);
         setSocket(ws);
         reconnectAttempts.current = 0;
-        
-        // Authenticate
-        ws.send(JSON.stringify({
+
+        // Authenticate với userId đã extract
+        const authMessage = {
           type: 'auth',
           token: accessToken,
-          userId: user.idUser
-        }));
+          userId: userId,
+        };
+
+        console.log('Sending auth message:', authMessage);
+        ws.send(JSON.stringify(authMessage));
       };
 
       ws.onmessage = (event) => {
@@ -116,15 +135,6 @@ const useWebSocket = () => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         setSocket(null);
-        
-        // Reconnect with exponential backoff
-        if (reconnectAttempts.current < 5) {
-          const delay = Math.pow(2, reconnectAttempts.current) * 1000;
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connect();
-          }, delay);
-        }
       };
 
       ws.onerror = (error) => {
@@ -171,9 +181,10 @@ const useWebSocket = () => {
   };
 
   const handleMessageEdited = (data) => {
+    const userId = user?.idUser || user?.id || user?.userId;
     const conversationKey = data.groupId 
       ? `group_${data.groupId}` 
-      : `private_${user.idUser === data.senderId ? data.receiverId : data.senderId}`;
+      : `private_${userId === data.senderId ? data.receiverId : data.senderId}`;
     
     updateMessage(conversationKey, data.messageId, {
       content: data.newContent,
@@ -183,20 +194,19 @@ const useWebSocket = () => {
   };
 
   const handleMessageDeleted = (data) => {
+    const userId = user?.idUser || user?.id || user?.userId;
     const conversationKey = data.groupId 
       ? `group_${data.groupId}` 
-      : `private_${user.idUser === data.senderId ? data.receiverId : data.senderId}`;
+      : `private_${userId === data.senderId ? data.receiverId : data.senderId}`;
     
     deleteMessage(conversationKey, data.messageId);
   };
 
   const handleMessageRead = (data) => {
-    // Update message read status
     console.log('Message read:', data);
   };
 
   const handleGroupAdded = (data) => {
-    // User was added to a group
     addConversation({
       type: 'group',
       groupId: data.groupId,
@@ -211,22 +221,18 @@ const useWebSocket = () => {
   };
 
   const handleGroupApproved = (data) => {
-    // User was approved to join a group
     console.log('Approved to group:', data);
   };
 
   const handleUserLeftGroup = (data) => {
-    // Someone left the group
     console.log('User left group:', data);
   };
 
   const handleKickedFromGroup = (data) => {
-    // User was kicked from group
     console.log('Kicked from group:', data);
   };
 
   const handleGroupDeleted = (data) => {
-    // Group was deleted
     console.log('Group deleted:', data);
   };
 

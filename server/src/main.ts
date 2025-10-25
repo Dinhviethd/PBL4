@@ -15,6 +15,7 @@ dotenv.config()
 const app = express()
 const server = createServer(app)
 const wss = new WebSocketServer({ server })
+
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser()); 
@@ -32,6 +33,7 @@ app.use(cors({
 
 initDatabase()
 app.use("/api", router)
+
 // Route for root path
 app.get("/", (req, res) => {
     res.json({ message: "Welcome to the API" });
@@ -41,7 +43,6 @@ app.use(errorHandler.notFound)
 app.use(errorHandler.errorHandler)
 
 const PORT = process.env.PORT || 8000
- 
 
 wss.on('connection', (ws) => {
     console.log("New WebSocket connection");
@@ -49,27 +50,43 @@ wss.on('connection', (ws) => {
     // Xử lý tin nhắn từ client
     ws.on('message', (message) => {
         try {
-            const data = JSON.parse(message.toString());
+            const rawMessage = message.toString();
+            console.log("Raw WebSocket message:", rawMessage);
+            
+            const data = JSON.parse(rawMessage);
+            console.log("Parsed WebSocket data:", data);
+            
             if (data.type === 'auth') {
                 const token = data.token;
                 const userId = data.userId;
+                
+                console.log("Auth attempt - token:", token ? 'present' : 'missing');
+                console.log("Auth attempt - userId:", userId, typeof userId);
+                
                 if (!token || !userId) {
+                    console.log("Authentication failed - missing token or userId");
                     ws.close(1008, 'Authentication required');
                     return;
                 }
-                
+
                 try {
                     // Verify JWT token
-                    jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'access_secret');
+                    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'access_secret');
+                    console.log("JWT decoded:", decoded);
                     
+    
+
                     // Thêm client vào WebSocket service
                     wsService.addClient(userId, ws);
                     
                     // Gửi xác nhận authentication thành công
                     ws.send(JSON.stringify({
                         type: 'auth_success',
-                        message: 'Authentication successful'
+                        message: 'Authentication successful',
+                        onlineUsers: wsService.getOnlineUsers()
                     }));
+                    
+                    console.log(`User ${userId} authenticated successfully`);
                     
                 } catch (error) {
                     console.error('WebSocket authentication failed:', error);
