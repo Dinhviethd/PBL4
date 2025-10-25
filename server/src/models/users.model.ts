@@ -1,6 +1,7 @@
 import { PrimaryGeneratedColumn, Entity, Column, OneToMany, CreateDateColumn } from 'typeorm'
 import { VerifiedCode } from "./verification.model"
 import { StatusUser } from '@/constants/constants'
+import { GroupUser } from './group_user';
 
 @Entity('Users')
 export class User {
@@ -45,4 +46,7 @@ export class User {
 
   @OneToMany(() => VerifiedCode, (verifiedCode) => verifiedCode.user)
   verifiedCodes!: VerifiedCode[]
+  
+  @OneToMany(() => GroupUser, (groupUser) => groupUser.idUser)
+groupUsers!: GroupUser[];
 }
