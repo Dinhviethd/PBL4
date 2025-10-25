@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConversationList } from './components/ConversationList';
 import { ChatArea } from './components/ChatArea';
-import { CreateGroupDialog } from './components/CreateGroupDialog';
 import { MessageCircle } from 'lucide-react';
 import useChatStore from '@/zustand/chatStore';
 import useWebSocket from '@/hooks/useWebSocket';
@@ -55,12 +54,6 @@ const ChatPage = () => {
           </div>
         )}
       </div>
-
-      {/* Dialogs */}
-      <CreateGroupDialog
-        open={showCreateGroup}
-        onClose={() => setShowCreateGroup(false)}
-      />
     </div>
   );
 };
