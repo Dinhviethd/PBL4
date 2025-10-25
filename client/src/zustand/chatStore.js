@@ -142,7 +142,7 @@ const useChatStore = create(
           : `group_${conversation.groupId}`;
       },
 
-      // SỬA LẠI LOGIC loadInitialData cho cấu trúc mới
+      // SỬA LẠI LOGIC loadInitialData với memberCount thực tế
       loadInitialData: async () => {
         try {
           const messageService = await import('@/services/message.service');
@@ -192,22 +192,36 @@ const useChatStore = create(
           
           set({ groups: mappedGroups });
           
-          // Transform groups to conversations
-          const groupConversations = mappedGroups.map(group => ({
-            type: 'group',
-            groupId: group.idGroup,
-            group: {
-              idGroup: group.idGroup,
-              name: group.name,
-              createdAt: group.createdAt,
-              createdBy: group.createdBy
-            },
-            lastMessage: null,
-            lastMessageTime: group.createdAt || new Date(),
-            lastMessageType: null,
-            unreadCount: 0,
-            memberCount: 1 // Default, có thể fetch riêng sau
-          }));
+          // Transform groups to conversations với memberCount thực tế
+          const groupConversations = await Promise.all(
+            mappedGroups.map(async (group) => {
+              let memberCount = 1; // Default fallback
+              
+              try {
+                // Lấy số lượng thành viên thực tế
+                const membersResponse = await groupService.default.getGroupMembers(group.idGroup);
+                memberCount = membersResponse.data ? membersResponse.data.length : 1;
+              } catch (error) {
+                console.warn(`Failed to get member count for group ${group.idGroup}:`, error);
+              }
+              
+              return {
+                type: 'group',
+                groupId: group.idGroup,
+                group: {
+                  idGroup: group.idGroup,
+                  name: group.name,
+                  createdAt: group.createdAt,
+                  createdBy: group.createdBy
+                },
+                lastMessage: null,
+                lastMessageTime: group.createdAt || new Date(),
+                lastMessageType: null,
+                unreadCount: 0,
+                memberCount: memberCount // Số lượng thành viên thực tế
+              };
+            })
+          );
           
           // Merge recent conversations with group conversations
           const allConversations = [...recentConversations];
@@ -219,6 +233,14 @@ const useChatStore = create(
             );
             if (!exists) {
               allConversations.push(groupConv);
+            } else {
+              // Update existing conversation with memberCount
+              const existingIndex = allConversations.findIndex(conv => 
+                conv.type === 'group' && conv.groupId === groupConv.groupId
+              );
+              if (existingIndex >= 0) {
+                allConversations[existingIndex].memberCount = groupConv.memberCount;
+              }
             }
           });
           
