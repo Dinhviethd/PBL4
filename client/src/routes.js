@@ -12,6 +12,8 @@ import ContactPage from "./pages/contact/ContactPage";
 import AddFriendPage from "./pages/contact/AddFriendPage";
 import NotificationPage from "./pages/publics/NotificationPage";
 import ChatPage from '@/pages/chat/ChatPage'
+import CallPreparationPage from "@/pages/chat/CallPreparationPage"
+import CallPage from "@/pages/chat/CallPage"
 const routes = [
   {
     path: "/",
@@ -26,6 +28,8 @@ const routes = [
           { path: "add-friend", Component: AddFriendPage },
           { path: "settings", Component: SettingsPage },
           { path: "notifications", Component: NotificationPage},
+          { path: "call-preparation", Component: CallPreparationPage },
+          { path: "call", Component: CallPage },
         ],
       },
       {
