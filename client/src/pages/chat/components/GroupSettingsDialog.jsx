@@ -95,7 +95,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     
     setIsSearching(true);
     try {
-      const response = await userService.searchUsers(searchQuery);
+      const response = await userService.searchUsers(searchQuery.trim());
       const users = response.data || [];
       
       // Filter out users who are already members or pending
@@ -113,6 +113,13 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
+      
+      // Hiển thị thông báo lỗi nếu cần
+      if (error.message && error.message !== "Failed to search users") {
+        toast.error('Lỗi tìm kiếm', {
+          description: error.message
+        });
+      }
     } finally {
       setIsSearching(false);
     }
@@ -432,8 +439,20 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm người dùng..."
+                    placeholder="Nhập email hoặc số điện thoại..."
                   />
+                  
+                  {isSearching && (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-gray-500">Đang tìm kiếm...</p>
+                    </div>
+                  )}
+                  
+                  {!isSearching && searchQuery && searchResults.length === 0 && (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-gray-500">Không tìm thấy người dùng</p>
+                    </div>
+                  )}
                   
                   {searchResults.length > 0 && (
                     <div className="border rounded-lg p-2 max-h-32 overflow-y-auto">
@@ -444,7 +463,10 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                               <AvatarImage src={user.avatarUrl} />
                               <AvatarFallback>{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{user.name}</span>
+                            <div>
+                              <span className="text-sm font-medium">{user.name}</span>
+                              <p className="text-xs text-gray-500">{user.email}</p>
+                            </div>
                           </div>
                           <Button
                             size="sm"

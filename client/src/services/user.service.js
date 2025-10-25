@@ -44,14 +44,32 @@ const userService = {
 		return res.data;
 	},
 
-	// Search users
+	// Search users - sử dụng lookup endpoint
 	searchUsers: async (query) => {
 		try {
-			const response = await instance.get("/users/search", {
-				params: { q: query, limit: 20 }
-			});
-			return response.data;
+			const isEmail = query.includes('@');
+			const params = {};
+			
+			if (isEmail) {
+				params.email = query;
+			} else {
+				params.phone = query;
+			}
+			
+			const response = await instance.get("/users/lookup", { params });
+			
+			return {
+				success: true,
+				data: response.data?.data ? [response.data.data] : []
+			};
 		} catch (error) {
+			// Nếu không tìm thấy, trả về mảng rỗng thay vì throw error
+			if (error.response?.status === 404) {
+				return {
+					success: true,
+					data: []
+				};
+			}
 			throw error.response?.data || { message: "Failed to search users" };
 		}
 	},

@@ -31,10 +31,11 @@ export const StartConversationDialog = ({ open, onClose }) => {
   const searchUsers = async () => {
     try {
       setIsSearching(true);
-      const response = await userService.searchUsers(searchQuery);
+      const response = await userService.searchUsers(searchQuery.trim());
       setSearchResults(response.data || []);
     } catch (error) {
       console.error('Failed to search users:', error);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -77,7 +78,7 @@ export const StartConversationDialog = ({ open, onClose }) => {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm người dùng..."
+              placeholder="Nhập email hoặc số điện thoại..."
               className="pl-10"
             />
           </div>
@@ -99,7 +100,7 @@ export const StartConversationDialog = ({ open, onClose }) => {
             {!isSearching && searchResults.length === 0 && !searchQuery && (
               <div className="text-center py-8">
                 <Search className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Nhập tên hoặc email để tìm kiếm</p>
+                <p className="text-sm text-gray-500">Nhập email hoặc số điện thoại để tìm kiếm</p>
               </div>
             )}
 
