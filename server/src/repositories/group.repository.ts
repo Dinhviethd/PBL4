@@ -29,20 +29,22 @@ export class GroupRepository {
       relations: ['createdBy']
     });
   }
+
   async addMember(groupId: number, userId: number, role: UserRole = UserRole.USER) {
     // Insert raw values to avoid updating related entities
     const result = await this.groupUserRepo.insert({
-      idGroup: (groupId as any),
-      idUser: (userId as any),
+      group: (groupId as any),
+      user: (userId as any),
       role
     } as any);
-    const insertedId = (result.identifiers && result.identifiers[0] && result.identifiers[0].idGroup_User) || result.raw?.insertId;
-    return await this.groupUserRepo.findOne({ where: { idGroup_User: insertedId } as any, relations: ['idUser', 'idGroup'] });
+    const insertedId = (result.identifiers && result.identifiers[0] && result.identifiers[0].id) || result.raw?.insertId;
+    return await this.groupUserRepo.findOne({ where: { id: insertedId } as any, relations: ['user', 'group'] });
   }
+
   async addUserToGroup(group: Group, user: User, role: UserRole, actionBy?: User): Promise<GroupUser> {
     const groupUser = this.groupUserRepo.create({
-      idGroup: group,
-      idUser: user,
+      group: group,
+      user: user,
       role,
       actionBy
     });
@@ -52,8 +54,8 @@ export class GroupRepository {
   async findGroupMember(idGroup: number, idUser: number): Promise<GroupUser | null> {
     return await this.groupUserRepo
       .createQueryBuilder('gu')
-      .leftJoinAndSelect('gu.idGroup', 'g')
-      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.group', 'g')
+      .leftJoinAndSelect('gu.user', 'u')
       .leftJoinAndSelect('gu.actionBy', 'actionBy')
       .where('g.idGroup = :idGroup', { idGroup })
       .andWhere('u.idUser = :idUser', { idUser })
@@ -63,16 +65,16 @@ export class GroupRepository {
   async getGroupMembers(idGroup: number): Promise<GroupUser[]> {
     return await this.groupUserRepo
       .createQueryBuilder('gu')
-      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.user', 'u')
       .leftJoinAndSelect('gu.actionBy', 'actionBy')
-      .leftJoinAndSelect('gu.idGroup', 'g')
+      .leftJoinAndSelect('gu.group', 'g')
       .where('g.idGroup = :idGroup', { idGroup })
       .orderBy('gu.role', 'DESC')
       .getMany();
   }
 
-  async updateMemberRole(idGroupUser: number, role: UserRole): Promise<void> {
-    await this.groupUserRepo.update(idGroupUser, { role });
+  async updateMemberRole(id: number, role: UserRole): Promise<void> {
+    await this.groupUserRepo.update(id, { role });
   }
 
   async removeUserFromGroup(idGroup: number, idUser: number): Promise<void> {
@@ -80,40 +82,44 @@ export class GroupRepository {
       .createQueryBuilder()
       .delete()
       .from(GroupUser)
-      .where('idGroup = :idGroup', { idGroup })
-      .andWhere('idUser = :idUser', { idUser })
+      .where('group.idGroup = :idGroup', { idGroup })
+      .andWhere('user.idUser = :idUser', { idUser })
       .execute();
   }
 
- async getGroupById(groupId: number) {
+  async getGroupById(groupId: number) {
     return await this.groupRepo.findOne({
       where: { idGroup: groupId, statusGroup: true },
       relations: ['createdBy']
     });
   }
- async checkMembership(groupId: number, userId: number) {
+
+  async checkMembership(groupId: number, userId: number) {
     const member = await this.groupUserRepo.createQueryBuilder('gu')
-      .where('gu.idGroup = :groupId', { groupId })
-      .andWhere('gu.idUser = :userId', { userId })
+      .leftJoin('gu.group', 'g')
+      .leftJoin('gu.user', 'u')
+      .where('g.idGroup = :groupId', { groupId })
+      .andWhere('u.idUser = :userId', { userId })
       .getOne();
     return !!member;
   }
+
   async deleteGroup(idGroup: number): Promise<void> {
     // Xóa tất cả thành viên trước
-    await this.groupUserRepo.delete({ idGroup: { idGroup } });
+    await this.groupUserRepo.delete({ group: { idGroup } });
     // Xóa group
     await this.groupRepo.delete(idGroup);
   }
 
   async getUserGroups(idUser: number): Promise<GroupUser[]> {
-    // Sử dụng QueryBuilder thay vì nested where
+    // SỬA LẠI: Sử dụng 'id' thay vì 'idGroupUser'
     return await this.groupUserRepo
       .createQueryBuilder('gu')
-      .leftJoinAndSelect('gu.idGroup', 'g')
+      .leftJoinAndSelect('gu.group', 'g')
       .leftJoinAndSelect('g.createdBy', 'creator')
-      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.user', 'u')
       .where('u.idUser = :idUser', { idUser })
-      .andWhere('gu.role IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.USER] }) // Chỉ lấy member đã được approve
+      .andWhere('gu.role IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.USER] })
       .orderBy('g.createdAt', 'DESC')
       .getMany();
   }
@@ -121,9 +127,9 @@ export class GroupRepository {
   async getPendingMembers(idGroup: number): Promise<GroupUser[]> {
     return await this.groupUserRepo
       .createQueryBuilder('gu')
-      .leftJoinAndSelect('gu.idUser', 'u')
+      .leftJoinAndSelect('gu.user', 'u')
       .leftJoinAndSelect('gu.actionBy', 'actionBy')
-      .leftJoinAndSelect('gu.idGroup', 'g')
+      .leftJoinAndSelect('gu.group', 'g')
       .where('g.idGroup = :idGroup', { idGroup })
       .andWhere('gu.role = :role', { role: UserRole.PENDING })
       .getMany();

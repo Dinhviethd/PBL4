@@ -220,19 +220,19 @@ export const AddMemberDialog = ({ open, onClose, group }) => {
                 <div className="space-y-2">
                   {pendingMembers.map((member) => (
                     <div
-                      key={member.idUser}
+                      key={member.user.idUser}
                       className="flex items-center justify-between p-2 bg-yellow-50 rounded"
                     >
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarImage src={member.avatarUrl} />
+                          <AvatarImage src={member.user.avatarUrl} />
                           <AvatarFallback>
-                            {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                            {member.user?.name?.charAt(0)?.toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-sm">{member.name}</p>
-                          <p className="text-xs text-gray-500">{member.email}</p>
+                          <p className="font-medium text-sm">{member.user?.name}</p>
+                          <p className="text-xs text-gray-500">{member.user?.email}</p>
                           {member.addedBy && (
                             <p className="text-xs text-blue-600">
                               Được mời bởi: {member.addedBy.name}
@@ -272,19 +272,19 @@ export const AddMemberDialog = ({ open, onClose, group }) => {
               <div className="space-y-2">
                 {groupMembers.map((member) => (
                   <div
-                    key={member.idUser}
+                    key={member.user.idUser}
                     className="flex items-center justify-between p-2 hover:bg-gray-50 rounded"
                   >
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={member.avatarUrl} />
+                        <AvatarImage src={member.user.avatarUrl} />
                         <AvatarFallback>
-                          {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                          {member.user?.name?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-sm">{member.name}</p>
-                        <p className="text-xs text-gray-500">{member.email}</p>
+                        <p className="font-medium text-sm">{member.user?.name}</p>
+                        <p className="text-xs text-gray-500">{member.user?.email}</p>
                       </div>
                     </div>
                     <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>

@@ -142,7 +142,7 @@ const useChatStore = create(
           : `group_${conversation.groupId}`;
       },
 
-      // SỬA LẠI LOGIC loadInitialData
+      // SỬA LẠI LOGIC loadInitialData cho cấu trúc mới
       loadInitialData: async () => {
         try {
           const messageService = await import('@/services/message.service');
@@ -157,30 +157,57 @@ const useChatStore = create(
           const recentConversations = conversationsResponse.data || [];
           const userGroups = groupsResponse.data || [];
           
-    
+          console.log('Loaded userGroups:', userGroups);
           
-          // Set groups
-          set({ groups: userGroups });
+          // SỬA LẠI: Xử lý cấu trúc mới - userGroups đã là array của group objects
+          // Kiểm tra cấu trúc dữ liệu và xử lý phù hợp
+          let mappedGroups;
           
-          // Transform userGroups to conversations - SỬA LẠI ĐÂY
-          const groupConversations = userGroups.map(group => {
-            return {
-              type: 'group',
-              groupId: group.idGroup, // Trực tiếp sử dụng group.idGroup
-              group: {
+          if (userGroups.length > 0 && userGroups[0].group) {
+            // Cấu trúc cũ: GroupUser objects với relation group
+            mappedGroups = userGroups
+              .filter(groupUser => groupUser && groupUser.group)
+              .map(groupUser => ({
+                id: groupUser.id,
+                idGroup: groupUser.group.idGroup,
+                name: groupUser.group.name || 'Unknown Group',
+                createdAt: groupUser.group.createdAt,
+                createdBy: groupUser.group.createdBy,
+                role: groupUser.role,
+                statusGroup: groupUser.group.statusGroup !== false
+              }));
+          } else {
+            // Cấu trúc mới: Trực tiếp là group objects
+            mappedGroups = userGroups
+              .filter(group => group && group.idGroup)
+              .map(group => ({
                 idGroup: group.idGroup,
-                name: group.name,
+                name: group.name || 'Unknown Group',
                 createdAt: group.createdAt,
-                createdBy: group.createdBy
-              },
-              lastMessage: null,
-              lastMessageTime: group.createdAt,
-              lastMessageType: null,
-              unreadCount: 0,
-              memberCount: 1 // Default, có thể fetch riêng sau
-            };
-          });
+                createdBy: group.createdBy,
+                role: group.role || 'user', // Default role
+                statusGroup: group.statusGroup !== false
+              }));
+          }
           
+          set({ groups: mappedGroups });
+          
+          // Transform groups to conversations
+          const groupConversations = mappedGroups.map(group => ({
+            type: 'group',
+            groupId: group.idGroup,
+            group: {
+              idGroup: group.idGroup,
+              name: group.name,
+              createdAt: group.createdAt,
+              createdBy: group.createdBy
+            },
+            lastMessage: null,
+            lastMessageTime: group.createdAt || new Date(),
+            lastMessageType: null,
+            unreadCount: 0,
+            memberCount: 1 // Default, có thể fetch riêng sau
+          }));
           
           // Merge recent conversations with group conversations
           const allConversations = [...recentConversations];
@@ -192,21 +219,28 @@ const useChatStore = create(
             );
             if (!exists) {
               allConversations.push(groupConv);
-            } else {
-              console.log('Group conversation already exists:', groupConv.groupId);
             }
           });
           
           // Sort by lastMessageTime
-          allConversations.sort((a, b) => 
-            new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
-          );
+          allConversations.sort((a, b) => {
+            const timeA = new Date(a.lastMessageTime || 0).getTime();
+            const timeB = new Date(b.lastMessageTime || 0).getTime();
+            return timeB - timeA;
+          });
           
+          console.log('Final conversations:', allConversations);
+          console.log('Final groups:', mappedGroups);
           
           set({ conversations: allConversations });
           
         } catch (error) {
           console.error('Failed to load initial data:', error);
+          // Set empty arrays để tránh lỗi UI
+          set({ 
+            conversations: [], 
+            groups: [] 
+          });
         }
       },
 

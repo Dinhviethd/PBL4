@@ -5,20 +5,20 @@ import { Group } from './group.model'
 @Entity('Group_User')
 export class GroupUser {
   @PrimaryGeneratedColumn()
-  idGroup_User!: number;
+  id!: number;
 
-  @ManyToOne(() => Group)
+  @ManyToOne(() => Group, (group) => group.groupUsers)
   @JoinColumn({ name: 'idGroup' })
-  idGroup!: Group;
+  group!: Group;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, (user) => user.groupUsers)
   @JoinColumn({ name: 'idUser' })
-  idUser!: User;
+  user!: User;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
-  role?: UserRole;
+  role!: UserRole;
 
-  @OneToOne(()=> User)
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'actionBy' })
   actionBy?: User;
 }

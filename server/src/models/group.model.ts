@@ -7,18 +7,18 @@ export class Group {
   idGroup!: number;
 
   @Column()
-  name?: string;
+  name!: string;
 
   @CreateDateColumn()
-  createdAt?: Date;
+  createdAt!: Date;
 
   @Column({ default: true })
-  statusGroup?: boolean;
+  statusGroup!: boolean;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'createdBy' })
   createdBy?: User;
 
-  @OneToMany(() => GroupUser, (groupUser) => groupUser.idGroup)
-groupUsers!: GroupUser[];
+  @OneToMany(() => GroupUser, (groupUser) => groupUser.group)
+  groupUsers!: GroupUser[];
 }

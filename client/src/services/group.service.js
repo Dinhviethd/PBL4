@@ -2,10 +2,28 @@ import instance from './axios.config';
 
 const groupService = {
   // Create group
-  createGroup: async (name) => {
+  createGroup: async (name, memberIds = []) => {
     try {
+      // Tạo group trước
       const response = await instance.post('/groups', { name });
-      return response.data;
+      const group = response.data;
+      
+      // Nếu có memberIds, thêm từng member vào group
+      if (memberIds && memberIds.length > 0) {
+        const addMemberPromises = memberIds.map(userId => 
+          groupService.addMember(group.data.idGroup, userId)
+        );
+        
+        try {
+          await Promise.all(addMemberPromises);
+          console.log('All members added successfully');
+        } catch (error) {
+          console.warn('Some members could not be added:', error);
+          // Không throw error ở đây để group vẫn được tạo thành công
+        }
+      }
+      
+      return group;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to create group' };
     }
@@ -77,6 +95,18 @@ const groupService = {
   getUserGroups: async () => {
     try {
       const response = await instance.get('/groups/my-groups');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch groups' };
+    }
+  },
+
+  // Get user groups with pagination
+  getUserGroupsPaginated: async (page = 1, limit = 10, searchTerm = '', sortOrder = 'asc') => {
+    try {
+      const response = await instance.get('/groups/my-groups', {
+        params: { page, limit, search: searchTerm, sort: sortOrder }
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch groups' };

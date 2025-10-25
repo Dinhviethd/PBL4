@@ -9,16 +9,16 @@ export class User {
   idUser!: number;
 
   @Column()
-  name?: string;
+  name!: string;
 
   @Column()
-  email?: string;
+  email!: string;
 
   @Column()
-  password?: string;
+  password!: string;
 
   @Column({ default: false })
-  emailVerified?: boolean;
+  emailVerified!: boolean;
 
   @Column({ nullable: true })
   avatarUrl?: string;
@@ -32,21 +32,18 @@ export class User {
   @Column({ nullable: true })
   gender?: string;
 
-  // @Column({ type: 'varchar', length: 255, default: "Xin Chào, Mình muốn kết bạn với bạn!!" })
-  // bio?: string; //text giới thiệu của người dùng
-
   @CreateDateColumn()
-  createdAt?: Date;
+  createdAt!: Date;
 
   @Column({ nullable: true })
   lastLogin?: Date;
 
   @Column({ type: 'enum', enum: StatusUser, default: StatusUser.OFFLINE })
-  status?: StatusUser;
+  status!: StatusUser;
 
   @OneToMany(() => VerifiedCode, (verifiedCode) => verifiedCode.user)
-  verifiedCodes!: VerifiedCode[]
-  
-  @OneToMany(() => GroupUser, (groupUser) => groupUser.idUser)
-groupUsers!: GroupUser[];
+  verifiedCodes!: VerifiedCode[];
+
+  @OneToMany(() => GroupUser, (groupUser) => groupUser.user)
+  groupUsers!: GroupUser[];
 }

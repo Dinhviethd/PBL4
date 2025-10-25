@@ -78,7 +78,7 @@ export class GroupService {
       throw new AppError(403, 'You do not have permission to add members');
     }
 
-    await this.groupRepository.addUserToGroup(group, targetUser, role, requesterMember.idUser);
+    await this.groupRepository.addUserToGroup(group, targetUser, role, requesterMember.user);
 
     // Gửi thông báo qua WebSocket
     if (role === UserRole.USER) {
@@ -88,7 +88,7 @@ export class GroupService {
         data: {
           groupId: group.idGroup,
           groupName: group.name,
-          addedBy: requesterMember.idUser
+          addedBy: requesterMember.user
         }
       });
     }
@@ -117,7 +117,7 @@ export class GroupService {
     }
 
     // Cập nhật role
-    await this.groupRepository.updateMemberRole(pendingMember.idGroup_User, UserRole.USER);
+    await this.groupRepository.updateMemberRole(pendingMember.id, UserRole.USER);
 
     // Thông báo cho user được duyệt
     wsService.sendToUser(targetUserId, {
@@ -140,7 +140,7 @@ export class GroupService {
     // Admin không thể rời nhóm nếu còn thành viên khác
     if (member.role === UserRole.ADMIN) {
       const allMembers = await this.groupRepository.getGroupMembers(groupId);
-      const otherMembers = allMembers.filter(m => m.idUser.idUser !== userId);
+      const otherMembers = allMembers.filter(m => m.user.idUser !== userId);
       
       if (otherMembers.length > 0) {
         throw new AppError(400, 'Admin cannot leave group while there are other members. Please delete the group or transfer admin role first.');
@@ -152,7 +152,7 @@ export class GroupService {
     // Thông báo cho các thành viên khác
     const members = await this.groupRepository.getGroupMembers(groupId);
     members.forEach(member => {
-      wsService.sendToUser(member.idUser.idUser, {
+      wsService.sendToUser(member.user.idUser, {
         type: 'USER_LEFT_GROUP',
         data: {
           groupId: groupId,
@@ -210,8 +210,8 @@ export class GroupService {
 
     // Thông báo cho tất cả thành viên
     members.forEach(member => {
-      if (member.idUser.idUser !== adminId) {
-        wsService.sendToUser(member.idUser.idUser, {
+      if (member.user.idUser !== adminId) {
+        wsService.sendToUser(member.user.idUser, {
           type: 'GROUP_DELETED',
           data: {
             groupId: groupId,
@@ -234,10 +234,10 @@ export class GroupService {
     const members = await this.groupRepository.getGroupMembers(groupId);
     
     return members.map(member => ({
-      idUser: member.idUser.idUser,
-      name: member.idUser.name,
-      email: member.idUser.email,
-      avatarUrl: member.idUser.avatarUrl,
+      idUser: member.user.idUser,
+      name: member.user.name,
+      email: member.user.email,
+      avatarUrl: member.user.avatarUrl,
       role: member.role,
       addedBy: member.actionBy ? {
         idUser: member.actionBy.idUser,
@@ -250,13 +250,13 @@ export class GroupService {
     const userGroups = await this.groupRepository.getUserGroups(userId);
     
     return userGroups.map(ug => ({
-      idGroup: ug.idGroup.idGroup,
-      name: ug.idGroup.name,
-      createdAt: ug.idGroup.createdAt,
+      idGroup: ug.group.idGroup,
+      name: ug.group.name,
+      createdAt: ug.group.createdAt,
       role: ug.role,
       createdBy: {
-        idUser: ug.idGroup.createdBy?.idUser,
-        name: ug.idGroup.createdBy?.name
+        idUser: ug.group.createdBy?.idUser,
+        name: ug.group.createdBy?.name
       }
     }));
   }
@@ -271,10 +271,10 @@ export class GroupService {
     const pendingMembers = await this.groupRepository.getPendingMembers(groupId);
     
     return pendingMembers.map(member => ({
-      idUser: member.idUser.idUser,
-      name: member.idUser.name,
-      email: member.idUser.email,
-      avatarUrl: member.idUser.avatarUrl,
+      idUser: member.user.idUser,
+      name: member.user.name,
+      email: member.user.email,
+      avatarUrl: member.user.avatarUrl,
       addedBy: member.actionBy ? {
         idUser: member.actionBy.idUser,
         name: member.actionBy.name

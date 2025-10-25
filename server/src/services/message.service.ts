@@ -113,7 +113,7 @@ export class MessageService {
     const members = await this.groupRepository.getGroupMembers(groupId);
     const memberIds = members
       .filter(m => m.role !== UserRole.PENDING)
-      .map(m => m.idUser.idUser);
+      .map(m => m.user.idUser);
 
     wsService.sendGroupMessage(senderId, memberIds, {
       messageId: message.idMessage,
@@ -274,8 +274,8 @@ export class MessageService {
       // Tin nhắn nhóm
       const members = await this.groupRepository.getGroupMembers(message.sendToGroup.idGroup);
       members.forEach(member => {
-        if (member.idUser.idUser !== userId) {
-          wsService.sendToUser(member.idUser.idUser, {
+        if (member.user.idUser !== userId) {
+          wsService.sendToUser(member.user.idUser, {
             type: 'MESSAGE_EDITED',
             data: {
               messageId,
@@ -322,8 +322,8 @@ export class MessageService {
       // Tin nhắn nhóm
       const members = await this.groupRepository.getGroupMembers(message.sendToGroup.idGroup);
       members.forEach(member => {
-        if (member.idUser.idUser !== userId) {
-          wsService.sendToUser(member.idUser.idUser, {
+        if (member.user.idUser !== userId) {
+          wsService.sendToUser(member.user.idUser, {
             type: 'MESSAGE_DELETED',
             data: {
               messageId,

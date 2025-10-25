@@ -84,19 +84,36 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
   const onCreate = async () => {
     setCreateError(null);
     if (!groupName.trim()) return setCreateError('Tên nhóm không được để trống');
-    if (selectedUsers.length < 2) return setCreateError('Vui lòng chọn ít nhất 2 thành viên');
+    
+    // SỬA LẠI: Không yêu cầu phải có ít nhất 2 thành viên, có thể tạo group rỗng và thêm sau
     const memberIds = selectedUsers.map(u => u.idUser).filter(id => id !== currentUser?.idUser);
+    
     setCreating(true);
     try {
+      console.log('Creating group with members:', memberIds);
       const created = await groupService.createGroup(groupName.trim(), memberIds);
-      showSuccess('Tạo nhóm', `Nhóm "${groupName.trim()}" đã được tạo thành công.`);
+      
+      // Hiển thị thông báo với thông tin chi tiết
+      const memberCount = memberIds.length;
+      const successMessage = memberCount > 0 
+        ? `Nhóm "${groupName.trim()}" đã được tạo thành công với ${memberCount} thành viên.`
+        : `Nhóm "${groupName.trim()}" đã được tạo thành công.`;
+      
+      showSuccess('Tạo nhóm', successMessage);
+      
       try {
         window.dispatchEvent(new CustomEvent('groups:created', { detail: created }));
       } catch {
         console.warn('Failed to dispatch groups:created event');
       }
-      setGroupName(''); setSearchTerm(''); setSearchResults([]); setSelectedUsers([]);
+      
+      // Reset form
+      setGroupName(''); 
+      setSearchTerm(''); 
+      setSearchResults([]); 
+      setSelectedUsers([]);
       onClose();
+      
     } catch (err) {
       console.error('Error creating group:', err);
       const message = err?.response?.data?.message || err?.message || 'Tạo nhóm thất bại';
@@ -115,7 +132,12 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
         <h3 className="text-lg font-semibold mb-3">Tạo nhóm mới</h3>
 
         <label className="text-sm text-gray-600">Tên nhóm</label>
-        <input value={groupName} onChange={(e) => setGroupName(e.target.value)} className="w-full border px-3 py-2 rounded mt-1 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input 
+          value={groupName} 
+          onChange={(e) => setGroupName(e.target.value)} 
+          className="w-full border px-3 py-2 rounded mt-1 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400" 
+          placeholder="Nhập tên nhóm..."
+        />
 
         <label className="text-sm text-gray-600">Chọn bạn bè</label>
         <div className="max-h-32 overflow-auto border rounded p-2 mb-3">
@@ -123,16 +145,24 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
         </div>
 
         <label className="text-sm text-gray-600">Thêm thành viên bằng email hoặc số điện thoại</label>
-        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Nhập email hoặc số điện thoại" className="w-full border px-3 py-2 rounded mt-1 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input 
+          type="text" 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)} 
+          placeholder="Nhập email hoặc số điện thoại" 
+          className="w-full border px-3 py-2 rounded mt-1 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400" 
+        />
 
         <div className="max-h-40 overflow-auto border rounded p-2 mb-3 space-y-1">
-          {searchTerm && searchResults.length === 0 && (<p className="text-sm text-red-500">Không tìm thấy người dùng</p>)}
+          {searchTerm && searchResults.length === 0 && (
+            <p className="text-sm text-red-500">Không tìm thấy người dùng</p>
+          )}
           <UserLookup results={searchResults} selected={selectedUsers} onToggle={handleToggleUser} />
         </div>
 
         {selectedUsers.length > 0 && (
           <div className="mb-3">
-            <label className="text-sm text-gray-600">Thành viên đã chọn:</label>
+            <label className="text-sm text-gray-600">Thành viên đã chọn ({selectedUsers.length}):</label>
             <SelectedUsers users={selectedUsers} onRemove={removeSelectedUser} />
           </div>
         )}
@@ -140,8 +170,20 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser }) {
         {createError && <p className="text-sm text-red-600 mb-2">{createError}</p>}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-2 rounded border">Hủy</button>
-          <button disabled={creating} onClick={onCreate} className="px-3 py-2 rounded bg-blue-500 text-white disabled:opacity-60">{creating ? 'Đang tạo...' : 'Tạo'}</button>
+          <button 
+            onClick={onClose} 
+            className="px-3 py-2 rounded border hover:bg-gray-50"
+            disabled={creating}
+          >
+            Hủy
+          </button>
+          <button 
+            disabled={creating || !groupName.trim()} 
+            onClick={onCreate} 
+            className="px-3 py-2 rounded bg-blue-500 text-white disabled:opacity-60 hover:bg-blue-600"
+          >
+            {creating ? 'Đang tạo...' : 'Tạo'}
+          </button>
         </div>
       </div>
     </div>

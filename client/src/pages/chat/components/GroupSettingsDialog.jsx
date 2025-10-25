@@ -99,8 +99,8 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       const users = response.data || [];
       
       // Filter out users who are already members or pending
-      const memberIds = members.map(m => m.idUser?.idUser || m.idUser);
-      const pendingIds = pendingMembers.map(p => p.idUser?.idUser || p.idUser);
+      const memberIds = members.map(m => m.user?.idUser || m.idUser);
+      const pendingIds = pendingMembers.map(p => p.user?.idUser || p.idUser);
       const currentUserId = user?.idUser;
       
       const filteredUsers = users.filter(u => 
@@ -466,16 +466,16 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Thành viên hiện tại</h4>
                 {members.map((member) => (
-                  <div key={member.idGroupUser} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={member.idUser?.avatarUrl} />
+                        <AvatarImage src={member.user?.avatarUrl} />
                         <AvatarFallback>
-                          {member.idUser?.name?.charAt(0)?.toUpperCase()}
+                          {member.user?.name?.charAt(0)?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{member.idUser?.name}</p>
+                        <p className="font-medium">{member.user?.name}</p>
                         <div className="flex items-center space-x-2">
                           <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
                             {member.role === 'admin' ? (
@@ -491,12 +491,12 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                       </div>
                     </div>
                     
-                    {isAdmin && member.role !== 'admin' && member.idUser?.idUser !== user?.idUser && (
+                    {isAdmin && member.role !== 'admin' && member.user?.idUser !== user?.idUser && (
                       <Button
                         size="sm"
                         variant="outline"
                         className="text-red-600 hover:text-red-700"
-                        onClick={() => handleKickMember(member.idUser?.idUser)}
+                        onClick={() => handleKickMember(member.user?.idUser)}
                         disabled={isLoading}
                       >
                         <UserX className="w-4 h-4" />
@@ -513,16 +513,16 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
             <div className="space-y-4 p-4">
               <h4 className="font-medium text-gray-900">Thành viên chờ duyệt</h4>
               {pendingMembers.map((pendingMember) => (
-                <div key={pendingMember.idGroupUser} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div key={pendingMember.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={pendingMember.idUser?.avatarUrl} />
+                      <AvatarImage src={pendingMember.user?.avatarUrl} />
                       <AvatarFallback>
-                        {pendingMember.idUser?.name?.charAt(0)?.toUpperCase()}
+                        {pendingMember.user?.name?.charAt(0)?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{pendingMember.idUser?.name}</p>
+                      <p className="font-medium">{pendingMember.user?.name}</p>
                       <p className="text-sm text-gray-500">
                         Được mời bởi {pendingMember.actionBy?.name}
                       </p>
@@ -532,7 +532,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                   <div className="flex space-x-2">
                     <Button
                       size="sm"
-                      onClick={() => handleApproveMember(pendingMember.idUser?.idUser)}
+                      onClick={() => handleApproveMember(pendingMember.user?.idUser)}
                       disabled={isLoading}
                     >
                       <UserCheck className="w-4 h-4 mr-1" />
@@ -542,7 +542,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                       size="sm"
                       variant="outline"
                       className="text-red-600 hover:text-red-700"
-                      onClick={() => handleKickMember(pendingMember.idUser?.idUser)}
+                      onClick={() => handleKickMember(pendingMember.user?.idUser)}
                       disabled={isLoading}
                     >
                       <UserX className="w-4 h-4" />

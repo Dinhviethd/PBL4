@@ -22,7 +22,35 @@ const GroupsList = () => {
       try {
         const res = await groupService.getUserGroupsPaginated(page, limit, searchTerm, sortOrder === 'asc' ? 'asc' : 'desc');
         if (!mounted) return;
-        setGroups(res.items || []);
+        
+        // SỬA LẠI: Xử lý cấu trúc mới - có thể là group objects trực tiếp
+        let mappedGroups;
+        const items = res.items || [];
+        
+        if (items.length > 0 && items[0].group) {
+          // Cấu trúc cũ: GroupUser objects
+          mappedGroups = items.map(groupUser => ({
+            id: groupUser.id,
+            idGroup: groupUser.group.idGroup,
+            name: groupUser.group.name,
+            createdAt: groupUser.group.createdAt,
+            createdBy: groupUser.group.createdBy,
+            role: groupUser.role,
+            statusGroup: groupUser.group.statusGroup
+          }));
+        } else {
+          // Cấu trúc mới: Group objects trực tiếp
+          mappedGroups = items.map(group => ({
+            idGroup: group.idGroup,
+            name: group.name,
+            createdAt: group.createdAt,
+            createdBy: group.createdBy,
+            role: group.role || 'user',
+            statusGroup: group.statusGroup
+          }));
+        }
+        
+        setGroups(mappedGroups);
         setTotal(res.total || 0);
       } catch (e) {
         console.error(e);
@@ -37,9 +65,8 @@ const GroupsList = () => {
       load();
     };
     window.addEventListener('groups:created', onGroupsCreated);
-    return () => { mounted = false };
+    return () => { mounted = false; window.removeEventListener('groups:created', onGroupsCreated); };
   }, [page, limit, searchTerm, sortOrder]);
-  // note: effect deps include searchTerm and sortOrder, keep page as well
 
   return (
     <div className="p-6">
@@ -83,11 +110,11 @@ const GroupsList = () => {
                   </div>
                 )}
               </div>
-              
             </div>
           ))}
         </div>
-        {/* Pagination (show only when total > limit) */}
+        
+        {/* Pagination */}
         {total > limit && (
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">Hiển thị {groups.length} trong {total} kết quả</div>
