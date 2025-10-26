@@ -97,12 +97,12 @@ const AccountSecurity = () => {
 
     setLoading(true);
     try {
-      await userService.changePassword({
+      const response = await userService.changePassword({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword
       });
       
-      showSuccess("Thành công", "Mật khẩu đã được cập nhật thành công!");
+      showSuccess("Thành công", "Email xác nhận đã được gửi! Vui lòng kiểm tra email của bạn để xác nhận thay đổi mật khẩu.");
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setErrors({ currentPassword: "", newPassword: "", confirmPassword: "", deactivatePassword: "", deletePassword: "" });
       setShowChangePassword(false);

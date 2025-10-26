@@ -113,8 +113,7 @@ const ForgotPassword = () => {
                     <FormLabel>Mật khẩu mới</FormLabel>
                     <FormControl>
                       <Input 
-                        type="password" 
-                        placeholder="••••••••••"
+                        type="password"
                         {...field}
                       />
                     </FormControl>
@@ -132,7 +131,6 @@ const ForgotPassword = () => {
                     <FormControl>
                       <Input 
                         type="password" 
-                        placeholder="••••••••••"
                         {...field}
                       />
                     </FormControl>

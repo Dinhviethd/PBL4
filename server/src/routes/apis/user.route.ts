@@ -5,6 +5,7 @@ import {
   deleteMyAccount,
   uploadAvatar,
   changePassword,
+  confirmPasswordChange,
   deactivateAccount,
   reactivateAccount,
   getAccountStatus,
@@ -25,6 +26,7 @@ router.put("/reactivate", authMiddleware, asyncHandler(reactivateAccount));
 // Routes yêu cầu tài khoản ACTIVE
 router.put("/me", authMiddleware, checkAccountStatus, asyncHandler(updateMyInfo));
 router.put("/change-password", authMiddleware, checkAccountStatus, asyncHandler(changePassword));
+router.put("/confirm-password-change", authMiddleware, checkAccountStatus, asyncHandler(confirmPasswordChange));
 router.put("/deactivate", authMiddleware, checkAccountStatus, asyncHandler(deactivateAccount));
 
 router.post(

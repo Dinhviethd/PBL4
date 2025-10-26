@@ -5,8 +5,10 @@ import { AppDataSource } from "@/configs/database.config";
 import { AppError } from "@/utils/error.response";
 import { UpdateUserDTO, UserResponse } from "@/DTOs/user.dto";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/utils/upload"
-import { StatusUser } from "@/constants/constants";
-import { passwordCompare } from "@/utils/password";
+import { StatusUser, verifiedCodeType } from "@/constants/constants";
+import { passwordCompare, hashPassword } from "@/utils/password";
+import { VerifiedCode } from "@/models/verification.model";
+import dayjs from "dayjs";
 import notificationService from '@/services/notification.service';
 
 class UserService {
@@ -111,6 +113,76 @@ class UserService {
   async reactivateAccount(userId: number): Promise<boolean> {
     const result = await this.userRepository.update({ idUser: userId }, { status: StatusUser.ONLINE });
     if (result.affected === 0) throw new AppError(404, "Không tìm thấy người dùng");
+    return true;
+  }
+
+  async requestPasswordChange(userId: number, currentPassword: string, newPassword: string): Promise<{ verificationId: number; message: string }> {
+    const user = await this.userRepository.findOne({ where: { idUser: userId } });
+    if (!user) throw new AppError(404, "Không tìm thấy người dùng");
+
+    if (!user.password) {
+      throw new AppError(400, "Tài khoản không có mật khẩu");
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await passwordCompare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      throw new AppError(400, "Mật khẩu hiện tại không đúng");
+    }
+
+    // Check if new password is the same as current
+    const isSamePassword = await passwordCompare(newPassword, user.password);
+    if (isSamePassword) {
+      throw new AppError(400, "Mật khẩu mới không được giống mật khẩu hiện tại");
+    }
+
+    // Hash the new password to store temporarily
+    const hashedNewPassword = await hashPassword(newPassword);
+
+    // Create verification record
+    const verificationCodeRepository = AppDataSource.getRepository(VerifiedCode);
+    const verification = await verificationCodeRepository.save({
+      ExpiredAt: dayjs().add(24, 'hour').toDate(),
+      type: verifiedCodeType.PasswordVerification,
+      code: hashedNewPassword,
+      user
+    });
+
+    return {
+      verificationId: verification.idVerifiedCode,
+      message: "Verification email has been sent"
+    };
+  }
+
+  async confirmPasswordChange(userId: number, verificationId: number, userEmail: string): Promise<boolean> {
+    const verificationCodeRepository = AppDataSource.getRepository(VerifiedCode);
+    const verification = await verificationCodeRepository.findOne({
+      where: {
+        idVerifiedCode: verificationId,
+        type: verifiedCodeType.PasswordVerification
+      },
+      relations: ['user']
+    });
+
+    if (!verification || verification.ExpiredAt < new Date()) {
+      throw new AppError(400, "Invalid or expired verification link");
+    }
+
+    if (verification.user.email !== userEmail) {
+      throw new AppError(400, "Invalid verification link");
+    }
+
+    if (!verification.code) {
+      throw new AppError(400, "Invalid verification data");
+    }
+
+    // Update password with the stored hashed password
+    const result = await this.userRepository.update({ idUser: userId }, { password: verification.code });
+    if (result.affected === 0) throw new AppError(404, "Không tìm thấy người dùng");
+
+    // Clean up verification record
+    await verificationCodeRepository.delete(verificationId);
+
     return true;
   }
 

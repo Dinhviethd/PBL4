@@ -49,6 +49,25 @@ const NotificationPage = () => {
     }
   }, [accessToken]);
 
+  const handleNotificationClick = async (notificationId, status) => {
+    // Nếu thông báo chưa được xem, đánh dấu là đã xem
+    if (status === "pending") {
+      try {
+        await notificationService.markNotificationAsSeen(notificationId);
+        // Cập nhật state để xóa dấu chấm
+        setNotifications(
+          notifications.map(notif =>
+            notif.idNotification === notificationId
+              ? { ...notif, status: "seen" }
+              : notif
+          )
+        );
+      } catch (error) {
+        console.error("Failed to mark notification as seen:", error);
+      }
+    }
+  };
+
   if (!accessToken) return null;
 
   return (
@@ -64,7 +83,11 @@ const NotificationPage = () => {
                 const { icon: Icon, bgColor, textColor, title } = getNotificationIcon(notification.type);
                 
                 return (
-                  <div key={notification.idNotification} className="flex items-start gap-4 p-4 hover:bg-gray-50 rounded-lg transition cursor-pointer relative">
+                  <div 
+                    key={notification.idNotification} 
+                    className="flex items-start gap-4 p-4 hover:bg-gray-50 rounded-lg transition cursor-pointer relative"
+                    onClick={() => handleNotificationClick(notification.idNotification, notification.status)}
+                  >
                     <div className="flex-shrink-0">
                       <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center`}>
                         <Icon className={`${textColor}`} size={20} />
