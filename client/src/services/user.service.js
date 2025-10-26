@@ -75,14 +75,14 @@ const userService = {
 	},
 
 	// Get user profile
-	getProfile: async () => {
-		try {
-			const response = await instance.get("/users/profile");
-			return response.data;
-		} catch (error) {
-			throw error.response?.data || { message: "Failed to get profile" };
-		}
-	},
+	// getProfile: async () => {
+	// 	try {
+	// 		const response = await instance.get("/users/profile");
+	// 		return response.data;
+	// 	} catch (error) {
+	// 		throw error.response?.data || { message: "Failed to get profile" };
+	// 	}
+	// },
 
 	// Get account status
 	getAccountStatus: async () => {
@@ -95,19 +95,19 @@ const userService = {
 	},
 
 	// Reactivate account
-	reactivateAccount: async () => {
-		try {
-			const response = await instance.post("/users/reactivate");
-			return response.data;
-		} catch (error) {
-			throw error.response?.data || { message: "Failed to reactivate account" };
-		}
-	},
+	// reactivateAccount: async () => {
+	// 	try {
+	// 		const response = await instance.post("/users/reactivate");
+	// 		return response.data;
+	// 	} catch (error) {
+	// 		throw error.response?.data || { message: "Failed to reactivate account" };
+	// 	}
+	// },
 
-   deleteAccount: async (data) => {
-    const res = await instance.delete("/users/me", { data });
-    return res.data;
-  },
+//    deleteAccount: async (data) => {
+//     const res = await instance.delete("/users/me", { data });
+//     return res.data;
+//   },
  
   async lookup({ email, phone } = {}) {
     const params = {};

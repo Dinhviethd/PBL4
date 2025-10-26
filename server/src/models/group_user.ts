@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, OneToOne} from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm"
 import { UserRole } from '@/constants/constants'
 import { User } from './users.model'
 import { Group } from './group.model'
-@Entity('Group_User')
+// Map to the existing DB table `group_user` and primary column `idGroup_User`
+@Entity('group_user')
 export class GroupUser {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'idGroup_User' })
   id!: number;
 
   @ManyToOne(() => Group, (group) => group.groupUsers)

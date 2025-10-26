@@ -2,7 +2,8 @@ import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn
 import { User } from './users.model';
 import { Message } from './message.model';
 
-@Entity('MessageRead')
+// Use snake_case table name to match the existing DB table created earlier
+@Entity('message_read')
 export class MessageRead {
   @PrimaryGeneratedColumn()
   id!: number;

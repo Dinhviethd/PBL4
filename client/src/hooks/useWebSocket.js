@@ -13,7 +13,7 @@ const useWebSocket = () => {
     deleteMessage,
     setOnlineUsers,
     setTyping,
-    getConversationKey,
+    _getConversationKey,
     addConversation
   } = useChatStore();
   

@@ -1,5 +1,3 @@
-import useAuthStore from '@/zustand/authStore';
-
 class WebSocketService {
   constructor() {
     this.socket = null;
