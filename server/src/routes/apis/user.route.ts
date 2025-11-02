@@ -10,6 +10,7 @@ import {
   reactivateAccount,
   getAccountStatus,
   lookupUser,
+  testPasswordValidation,
 } from "@/controllers/user.controller";
 import { authMiddleware, checkAccountStatus } from "@/middlewares/auth.middleware";
 import { upload as uploadMiddleware } from "@/middlewares/upload.middleware";
@@ -28,6 +29,9 @@ router.put("/me", authMiddleware, checkAccountStatus, asyncHandler(updateMyInfo)
 router.put("/change-password", authMiddleware, checkAccountStatus, asyncHandler(changePassword));
 router.put("/confirm-password-change", authMiddleware, checkAccountStatus, asyncHandler(confirmPasswordChange));
 router.put("/deactivate", authMiddleware, checkAccountStatus, asyncHandler(deactivateAccount));
+
+// Debug endpoint - remove in production
+router.post("/test-password", authMiddleware, checkAccountStatus, asyncHandler(testPasswordValidation));
 
 router.post(
   "/avatar",

@@ -39,6 +39,7 @@ class EmailService {
                             
                             <div style="text-align: center; margin: 30px 0;">
                                 <a href="${confirmationLink}" 
+                                   target="_self"
                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                                           color: white; 
                                           padding: 15px 30px; 

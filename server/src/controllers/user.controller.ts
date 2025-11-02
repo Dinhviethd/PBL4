@@ -74,6 +74,10 @@ export const changePassword = async (req: Request, res: Response) => {
     
     const { currentPassword, newPassword } = req.body;
     
+    console.log(`Debug Controller: Change password request for user ${userId}`);
+    console.log(`Debug Controller: Current password provided: ${currentPassword ? 'YES' : 'NO'}`);
+    console.log(`Debug Controller: New password provided: ${newPassword ? 'YES' : 'NO'}`);
+    
     if (!currentPassword || !newPassword) {
       throw new AppError(400, "Thiếu thông tin mật khẩu");
     }
@@ -91,9 +95,9 @@ export const changePassword = async (req: Request, res: Response) => {
       throw new AppError(404, "Không tìm thấy người dùng");
     }
 
-    // Create confirmation link
+    // Create confirmation link với redirect route
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
-    const confirmationLink = `${baseUrl}/confirm-password-change?token=${result.verificationId}&email=${encodeURIComponent(user.email || '')}`;
+    const confirmationLink = `${baseUrl}/password-change-redirect?token=${result.verificationId}&email=${encodeURIComponent(user.email || '')}`;
     
     try {
       // Send email using email service
@@ -112,6 +116,7 @@ export const changePassword = async (req: Request, res: Response) => {
       verificationId: result.verificationId
     });
   } catch (error: any) {
+    console.error('Debug Controller: Error in changePassword:', error);
     throw error;
   }
 };
@@ -160,6 +165,24 @@ export const confirmPasswordChange = async (req: Request, res: Response) => {
     if (error.name === 'ZodError') {
       throw new AppError(400, 'Validation failed');
     }
+    throw error;
+  }
+};
+
+// Debug endpoint - remove in production
+export const testPasswordValidation = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError(401, "Unauthorized");
+    
+    const { testPassword } = req.body;
+    if (!testPassword) {
+      throw new AppError(400, "Test password is required");
+    }
+    
+    const result = await userService.testPasswordValidation(userId, testPassword);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
     throw error;
   }
 };
