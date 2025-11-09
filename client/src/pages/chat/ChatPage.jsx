@@ -1,31 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ConversationList } from './components/ConversationList';
 import { ChatArea } from './components/ChatArea';
 import { MessageCircle } from 'lucide-react';
 import useChatStore from '@/zustand/chatStore';
-import useWebSocket from '@/hooks/useWebSocket';
+import useWebRTC from '@/hooks/useWebRTC';
+import useCallSignaling from '@/hooks/useCallSignaling';
+import { IncomingCallModal } from '@/components/call/IncomingCallModal';
+
 const ChatPage = () => {
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const navigate = useNavigate();
 
   const {
-    conversations,
     activeConversation,
     loadInitialData
   } = useChatStore();
-  useWebSocket();
+
+  // Initialize WebRTC and Signaling
+  const webRTC = useWebRTC('audio');
+  const {
+    callInfo,
+    acceptCall,
+    declineCall
+  } = useCallSignaling(webRTC);
 
   // Load initial data when component mounts
   useEffect(() => {
-    console.log('ChatPage mounted, loading initial data...');
     loadInitialData();
-  }, []);
+  }, [loadInitialData]);
 
   const handleCreateGroup = () => {
-    setShowCreateGroup(true);
+    // TODO: Implement group creation
+  };
+
+  // Handle accept incoming call
+  const handleAcceptIncomingCall = () => {
+    if (callInfo && callInfo.callId) {
+      console.log('✅ Accepting call:', callInfo.callId);
+      acceptCall(callInfo.callId, callInfo.fromUserId);
+      
+      // Navigate to CallPage
+      sessionStorage.setItem('callSettings', JSON.stringify({
+        cameraEnabled: false,
+        micEnabled: true
+      }));
+      navigate('/call');
+    }
+  };
+
+  // Handle decline incoming call
+  const handleDeclineIncomingCall = () => {
+    if (callInfo && callInfo.callId) {
+      console.log('❌ Declining call:', callInfo.callId);
+      declineCall(callInfo.callId, callInfo.fromUserId);
+    }
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Incoming Call Modal */}
+      {callInfo && (
+        <IncomingCallModal
+          callInfo={callInfo}
+          onAccept={handleAcceptIncomingCall}
+          onDecline={handleDeclineIncomingCall}
+          autoRejectTime={10}
+        />
+      )}
+
       {/* Conversation List */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <ConversationList 

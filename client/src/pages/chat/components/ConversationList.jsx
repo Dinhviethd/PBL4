@@ -73,7 +73,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
   );
 
   const handleConversationClick = (conversation) => {
-    console.log('Clicked conversation:', conversation);
+    // console.log('Clicked conversation:', conversation);
     setActiveConversation(conversation);
   };
 
@@ -163,6 +163,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                   
                   {/* Online indicator for private chats */}
                   {conversation.type === 'private' && 
+                   Array.isArray(onlineUsers) &&
                    onlineUsers.includes(conversation.partnerId) && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   )}

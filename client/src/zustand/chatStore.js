@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 const useChatStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       // WebSocket connection
       socket: null,
       isConnected: false,
@@ -27,6 +27,12 @@ const useChatStore = create(
       // Unread counts
       unreadCounts: {},
 
+      // Call state
+      activeCall: null, // { callId, callType, fromUserId, toUserId, startTime }
+      isCallModalOpen: false,
+      isCaller: false,
+      callConnectionState: 'new', // new, connecting, connected, disconnected, failed, closed
+
       // Actions
       setSocket: (socket) => set({ socket }),
       
@@ -35,6 +41,22 @@ const useChatStore = create(
       setConversations: (conversations) => set({ conversations }),
       
       setActiveConversation: (conversation) => set({ activeConversation: conversation }),
+      
+      // Call actions
+      setActiveCall: (call) => set({ activeCall: call }),
+      
+      setIsCallModalOpen: (isOpen) => set({ isCallModalOpen: isOpen }),
+      
+      setIsCaller: (isCaller) => set({ isCaller }),
+      
+      setCallConnectionState: (state) => set({ callConnectionState: state }),
+      
+      clearActiveCall: () => set({
+        activeCall: null,
+        isCallModalOpen: false,
+        isCaller: false,
+        callConnectionState: 'new'
+      }),
       
       addConversation: (conversation) =>
         set((state) => {
@@ -157,7 +179,6 @@ const useChatStore = create(
           const recentConversations = conversationsResponse.data || [];
           const userGroups = groupsResponse.data || [];
           
-          console.log('Loaded userGroups:', userGroups);
           
           // SỬA LẠI: Xử lý cấu trúc mới - userGroups đã là array của group objects
           // Kiểm tra cấu trúc dữ liệu và xử lý phù hợp
@@ -250,10 +271,7 @@ const useChatStore = create(
             const timeB = new Date(b.lastMessageTime || 0).getTime();
             return timeB - timeA;
           });
-          
-          console.log('Final conversations:', allConversations);
-          console.log('Final groups:', mappedGroups);
-          
+                    
           set({ conversations: allConversations });
           
         } catch (error) {

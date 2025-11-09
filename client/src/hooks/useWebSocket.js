@@ -23,10 +23,6 @@ const useWebSocket = () => {
 
   const connect = () => {
     const { user, accessToken } = useAuthStore.getState();
-
-    console.log('WebSocket connect - user:', user);
-    console.log('WebSocket connect - accessToken:', accessToken);
-
     if (!accessToken || !user) {
       console.log('Missing auth data for WebSocket connection');
       return;
@@ -34,7 +30,6 @@ const useWebSocket = () => {
 
     // KIỂM TRA USERID - có thể là user.id hoặc user.userId thay vì user.idUser
     const userId = user.idUser || user.id || user.userId;
-    console.log('Extracted userId:', userId);
 
     if (!userId) {
       console.error('Cannot extract userId from user object:', user);
@@ -42,7 +37,11 @@ const useWebSocket = () => {
     }
 
     try {
-      const ws = new WebSocket('ws://localhost:8000');
+      const backendIP = '192.168.34.177'; // ✅ IP máy chủ
+      const backendPort = '8000';
+      const ws = new WebSocket(`ws://${backendIP}:${backendPort}`);
+      
+      console.log(`🔌 Connecting to WebSocket: ws://${backendIP}:${backendPort}`);
       
       ws.onopen = () => {
         console.log('WebSocket connected');
@@ -57,7 +56,7 @@ const useWebSocket = () => {
           userId: userId,
         };
 
-        console.log('Sending auth message:', authMessage);
+        // console.log('Sending auth message:', authMessage);
         ws.send(JSON.stringify(authMessage));
       };
 
@@ -66,10 +65,16 @@ const useWebSocket = () => {
           const data = JSON.parse(event.data);
           
           switch (data.type) {
-            case 'auth_success':
-              console.log('WebSocket authenticated successfully');
-              setOnlineUsers(data.onlineUsers || []);
+            case 'auth_success': {
+              // Ensure onlineUsers is always an array
+              const onlineUsers = Array.isArray(data.onlineUsers) 
+                ? data.onlineUsers 
+                : (data.onlineUsers && typeof data.onlineUsers === 'object' 
+                    ? Object.values(data.onlineUsers) 
+                    : []);
+              setOnlineUsers(onlineUsers);
               break;
+            }
               
             case 'PRIVATE_MESSAGE':
               handlePrivateMessage(data.data);
@@ -123,6 +128,21 @@ const useWebSocket = () => {
               handleGroupDeleted(data.data);
               break;
             
+            // Handle all CALL_* signaling messages
+            case 'CALL_INITIATE':
+            case 'CALL_INITIATE_RESPONSE':
+            case 'CALL_OFFER':
+            case 'CALL_ANSWER':
+            case 'CALL_ICE_CANDIDATE':
+            case 'CALL_ACCEPT':
+            case 'CALL_DECLINE':
+            case 'CALL_END':
+            case 'CALL_ERROR': {
+              // Dispatch signaling message to window for useCallSignaling to handle
+              window.dispatchEvent(new CustomEvent('callSignalingMessage', { detail: data }));
+              break;
+            }
+            
             default:
               console.log('Unknown WebSocket message type:', data.type);
           }
@@ -132,13 +152,22 @@ const useWebSocket = () => {
       };
 
       ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        console.log('❌ WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         setSocket(null);
+        
+        // Attempt to reconnect after 3 seconds
+        if (reconnectAttempts.current < 5) {
+          console.log(`Attempting to reconnect... (${reconnectAttempts.current + 1}/5)`);
+          reconnectAttempts.current += 1;
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, 3000);
+        }
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('❌ WebSocket error:', error);
       };
 
       socketRef.current = ws;
@@ -249,7 +278,9 @@ const useWebSocket = () => {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [accessToken, user]);
+    // Only run once on component mount and when accessToken changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   const sendMessage = (message) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {

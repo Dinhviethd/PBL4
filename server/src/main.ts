@@ -10,6 +10,7 @@ import router from './routes/index'
 import { initDatabase } from '@/configs/database.config'
 import errorHandler from "@/middlewares/errorHandlermiddleware";
 import { wsService } from '@/services/websocket.service'
+import callSignalingManager from '@/services/callSignaling.service'
 
 dotenv.config()
 const app = express()
@@ -45,26 +46,21 @@ app.use(errorHandler.errorHandler)
 const PORT = process.env.PORT || 8000
 
 wss.on('connection', (ws) => {
-    console.log("New WebSocket connection");
+    
+    let userId: number | null = null;
     
     // Xử lý tin nhắn từ client
     ws.on('message', (message) => {
         try {
             const rawMessage = message.toString();
-            console.log("Raw WebSocket message:", rawMessage);
             
             const data = JSON.parse(rawMessage);
-            console.log("Parsed WebSocket data:", data);
             
             if (data.type === 'auth') {
                 const token = data.token;
-                const userId = data.userId;
-                
-                console.log("Auth attempt - token:", token ? 'present' : 'missing');
-                console.log("Auth attempt - userId:", userId, typeof userId);
+                userId = data.userId;
                 
                 if (!token || !userId) {
-                    console.log("Authentication failed - missing token or userId");
                     ws.close(1008, 'Authentication required');
                     return;
                 }
@@ -72,12 +68,13 @@ wss.on('connection', (ws) => {
                 try {
                     // Verify JWT token
                     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'access_secret');
-                    console.log("JWT decoded:", decoded);
                     
-    
-
                     // Thêm client vào WebSocket service
                     wsService.addClient(userId, ws);
+                    console.log(`✅ WebSocket authenticated for user ${userId}`);
+                    console.log("number of online users:", wsService.getOnlineUsers().length);
+                    // Đăng ký cho Call Signaling
+                    callSignalingManager.registerConnection(userId, ws);
                     
                     // Gửi xác nhận authentication thành công
                     ws.send(JSON.stringify({
@@ -86,12 +83,21 @@ wss.on('connection', (ws) => {
                         onlineUsers: wsService.getOnlineUsers()
                     }));
                     
-                    console.log(`User ${userId} authenticated successfully`);
                     
                 } catch (error) {
                     console.error('WebSocket authentication failed:', error);
                     ws.close(1008, 'Invalid token');
                     return;
+                }
+            } else if (userId) {
+                // Xử lý các message khác sau khi xác thực
+                if (data.type && data.type.startsWith('CALL_')) {
+                    console.log(` [User ${userId}] ${data.type} message`);
+                    console.log(`   Full message data:`, JSON.stringify(data, null, 2));
+                    // Xử lý call signaling messages
+                    callSignalingManager.handleSignalingMessage(userId, data).catch(err => {
+                        console.error('Error handling call signaling:', err);
+                    });
                 }
             }
             
@@ -100,14 +106,15 @@ wss.on('connection', (ws) => {
         }
     });
     
-    // Xử lý khi connection đóng
     ws.on('close', () => {
-        console.log("WebSocket disconnected");
-        // wsService sẽ tự động xử lý việc remove client khi socket đóng
+        if (userId) {
+            console.log(`👤 User ${userId} disconnected`);
+            callSignalingManager.unregisterConnection(userId);
+        }
     });
     
     ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
+        console.error(' WebSocket error:', error);
     });
 });
 

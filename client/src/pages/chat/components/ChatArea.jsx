@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,6 +28,10 @@ import {
 import useChatStore from '@/zustand/chatStore';
 import useAuthStore from '@/zustand/authStore';
 import messageService from '@/services/message.service';
+import useWebRTC from '@/hooks/useWebRTC';
+import useCallSignaling from '@/hooks/useCallSignaling';
+import CallButtons from '@/components/call/CallButtons';
+import { IncomingCallModal } from '@/components/call/IncomingCallModal';
 
 // Helper function to format time
 const formatTimeAgo = (date) => {
@@ -47,8 +52,8 @@ const formatTimeAgo = (date) => {
 };
 
 export const ChatArea = ({ conversation }) => {
+  const navigate = useNavigate();
   const [message, setMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
   const messagesEndRef = useRef(null);
@@ -64,11 +69,31 @@ export const ChatArea = ({ conversation }) => {
     getConversationKey,
     clearUnreadCount,
     typingUsers,
-    socket
+    socket,
+    activeCall,
+    setActiveCall,
+    setIsCaller,
+    clearActiveCall
   } = useChatStore();
 
+  // Initialize WebRTC hook
+  const callType = activeCall?.callType || 'audio';
+  const webRTC = useWebRTC(callType);
+
+  // Initialize Call Signaling hook (for initiating calls)
+  const {
+    callInfo,
+    initiateCall,
+    sendOffer,
+    acceptCall,
+    declineCall
+  } = useCallSignaling(webRTC);
+
   const conversationKey = getConversationKey(conversation);
-  const conversationMessages = messages[conversationKey] || [];
+  const conversationMessages = useMemo(
+    () => messages[conversationKey] || [],
+    [messages, conversationKey]
+  );
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -89,7 +114,7 @@ export const ChatArea = ({ conversation }) => {
     };
 
     loadMessages();
-  }, [conversationKey]);
+  }, [conversation.type, conversation.partnerId, conversation.groupId, conversationKey, setMessages, clearUnreadCount]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -174,19 +199,162 @@ export const ChatArea = ({ conversation }) => {
     }
   };
 
-  const handleMarkAsRead = async (messageId) => {
-    try {
-      await messageService.markAsRead(messageId);
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
+  // ==================== CALL HANDLERS ====================
+
+  // Handle accept incoming call
+  const handleAcceptIncomingCall = () => {
+    if (callInfo && callInfo.callId) {
+      console.log('\n✅ handleAcceptIncomingCall triggered:');
+      console.log('   callInfo.callId:', callInfo.callId);
+      console.log('   callInfo.fromUserId:', callInfo.fromUserId);
+      console.log('   callInfo.callType:', callInfo.callType);
+      
+      // 🔴 CRITICAL: Save callInfo to persistent activeCall state BEFORE navigation
+      console.log('   💾 Saving callInfo to activeCall state...');
+      setActiveCall({
+        callId: callInfo.callId,
+        fromUserId: callInfo.fromUserId,
+        toUserId: user?.idUser,
+        callType: callInfo.callType,
+        caller: callInfo.caller,
+        status: 'accepted'
+      });
+      
+      console.log('   ✅ activeCall state saved');
+      
+      // Now call acceptCall to send CALL_ACCEPT to server
+      console.log('   📤 Calling acceptCall()...');
+      acceptCall(callInfo.callId, callInfo.fromUserId);
+      
+      // Store call settings for CallPage
+      sessionStorage.setItem('callSettings', JSON.stringify({
+        cameraEnabled: false,
+        micEnabled: true
+      }));
+      
+      console.log('   ℹ️  acceptCall() will handle navigation to /call');
+    } else {
+      console.warn('❌ Cannot accept - callInfo missing:', callInfo);
     }
   };
+
+  // Handle decline incoming call
+  const handleDeclineIncomingCall = () => {
+    if (callInfo && callInfo.callId) {
+      console.log('❌ Declining call:', callInfo.callId, 'from User', callInfo.fromUserId);
+      declineCall(callInfo.callId, callInfo.fromUserId);
+    } else {
+      console.warn('❌ Cannot decline - callInfo missing:', callInfo);
+    }
+  };
+
+  // Audio Call Handler
+  const handleAudioCall = async () => {
+    try {
+      if (!conversation || conversation.type !== "private") {
+        console.error("Audio call only available for private conversations");
+        return;
+      }
+
+      const toUserId = conversation.partnerId;
+
+      // Set active call state
+      setActiveCall({
+        callType: "audio",
+        toUserId,
+        fromUserId: user.idUser,
+        startTime: new Date(),
+      });
+      setIsCaller(true);
+
+      // Save call settings to sessionStorage for CallPage
+      sessionStorage.setItem('callSettings', JSON.stringify({
+        cameraEnabled: false,
+        micEnabled: true
+      }));
+
+      // Initiate call through WebSocket signaling
+      await initiateCall(toUserId, "audio");
+
+      // Send offer after short delay (wait for call ID from server)
+      setTimeout(() => {
+        if (callInfo?.callId) {
+          sendOffer(callInfo.callId, toUserId);
+        }
+      }, 500);
+
+      // Navigate to CallPage
+      navigate('/call');
+    } catch (error) {
+      console.error("Error initiating audio call:", error);
+      clearActiveCall();
+    }
+  };
+
+  // Video Call Handler
+  const handleVideoCall = async () => {
+    try {
+      if (!conversation || conversation.type !== "private") {
+        console.error("Video call only available for private conversations");
+        return;
+      }
+
+      const toUserId = conversation.partnerId;
+
+      setActiveCall({
+        callType: "video",
+        toUserId,
+        fromUserId: user.idUser,
+        startTime: new Date(),
+      });
+      setIsCaller(true);
+
+      // Save call settings to sessionStorage for CallPage
+      sessionStorage.setItem('callSettings', JSON.stringify({
+        cameraEnabled: true,
+        micEnabled: true
+      }));
+
+      await initiateCall(toUserId, "video");
+
+      setTimeout(() => {
+        if (callInfo?.callId) {
+          sendOffer(callInfo.callId, toUserId);
+        }
+      }, 500);
+
+      // Navigate to CallPage
+      navigate('/call');
+    } catch (error) {
+      console.error("Error initiating video call:", error);
+      clearActiveCall();
+    }
+  };
+
+  // Accept Call Handler
+  // Moved to CallPage when accepting incoming calls
+
+  // Decline Call Handler
+  // Moved to CallPage when declining incoming calls
+
+  // End Call Handler
+  // Moved to CallPage when ending calls
 
   const isPartnerTyping = conversation.type === 'private' && 
     typingUsers[conversation.partnerId];
 
   return (
     <div className="flex flex-col h-full">
+      {/* Incoming Call Modal */}
+      {callInfo && (
+        <IncomingCallModal
+          callInfo={callInfo}
+          onAccept={handleAcceptIncomingCall}
+          onDecline={handleDeclineIncomingCall}
+          autoRejectTime={10}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center">
@@ -214,7 +382,7 @@ export const ChatArea = ({ conversation }) => {
             </h2>
             {conversation.type === 'private' ? (
               <p className="text-sm text-gray-500">
-                {isPartnerTyping ? 'Đang nhập...' : 'Hoạt động'}
+                {typingUsers?.[conversation.partnerId] ? 'Đang nhập...' : 'Hoạt động'}
               </p>
             ) : (
               <p className="text-sm text-gray-500">
@@ -225,12 +393,13 @@ export const ChatArea = ({ conversation }) => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm">
-            <Phone className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="sm">
-            <Video className="w-4 h-4" />
-          </Button>
+          {/* Call Buttons - chỉ hiển thị cho private conversations */}
+          {conversation.type === 'private' && (
+            <CallButtons
+              onAudioCallClick={handleAudioCall}
+              onVideoCallClick={handleVideoCall}
+            />
+          )}
           <Button variant="ghost" size="sm">
             <Info className="w-4 h-4" />
           </Button>
