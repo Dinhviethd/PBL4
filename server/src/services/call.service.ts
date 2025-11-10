@@ -1,13 +1,16 @@
 import { AppDataSource } from '@/configs/database.config';
 import { Call } from '@/models/call.model';
-import { CallStatus } from '@/constants/constants';
+import { Message } from '@/models/message.model';
+import { CallStatus, MessageType } from '@/constants/constants';
 import { Repository } from 'typeorm';
 
 class CallService {
   private callRepository: Repository<Call>;
+  private messageRepository: Repository<Message>;
 
   constructor() {
     this.callRepository = AppDataSource.getRepository(Call);
+    this.messageRepository = AppDataSource.getRepository(Message);
   }
 
   /**
@@ -26,7 +29,20 @@ class CallService {
       startedAt: new Date()
     });
 
-    return await this.callRepository.save(call);
+    const savedCall = await this.callRepository.save(call);
+
+    // Tạo message record để lưu lịch sử cuộc gọi
+    const callMessage = this.messageRepository.create({
+      content: `${callType} call`,
+      type: MessageType.CALL,
+      sentBy: { idUser: callerId } as any,
+      sendToUser: { idUser: receiverId } as any,
+      callId: savedCall.idCall,
+    });
+
+    await this.messageRepository.save(callMessage);
+
+    return savedCall;
   }
 
   /**
@@ -73,9 +89,9 @@ class CallService {
   }
 
   /**
-   * Lấy lịch sử cuộc gọi giữa 2 người dùng
+   * Lấy lịch sử cuộc gọi giữa 2 người dùng (có pagination)
    */
-  async getCallHistory(userId1: number, userId2: number, limit: number = 50) {
+  async getCallHistory(userId1: number, userId2: number, limit: number = 20, offset: number = 0) {
     const calls = await this.callRepository.find({
       where: [
         {
@@ -88,9 +104,10 @@ class CallService {
         }
       ],
       order: {
-        startedAt: 'DESC'
+        startedAt: 'ASC'
       },
-      take: limit
+      take: limit,
+      skip: offset
     });
 
     return calls;

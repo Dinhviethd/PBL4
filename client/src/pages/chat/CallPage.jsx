@@ -40,89 +40,104 @@ export default function CallPage() {
   const localStreamCacheRef = useRef(null);
   const remoteStreamCacheRef = useRef(null);
 
-  /**
-   * Sync localStreamRef with webRTC.localStream
-   * Ensures refs stay in sync
-   */
+
+  useEffect(() => {
+    // Capture refs in the effect scope
+    const localRef = videoRef.current;
+    const remoteRef = remoteVideoRef.current;
+    const localStream = localStreamCacheRef.current;
+    const remoteStream = remoteStreamCacheRef.current;
+    const pc = webRTC?.peerConnection;
+
+    return () => {
+      try {
+        
+        // Close peer connection first
+        if (pc && pc.connectionState !== 'closed') {
+          try {
+            pc.close();
+            console.log(' Peer connection closed');
+          } catch (err) {
+            console.error('Error closing PC:', err);
+          }
+        }
+
+        // Stop all local tracks
+        if (localStream) {
+          try {
+            localStream.getTracks().forEach(track => {
+              track.stop();
+            });
+          } catch (err) {
+            console.error('Error stopping local tracks:', err);
+          }
+        }
+        
+        // Stop all remote tracks
+        if (remoteStream) {
+          try {
+            remoteStream.getTracks().forEach(track => {
+              track.stop();
+            });
+          } catch (err) {
+            console.error('Error stopping remote tracks:', err);
+          }
+        }
+        
+        // Clear video element references
+        try {
+          if (localRef) localRef.srcObject = null;
+          if (remoteRef) remoteRef.srcObject = null;
+        } catch (err) {
+          console.error('Error clearing video elements:', err);
+        }
+        
+      } catch (err) {
+        console.error('Error during CallPage unmount cleanup:', err);
+      }
+    };
+  }, [webRTC?.peerConnection]);
+
   useEffect(() => {
     if (webRTC?.localStream) {
       localStreamCacheRef.current = webRTC.localStream;
-      console.log('✅ ✅ ✅ ✅✅ Local stream cached in ref', webRTC.localStream);
     }
   }, [webRTC?.localStream]);
 
-  /**
-   * Sync remoteStreamRef with webRTC.remoteStream
-   */
+
   useEffect(() => {
     if (webRTC?.remoteStream) {
       remoteStreamCacheRef.current = webRTC.remoteStream;
-      console.log('✅ ✅ ✅ ✅✅ ✅ ✅ ✅ ✅✅ Remote stream cached in ref', webRTC.remoteStream);
     }
   }, [webRTC?.remoteStream]);
 
-  /**
-   * Initialize WebRTC peer connection when conditions are met
-   * Guard checks:
-   * 1. signalingState === 'connected' (caller has peer response)
-   * 2. activeCall.status === 'accepted' (callee explicitly accepted)
-   * 3. Don't reinit if already have localStream
-   */
+
   useEffect(() => {
     const initializeCall = async () => {
       try {
-        console.log('📱 Initializing WebRTC peer connection...');
-        console.log('   Caller initiating: signalingState =', signalingState);
-        console.log('   Callee accepting: activeCall.status =', activeCall?.status);
-        
         // Get local stream and add to peer connection
         const stream = await webRTC.addLocalStreamToPeerConnection();
-        
         // Sync refs
         localStreamCacheRef.current = stream;
         if (videoRef.current && callType === 'video') {
           videoRef.current.srcObject = stream;
         }
-
-        console.log('✅ WebRTC peer connection initialized with', {
-          audioTracks: stream.getAudioTracks().length,
-          videoTracks: stream.getVideoTracks().length
-        });
       } catch (error) {
-        console.error('❌ Error initializing WebRTC:', error);
+        console.error('Error initializing WebRTC:', error);
         setMediaError(error.message || 'Failed to initialize media');
         showNotification('Could not access camera/microphone', 'error');
       }
     };
 
-    // Guard: Check preconditions
-    console.log('🔍 Checking WebRTC init conditions:', {
-      hasWebRTC: !!webRTC,
-      hasLocalStream: !!webRTC?.localStream,
-      signalingState,
-      activeCallStatus: activeCall?.status,
-      callInfo: !!callInfo
-    });
-
     if (!webRTC || webRTC.localStream) {
-      console.log('⚠️  Skipping init: webRTC not ready or localStream already exists');
       return;  // Not ready or already initialized
     }
     
-    // Condition 1: Caller - signalingState must be 'connected' (peer responded)
     const isCallerReady = signalingState === 'connected';
-    
-    // Condition 2: Callee - activeCall.status must be 'accepted' (explicitly accepted)
-    // activeCall has all needed data, don't wait for callInfo (it might be null after navigation)
     const isCalleeReady = activeCall?.status === 'accepted' && activeCall?.idCall;
     
-    console.log('🔍 Init readiness:', { isCallerReady, isCalleeReady });
-    
     if (isCallerReady || isCalleeReady) {
-      console.log('✅ All conditions met - initializing WebRTC immediately!');
       initializeCall();
-    } else {
-      console.log('⏳ Waiting for conditions: caller needs "connected" state, callee needs "accepted" status + idCall');
     }
 
   }, [webRTC, activeCall?.status, activeCall?.idCall, signalingState, callType, callInfo, showNotification]);
@@ -149,9 +164,8 @@ export default function CallPage() {
       });
 
       setCameraEnabled(newState);
-      console.log(`📹 Camera ${newState ? 'enabled' : 'disabled'}`);
     } catch (error) {
-      console.error('❌ Error toggling camera:', error);
+      console.error(' Error toggling camera:', error);
       showNotification('Could not toggle camera', 'error');
     }
   }, [webRTC?.localStream, cameraEnabled, showNotification]);
@@ -168,7 +182,7 @@ export default function CallPage() {
     try {
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length === 0) {
-        console.warn('⚠️  No audio tracks found');
+        console.warn('No audio tracks found');
         return;
       }
 
@@ -180,7 +194,7 @@ export default function CallPage() {
       setMicEnabled(newState);
       console.log(`🎤 Microphone ${newState ? 'enabled' : 'disabled'}`);
     } catch (error) {
-      console.error('❌ Error toggling mic:', error);
+      console.error(' Error toggling mic:', error);
       showNotification('Could not toggle microphone', 'error');
     }
   }, [webRTC?.localStream, micEnabled, showNotification]);
@@ -204,65 +218,93 @@ export default function CallPage() {
       });
 
       setSpeakerEnabled(newState);
-      console.log(`🔊 Speaker ${newState ? 'enabled' : 'disabled'}`);
     } catch (error) {
-      console.error('❌ Error toggling speaker:', error);
+      console.error('Error toggling speaker:', error);
       showNotification('Could not toggle speaker', 'error');
     }
   }, [speakerEnabled, showNotification]);
 
-  // Auto end call when peer declines or ends
-  // Only close if EXPLICITLY in 'idle' state (not just transient state changes)
-  // Don't close during 'initiating', 'ringing', or 'connected' states
   useEffect(() => {
-    // Only close if:
-    // 1. signalingState is EXPLICITLY 'idle' (peer declined/ended)
-    // 2. We were previously NOT in idle (means it just changed)
-    // 3. We have call info (was in a call)
-    // 4. debounce to confirm the state change isn't transient
-    
     if (signalingState !== 'idle' || !callInfo) {
-      return;  // Don't close - still in call or already closed
+      return;
     }
 
-    console.log('📞 Signaling state became idle, checking if peer ended call...');
 
-    // Debounce: wait 500ms to confirm state change before closing
-    // (prevents false triggers from transient state changes)
+    // Debounce: wait 300ms to confirm state change before closing
     const debounceTimer = setTimeout(() => {
-      console.log('📞 Confirmed: Call ended by peer (decline/end), closing connection...');
-      webRTC?.closePeerConnection();
-      clearActiveCall();
-      navigate('/', { replace: true });
-    }, 500);
+      
+      try {
+        // Force cleanup all streams
+        if (localStreamCacheRef.current) {
+          localStreamCacheRef.current.getTracks().forEach(track => {
+            track.stop();
+          });
+        }
+        
+        if (remoteStreamCacheRef.current) {
+          remoteStreamCacheRef.current.getTracks().forEach(track => {
+            track.stop();
+          });
+        }
+        
+        // Clear video elements
+        if (videoRef.current) videoRef.current.srcObject = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        
+        // Close peer connection
+        webRTC?.closePeerConnection();
+        clearActiveCall();
+        navigate('/', { replace: true });
+      } catch (err) {
+        console.error('Error during peer end cleanup:', err);
+        navigate('/', { replace: true });
+      }
+    }, 300);
 
     return () => clearTimeout(debounceTimer);
   }, [signalingState, callInfo, webRTC, clearActiveCall, navigate]);
 
   // Handle end call
   const handleEndCall = useCallback(() => {
-    console.log('📞 Ending call...');
-    
-    // ✅ Send CALL_END signal to peer before closing connection
-    // Get callId and toUserId from activeCall or callInfo
-    const callId = activeCall?.idCall || callInfo?.callId;
-    const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;
-    
-    if (callId && toUserId) {
-      console.log(`📤 Sending CALL_END to peer (callId: ${callId}, toUserId: ${toUserId})`);
-      endCall(callId, toUserId);
-    } else {
-      console.warn('⚠️  Cannot send CALL_END: missing callId or toUserId');
+    try {
+      
+      const callId = activeCall?.idCall || callInfo?.callId;
+      const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;
+      
+      if (callId && toUserId) {
+        endCall(callId, toUserId);
+      }
+      
+      // Close WebRTC connection
+      console.log(' Closing WebRTC connection...');
+      webRTC?.closePeerConnection();
+      
+      // Force cleanup all streams immediately
+      if (localStreamCacheRef.current) {
+        localStreamCacheRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
+      }
+      
+      if (remoteStreamCacheRef.current) {
+        remoteStreamCacheRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
+      }
+      
+      // Clear video elements
+      if (videoRef.current) videoRef.current.srcObject = null;
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+      
+      // Clear call state
+      clearActiveCall();
+      
+      // Navigate back to home
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('Error ending call:', err);
+      navigate('/', { replace: true });
     }
-    
-    // Close WebRTC connection
-    webRTC?.closePeerConnection();
-    
-    // Clear call state
-    clearActiveCall();
-    
-    // Navigate back to home
-    navigate('/', { replace: true });
   }, [webRTC, clearActiveCall, navigate, endCall, activeCall, callInfo]);
 
   return (
@@ -279,6 +321,17 @@ export default function CallPage() {
       )}
 
       {/* Main Video Container */}
+      {(() => {
+        console.log('📺 CallPage rendering VideoDisplay with:', {
+          callType,
+          remoteStream: webRTC?.remoteStream ? `Tracks: ${webRTC.remoteStream.getTracks().length}` : 'null',
+          localStream: webRTC?.localStream ? `Tracks: ${webRTC.localStream.getTracks().length}` : 'null',
+          cameraEnabled,
+          remoteVideoRef: remoteVideoRef?.current ? 'attached' : 'null',
+          localVideoRef: videoRef?.current ? 'attached' : 'null',
+        });
+        return null;
+      })()}
       <VideoDisplay
         callType={callType}
         remoteStream={webRTC?.remoteStream || null}

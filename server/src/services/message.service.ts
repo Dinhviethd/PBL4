@@ -160,7 +160,7 @@ export class MessageService {
       result.data.map(async (message) => {
         const readers = await this.messageRepository.getMessageReaders(message.idMessage);
         
-        return {
+        const messageData: any = {
           idMessage: message.idMessage,
           content: message.content,
           type: message.type,
@@ -180,6 +180,23 @@ export class MessageService {
             readAt: r.readAt
           }))
         };
+
+        // Nếu là call message, thêm call data
+        if (message.type === 'call' && message.call) {
+          messageData.call = {
+            idCall: message.call.idCall,
+            callType: message.call.callType,
+            callStatus: message.call.callStatus,
+            startedAt: message.call.startedAt,
+            answeredAt: message.call.answeredAt,
+            endedAt: message.call.endedAt,
+            duration: message.call.duration,
+            caller_id: message.call.caller_id,
+            receiver_id: message.call.receiver_id
+          };
+        }
+
+        return messageData;
       })
     );
 

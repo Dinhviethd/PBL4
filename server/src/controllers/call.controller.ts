@@ -32,11 +32,25 @@ class CallController {
   async getCallHistory(req: Request, res: Response) {
     try {
       const { userId } = req.params;
-      const currentUserId = (req as any).userId;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const currentUserId = (req as any).user?.userId;
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized - no user ID'
+        });
+      }
+
+      // Tính offset
+      const offset = (page - 1) * limit;
 
       const callHistory = await CallService.getCallHistory(
         parseInt(currentUserId),
-        parseInt(userId)
+        parseInt(userId),
+        limit,
+        offset
       );
 
       res.json({
@@ -58,7 +72,14 @@ class CallController {
    */
   async getReceivedCalls(req: Request, res: Response) {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized - no user ID'
+        });
+      }
 
       const calls = await CallService.getReceivedCalls(parseInt(userId));
 
@@ -81,7 +102,14 @@ class CallController {
    */
   async getSentCalls(req: Request, res: Response) {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized - no user ID'
+        });
+      }
 
       const calls = await CallService.getSentCalls(parseInt(userId));
 

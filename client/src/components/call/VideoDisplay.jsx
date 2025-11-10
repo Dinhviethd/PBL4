@@ -1,18 +1,6 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useLayoutEffect } from "react";
 
-/**
- * VideoDisplay Component
- * Handles rendering of remote/local video or avatar based on call state
- * 
- * Props:
- * - callType: 'audio' | 'video'
- * - remoteStream: MediaStream | null
- * - localStream: MediaStream | null
- * - cameraEnabled: boolean
- * - user: { name, avatarUrl }
- * - remoteVideoRef: React.Ref
- * - localVideoRef: React.Ref
- */
+
 export default function VideoDisplay({
   callType,
   remoteStream,
@@ -24,6 +12,32 @@ export default function VideoDisplay({
 }) {
   const remoteAudioRef = useRef(null);
 
+  // Attach remote video stream to video element
+  useLayoutEffect(() => {
+    const videoEl = remoteVideoRef?.current;
+    if (remoteStream && videoEl && callType === 'video') {
+      videoEl.srcObject = remoteStream;
+    }
+    return () => {
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
+    };
+  }, [remoteStream, remoteVideoRef, callType]);
+
+  // Attach local video stream to video element
+  useLayoutEffect(() => {
+    const videoEl = localVideoRef?.current;
+    if (localStream && videoEl && callType === 'video') {
+      videoEl.srcObject = localStream;
+    }
+    return () => {
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
+    };
+  }, [localStream, localVideoRef, callType]);
+
   // Attach remote audio stream to hidden audio element
   useEffect(() => {
     if (remoteStream && remoteAudioRef.current) {
@@ -31,7 +45,6 @@ export default function VideoDisplay({
     }
   }, [remoteStream]);
 
-  // Determine what to display
   const renderContent = () => {
     // Video call with remote stream available
     if (callType === "video" && remoteStream) {

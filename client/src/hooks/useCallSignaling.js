@@ -5,10 +5,7 @@ import useAuthStore from '@/zustand/authStore';
 import callService from '@/services/call.service';
 import { useNotification } from '@/hooks/useNotification';
 
-/**
- * Hook quản lý WebRTC Signaling qua WebSocket
- * Xử lý các thông điệp offer, answer, ICE candidates
- */
+
 const useCallSignaling = (webRTC) => {
   const navigate = useNavigate();
   const { showError } = useNotification();
@@ -21,23 +18,18 @@ const useCallSignaling = (webRTC) => {
   
   const iceCandidatesQueueRef = useRef([]);
   const remoteDescriptionSetRef = useRef(false);
-  const autoRejectTimeoutRef = useRef(null); // For auto-reject incoming calls
+  const autoRejectTimeoutRef = useRef(null); 
   const answerRef = useRef(null); // Store created answer to avoid recreating
 
-  /**
-   * Tự động từ chối cuộc gọi sau 10s nếu không có tương tác
-   */
+
   const setupAutoReject = useCallback((callId, toUserId, declineFunc) => {
-    // Clear existing timeout if any
     if (autoRejectTimeoutRef.current) {
       clearTimeout(autoRejectTimeoutRef.current);
     }
 
-    // Set new timeout for auto-reject (10 seconds)
     autoRejectTimeoutRef.current = setTimeout(() => {
-      console.log('⏰ Auto-rejecting call after 10s timeout');
       declineFunc(callId, toUserId);
-    }, 10000);
+    }, 20000);
   }, []);
 
   /**
@@ -120,7 +112,6 @@ const useCallSignaling = (webRTC) => {
 
       const answer = answerRef.current;
       
-      console.log(`✅ Sending CALL_ANSWER: {callId: ${callId}, toUserId: ${toUserId}}`);
       sendSignalingMessage({
         type: 'CALL_ANSWER',
         callId,
@@ -128,12 +119,8 @@ const useCallSignaling = (webRTC) => {
         answer: answer
       });
 
-      console.log('✅ SDP Answer sent!');
-      
-      // Clear the stored answer after sending
       answerRef.current = null;
 
-      // Lưu call vào database với trạng thái ONGOING
       await callService.getCall(callId);
 
     } catch (err) {
@@ -159,17 +146,7 @@ const useCallSignaling = (webRTC) => {
    */
   const acceptCall = useCallback((callId, toUserId) => {
     try {
-      console.log(`\n✅ acceptCall() function called:`);
-      console.log(`   callId: ${callId}`);
-      console.log(`   toUserId (caller): ${toUserId}`);
-      console.log(`   Current activeCall from store:`, activeCall);
-      console.log(`   Current callInfo:`, callInfo);
-      
-      // 🔐 Guard: Set activeCall if not already set
-      // This is critical for Caller to send SDP Offer on CALL_ACCEPT
       if (!activeCall || !activeCall.idCall) {
-        console.log('   ⚠️  activeCall not set, creating from callId/toUserId...');
-        // ✅ Get callType from callInfo (sent by caller in CALL_INITIATE)
         const newActiveCall = {
           idCall: callId,
           toUserId: toUserId, // Caller's ID
@@ -177,30 +154,22 @@ const useCallSignaling = (webRTC) => {
           status: 'accepted'
         };
         setActiveCall(newActiveCall);
-        console.log('   ✅ Set activeCall:', newActiveCall);
       } else {
-        console.log('   ✅ activeCall already exists, updating status...');
         const updatedActiveCall = { ...activeCall, status: 'accepted' };
         setActiveCall(updatedActiveCall);
-        console.log('   ✅ Updated activeCall.status to "accepted":', updatedActiveCall);
       }
       
       setSignalingState('connected');
-      console.log('   ✅ Set signalingState to "connected"');
       
       // Send accept signal to caller
-      console.log(`   📤 Sending CALL_ACCEPT message...`);
-      const sent = sendSignalingMessage({
+      sendSignalingMessage({
         type: 'CALL_ACCEPT',
         callId,
         toUserId
       });
-      console.log(`   ✅ CALL_ACCEPT message sent: ${sent}`);
 
       // Navigate to CallPage for video/audio
-      console.log('   📱 Scheduling navigation to CallPage (300ms delay)');
       setTimeout(() => {
-        console.log('   📱 Navigating to CallPage now...');
         navigate('/call', { 
           state: { 
             callId, 
@@ -210,30 +179,30 @@ const useCallSignaling = (webRTC) => {
       }, 300);
 
     } catch (err) {
-      console.error('❌ Error accepting call:', err);
+      console.error('Error accepting call:', err);
       showError('Lỗi', 'Không thể chấp nhận cuộc gọi');
       setError(err.message);
     }
   }, [sendSignalingMessage, navigate, showError, activeCall, setActiveCall, callInfo]);
 
-  /**
-   * Từ chối cuộc gọi
-   * @param {number} callId - ID của cuộc gọi
-   * @param {number} callerId - ID của người gọi (cần gửi DECLINE về cho họ)
-   */
   const declineCall = useCallback((callId, callerId) => {
     try {
-      console.log(`📞 Declining call ${callId}, sending to caller ${callerId}`);
-      setSignalingState('idle');
-      sendSignalingMessage({
-        type: 'CALL_DECLINE',
-        callId,
-        toUserId: callerId  // Gửi về cho người gọi
-      });
       
-      if (webRTC && webRTC.closePeerConnection) {
-        webRTC.closePeerConnection();
-      }
+      setTimeout(() => {
+        if (webRTC && webRTC.closePeerConnection) {
+          webRTC.closePeerConnection();
+        }
+        
+        setSignalingState('idle');
+        
+        setCallInfo(null);
+        
+        sendSignalingMessage({
+          type: 'CALL_DECLINE',
+          callId,
+          toUserId: callerId  // Gửi về cho người gọi
+        });
+      }, 0);
     } catch (err) {
       console.error('Error declining call:', err);
     }
@@ -251,9 +220,12 @@ const useCallSignaling = (webRTC) => {
         toUserId
       });
 
-      if (webRTC && webRTC.closePeerConnection) {
-        webRTC.closePeerConnection();
-      }
+      // Use setTimeout to avoid nested state updates warning
+      setTimeout(() => {
+        if (webRTC && webRTC.closePeerConnection) {
+          webRTC.closePeerConnection();
+        }
+      }, 0);
     } catch (err) {
       console.error('Error ending call:', err);
     }
@@ -266,14 +238,9 @@ const useCallSignaling = (webRTC) => {
     try {
       if (!webRTC) throw new Error('WebRTC not initialized');
 
-      console.log('📞 Processing incoming OFFER from caller...');
-      console.log('   callId:', data.callId);
-      console.log('   fromUserId:', data.fromUserId);
-
       // Set remote description (offer từ caller)
       await webRTC.setRemoteDescription(data.offer);
       remoteDescriptionSetRef.current = true;
-      console.log('   ✅ Remote description (offer) set');
 
       // Process queued ICE candidates
       for (const candidate of iceCandidatesQueueRef.current) {
@@ -287,27 +254,18 @@ const useCallSignaling = (webRTC) => {
         callId: data.callId
       }));
 
-      // 🔐 Guard: Create and store ANSWER if we have webRTC initialized
       // Callee must respond with answer to complete SDP exchange
       if (webRTC && data.callId && data.fromUserId) {
-        console.log('   📤 Scheduling CALL_ANSWER in 300ms...');
         setTimeout(async () => {
-          console.log('   📤 NOW creating ANSWER...');
           try {
-            // ✅ Create answer and store it for sending
             const answer = await webRTC.createAnswer();
             answerRef.current = answer;
-            console.log('   ✅ ANSWER created and stored');
-            
-            // Now send it
-            console.log('   📤 Sending CALL_ANSWER to caller...');
             sendAnswer(data.callId, data.fromUserId);
           } catch (err) {
-            console.error('   ❌ Error creating answer:', err);
+            console.error('Error creating answer:', err);
           }
         }, 300);
       }
-
     } catch (err) {
       console.error('Error handling incoming offer:', err);
       setError(err.message);
@@ -364,25 +322,15 @@ const useCallSignaling = (webRTC) => {
    */
   const handleSignalingMessage = useCallback((data) => {
     const { type } = data;
-    console.log(`📞 [Signaling] Received ${type} message:`, data);
 
     switch (type) {
       case 'CALL_INITIATE_RESPONSE': {
-        // Response từ backend xác nhận call đã được tạo
-        console.log('✅ Call initiated successfully, waiting for peer response...');
-        console.log('   Received callId from backend:', data.data.callId);
-        console.log('   Received toUserId from backend:', data.data.toUserId);
-        
-        // 🔐 Guard: Set callId từ backend vào callInfo để chuẩn bị gửi offer
-        if (data.data.callId) {
+      if (data.data.callId) {
           setCallInfo(prev => ({
             ...prev,
             callId: data.data.callId,
             toUserId: data.data.toUserId // Also save toUserId (callee's ID)
           }));
-          console.log('   ✅ Set callId in callInfo for later SDP Offer:', data.data.callId);
-          
-          // ✅ Also update activeCall with callId and toUserId so we can end call early if needed
           if (activeCall) {
             const updatedActiveCall = {
               ...activeCall,
@@ -390,7 +338,6 @@ const useCallSignaling = (webRTC) => {
               toUserId: data.data.toUserId
             };
             setActiveCall(updatedActiveCall);
-            console.log('   ✅ Updated activeCall with idCall and toUserId:', updatedActiveCall);
           }
         } else {
           console.warn('   ⚠️  No callId in CALL_INITIATE_RESPONSE');
@@ -411,10 +358,6 @@ const useCallSignaling = (webRTC) => {
         setCallInfo(callData);
         setSignalingState('ringing');
         
-        // Setup auto-reject after 10 seconds
-        // Note: will be handled by IncomingCallModal countdown, 
-        // but this ensures server-side auto-reject as well
-        console.log('📞 Incoming call detected, starting auto-reject timer');
         break;
       }
 
@@ -437,14 +380,6 @@ const useCallSignaling = (webRTC) => {
 
       case 'CALL_ACCEPT': {
         // Callee accepted call
-        console.log('\n✅ CALL_ACCEPT received - Callee accepted the call');
-        console.log('   Received data:', data);
-        console.log('   data.data.callId:', data.data?.callId);
-        console.log('   data.data.fromUserId:', data.data?.fromUserId);
-        console.log('   Local callInfo state:', callInfo);
-        console.log('   activeCall from store:', activeCall);
-        console.log('   webRTC state:', webRTC ? 'initialized' : 'NOT initialized');
-        
         setSignalingState('connected');
         console.log('   ✅ Set signalingState to "connected"');
         
@@ -452,33 +387,22 @@ const useCallSignaling = (webRTC) => {
         const callIdFromData = data.data?.callId;
         const calleeIdFromData = data.data?.fromUserId;
         
-        // 🔐 Guard: Update activeCall with idCall, toUserId, and status
         if (activeCall) {
           const updatedActiveCall = { 
             ...activeCall, 
-            idCall: callIdFromData, // ✅ Set idCall from backend
-            toUserId: calleeIdFromData, // ✅ Set toUserId (callee's ID)
+            idCall: callIdFromData, 
+            toUserId: calleeIdFromData, 
             status: 'accepted' 
           };
           setActiveCall(updatedActiveCall);
-          console.log('   ✅ Updated activeCall with idCall and status:', updatedActiveCall);
         }
         
         const callId = activeCall?.idCall || callIdFromData;
         const calleeId = calleeIdFromData;
         
-        console.log('   📦 Preparing to send SDP Offer:');
-        console.log(`      callId (from activeCall.idCall or data.data.callId): ${callId}`);
-        console.log(`      calleeId (from data.data.fromUserId): ${calleeId}`);
-        console.log(`      webRTC: ${!!webRTC}`);
-        
-        if (callId && calleeId && webRTC) {
-          console.log(`   ✅ All conditions met!`);
-          console.log(`      Sending SDP Offer in 300ms...`);
-          
+        if (callId && calleeId && webRTC) {          
           // Use arrow function to capture current values
           setTimeout(() => {
-            console.log('      📤 NOW sending SDP Offer...');
             webRTC.createOffer().then(offer => {
               sendSignalingMessage({
                 type: 'CALL_OFFER',
@@ -486,50 +410,54 @@ const useCallSignaling = (webRTC) => {
                 toUserId: calleeId,
                 offer
               });
-              console.log('      ✅ SDP Offer sent!');
             }).catch(err => {
-              console.error('      ❌ Error creating offer:', err);
+              console.error('Error creating offer:', err);
             });
           }, 300);
         } else {
-          console.warn('   ❌ Missing data:', { callId, calleeId, webRTC: !!webRTC });
-          console.log('   data.data:', data.data);
+          console.warn('Missing data:', { callId, calleeId, webRTC: !!webRTC });
         }
         break;
       }
 
       case 'CALL_DECLINE':
         // Callee declined call
-        console.log('❌ CALL_DECLINE received - Callee declined the call');
         showError('Thông báo', 'Cuộc gọi đã bị từ chối');
-        setSignalingState('idle');
-        setCallInfo(null);
+        
         if (webRTC && webRTC.closePeerConnection) {
           webRTC.closePeerConnection();
         }
+        
+        setSignalingState('idle');
+        
+        setCallInfo(null);
+        console.log('   ✅ Clearing callInfo');
+        
         // Navigate back to chat
+        console.log('   📱 Scheduling navigation back to chat...');
         setTimeout(() => {
+          console.log('   📱 Navigating back...');
           navigate(-1);
         }, 300);
         break;
 
       case 'CALL_END':
-        // Call ended by peer - can happen at any stage (ringing or connected)
-        console.log('🛑 CALL_END received - Call ended by peer');
-        console.log('   Current signalingState:', signalingState);
         
-        setSignalingState('idle');
-        setCallInfo(null);
-        // ✅ Clear activeCall when peer ends the call
-        setActiveCall(null);
-        
-        // Close WebRTC if it exists
+        // Immediately close WebRTC first
         if (webRTC && webRTC.closePeerConnection) {
           webRTC.closePeerConnection();
         }
         
-        // ✅ Navigate back to home to close CallPage/popup
-        console.log('📱 Navigating away from call page...');
+        // Clear signaling state immediately
+        setSignalingState('idle');
+        
+        // Clear callInfo immediately - this closes the popup
+        setCallInfo(null);
+        
+        //Clear activeCall when peer ends the call
+        setActiveCall(null);
+        
+        // Navigate back to home after a short delay
         setTimeout(() => {
           navigate('/', { replace: true });
         }, 300);
@@ -579,12 +507,10 @@ const useCallSignaling = (webRTC) => {
     const handleIceCandidate = (event) => {
       if (!event.detail) return;
 
-      // ✅ Use activeCall from store (persistent) instead of callInfo (transient)
       const callId = activeCall?.idCall || callInfo?.callId;
       const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;
 
       if (callId && toUserId && event.detail) {
-        console.log(`🧊 Sending ICE candidate to peer (callId: ${callId}, toUserId: ${toUserId})`);
         sendIceCandidate(callId, toUserId, event.detail);
       }
     };

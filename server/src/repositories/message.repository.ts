@@ -49,7 +49,7 @@ export class MessageRepository {
           isDeleted: false
         }
       ],
-      relations: ['sentBy', 'sendToUser'],
+      relations: ['sentBy', 'sendToUser', 'call'],
       order: { createdAt: 'DESC' },
       skip,
       take
@@ -70,7 +70,7 @@ export class MessageRepository {
         sendToGroup: { idGroup: groupId },
         isDeleted: false
       },
-      relations: ['sentBy', 'sendToGroup'],
+      relations: ['sentBy', 'sendToGroup', 'call'],
       order: { createdAt: 'DESC' },
       skip,
       take

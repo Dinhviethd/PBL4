@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { Group } from './group.model'
+import { Call } from './call.model'
 import { MessageType } from '@/constants/constants'
 
 @Entity('Message')
@@ -46,4 +47,11 @@ export class Message {
 
   @Column({ nullable: true })
   editedAt?: Date;
+
+  @ManyToOne(() => Call, { nullable: true })
+  @JoinColumn({ name: 'callId' })
+  call?: Call;
+
+  @Column({ nullable: true })
+  callId?: number;
 }

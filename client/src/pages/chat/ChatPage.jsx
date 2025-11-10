@@ -36,12 +36,11 @@ const ChatPage = () => {
   // Handle accept incoming call
   const handleAcceptIncomingCall = () => {
     if (callInfo && callInfo.callId) {
-      console.log('✅ Accepting call:', callInfo.callId);
       acceptCall(callInfo.callId, callInfo.fromUserId);
       
       // Navigate to CallPage
       sessionStorage.setItem('callSettings', JSON.stringify({
-        cameraEnabled: false,
+        cameraEnabled: true,
         micEnabled: true
       }));
       navigate('/call');
@@ -51,7 +50,6 @@ const ChatPage = () => {
   // Handle decline incoming call
   const handleDeclineIncomingCall = () => {
     if (callInfo && callInfo.callId) {
-      console.log('❌ Declining call:', callInfo.callId);
       declineCall(callInfo.callId, callInfo.fromUserId);
     }
   };

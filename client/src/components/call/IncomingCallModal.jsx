@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Phone, PhoneOff, User } from 'lucide-react';
 
-/**
- * IncomingCallModal Component
- * Hiển thị thông báo cuộc gọi đến với nút Accept/Decline
- * Auto-reject sau 10s nếu không có tương tác
- */
 export const IncomingCallModal = ({ 
   callInfo, 
   onAccept, 
   onDecline,
-  autoRejectTime = 10 // seconds
+  autoRejectTime = 20 // seconds
 }) => {
   const [timeLeft, setTimeLeft] = useState(autoRejectTime);
   const [isDeclined, setIsDeclined] = useState(false);
@@ -23,7 +18,6 @@ export const IncomingCallModal = ({
       setTimeLeft((prev) => {
         if (prev <= 1) {
           // Auto reject khi hết thời gian
-          console.log('⏰ Auto-rejecting incoming call (timeout)');
           setIsDeclined(true);
           onDecline();
           return 0;
@@ -136,7 +130,7 @@ export const IncomingCallModal = ({
 
         {/* Info Text */}
         <p className="text-center text-xs text-gray-500 mt-4">
-          Cuộc gọi sẽ bị từ chối nếu không trả lời trong 10 giây
+          Cuộc gọi sẽ bị từ chối nếu không trả lời trong 20 giây
         </p>
       </div>
 

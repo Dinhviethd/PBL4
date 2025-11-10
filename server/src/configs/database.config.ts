@@ -19,6 +19,12 @@ export const initDatabase = async () => {
   try {
     await AppDataSource.initialize()
     console.log("Connected to Database");
+    
+    // Run pending migrations automatically
+    const migrations = await AppDataSource.runMigrations();
+    if (migrations.length > 0) {
+      console.log(`✅ Executed ${migrations.length} migration(s)`);
+    }
   } catch (error) {
     console.log("Failed to connect to DB")
     console.error(error);

@@ -37,11 +37,12 @@ const useWebSocket = () => {
     }
 
     try {
-      const backendIP = '192.168.34.177'; // ✅ IP máy chủ
+      // const backendIP = '192.168.34.177';
+      const backendIP = 'localhost';
       const backendPort = '8000';
       const ws = new WebSocket(`ws://${backendIP}:${backendPort}`);
       
-      console.log(`🔌 Connecting to WebSocket: ws://${backendIP}:${backendPort}`);
+      console.log(` Connecting to WebSocket: ws://${backendIP}:${backendPort}`);
       
       ws.onopen = () => {
         console.log('WebSocket connected');
@@ -152,7 +153,7 @@ const useWebSocket = () => {
       };
 
       ws.onclose = (event) => {
-        console.log('❌ WebSocket disconnected:', event.code, event.reason);
+        console.log(' WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         setSocket(null);
         
@@ -167,7 +168,7 @@ const useWebSocket = () => {
       };
 
       ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
+        console.error(' WebSocket error:', error);
       };
 
       socketRef.current = ws;

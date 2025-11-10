@@ -11,7 +11,8 @@ export enum MessageType {
   IMAGE = 'image',
   FILE = 'file',
   AUDIO = 'audio',
-  VIDEO = 'video'
+  VIDEO = 'video',
+  CALL = 'call'
 }
 
 

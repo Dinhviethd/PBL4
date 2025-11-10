@@ -1,10 +1,6 @@
 import React from 'react';
 import { Phone, Video } from 'lucide-react';
 
-/**
- * Component hiển thị nút gọi audio/video
- * Được sử dụng trong ChatArea
- */
 export const CallButtons = ({ 
   onAudioCallClick,
   onVideoCallClick,

@@ -11,8 +11,6 @@ import {
   Smile, 
   MoreVertical,
   Users,
-  Phone,
-  Video,
   Info,
   Edit3,
   Trash2,
@@ -32,6 +30,7 @@ import useWebRTC from '@/hooks/useWebRTC';
 import useCallSignaling from '@/hooks/useCallSignaling';
 import CallButtons from '@/components/call/CallButtons';
 import { IncomingCallModal } from '@/components/call/IncomingCallModal';
+import { CallHistoryItem } from '@/components/call/CallHistoryItem';
 
 // Helper function to format time
 const formatTimeAgo = (date) => {
@@ -60,6 +59,7 @@ export const ChatArea = ({ conversation }) => {
   const inputRef = useRef(null);
 
   const { user } = useAuthStore();
+  
   const {
     messages,
     setMessages,
@@ -94,6 +94,34 @@ export const ChatArea = ({ conversation }) => {
     () => messages[conversationKey] || [],
     [messages, conversationKey]
   );
+
+  useEffect(() => {
+    // callInfo changes will automatically update the popup visibility
+  }, [callInfo]);
+
+  // Merge messages and calls into a single timeline
+  const timeline = useMemo(() => {
+    const items = conversationMessages.map(msg => {
+      if (msg.type === 'call' && msg.call) {
+        // Call message type - use call data for timestamp
+        return {
+          type: 'call',
+          data: msg.call,
+          timestamp: new Date(msg.createdAt)
+        };
+      }
+      // Regular message
+      return {
+        type: 'message',
+        data: msg,
+        timestamp: new Date(msg.createdAt)
+      };
+    });
+    
+    
+    // Already sorted by backend (ASC), but just to be safe
+    return items.sort((a, b) => a.timestamp - b.timestamp);
+  }, [conversationMessages]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -204,13 +232,7 @@ export const ChatArea = ({ conversation }) => {
   // Handle accept incoming call
   const handleAcceptIncomingCall = () => {
     if (callInfo && callInfo.callId) {
-      console.log('\n✅ handleAcceptIncomingCall triggered:');
-      console.log('   callInfo.callId:', callInfo.callId);
-      console.log('   callInfo.fromUserId:', callInfo.fromUserId);
-      console.log('   callInfo.callType:', callInfo.callType);
-      
-      // 🔴 CRITICAL: Save callInfo to persistent activeCall state BEFORE navigation
-      console.log('   💾 Saving callInfo to activeCall state...');
+
       setActiveCall({
         callId: callInfo.callId,
         fromUserId: callInfo.fromUserId,
@@ -220,19 +242,14 @@ export const ChatArea = ({ conversation }) => {
         status: 'accepted'
       });
       
-      console.log('   ✅ activeCall state saved');
-      
-      // Now call acceptCall to send CALL_ACCEPT to server
-      console.log('   📤 Calling acceptCall()...');
       acceptCall(callInfo.callId, callInfo.fromUserId);
       
       // Store call settings for CallPage
       sessionStorage.setItem('callSettings', JSON.stringify({
-        cameraEnabled: false,
+        cameraEnabled: true,
         micEnabled: true
       }));
       
-      console.log('   ℹ️  acceptCall() will handle navigation to /call');
     } else {
       console.warn('❌ Cannot accept - callInfo missing:', callInfo);
     }
@@ -241,7 +258,6 @@ export const ChatArea = ({ conversation }) => {
   // Handle decline incoming call
   const handleDeclineIncomingCall = () => {
     if (callInfo && callInfo.callId) {
-      console.log('❌ Declining call:', callInfo.callId, 'from User', callInfo.fromUserId);
       declineCall(callInfo.callId, callInfo.fromUserId);
     } else {
       console.warn('❌ Cannot decline - callInfo missing:', callInfo);
@@ -409,8 +425,25 @@ export const ChatArea = ({ conversation }) => {
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {conversationMessages.map((msg) => {
-            // Sửa lại logic kiểm tra isOwn - sử dụng 'sender' thay vì 'sentBy'
+          {timeline.map((item, idx) => {
+            // Render Call History Item
+            if (item.type === 'call') {
+              return (
+                <CallHistoryItem
+                  key={`call-${item.data.idCall || idx}`}
+                  call={item.data}
+                  currentUserId={user?.id || user?.idUser}
+                  otherUser={
+                    conversation.type === 'private'
+                      ? conversation.partner
+                      : { name: 'Unknown', avatarUrl: '' }
+                  }
+                />
+              );
+            }
+
+            // Render Message Item
+            const msg = item.data;
             const currentUserId = user?.idUser || user?.id;
             const messageUserId = msg.sender?.idUser || msg.sender?.id;
             const isOwn = currentUserId && messageUserId && (currentUserId === messageUserId);
