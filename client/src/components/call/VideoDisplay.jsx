@@ -80,6 +80,7 @@ export default function VideoDisplay({
     // Video call but camera off - show remote video or local if available
     if (callType === "video") {
       if (remoteStream) {
+        console.log("Rendering remote video ", remoteStream);
         return (
           <>
             {/* Remote Video - Full Screen */}
@@ -95,6 +96,7 @@ export default function VideoDisplay({
       }
 
       if (cameraEnabled && localStream) {
+        console.log("Rendering local video as camera is enabled", localStream);
         // Show local video if camera enabled but no remote stream yet
         return (
           <>

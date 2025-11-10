@@ -183,7 +183,6 @@ const useChatStore = create(
           // SỬA LẠI: Xử lý cấu trúc mới - userGroups đã là array của group objects
           // Kiểm tra cấu trúc dữ liệu và xử lý phù hợp
           let mappedGroups;
-          
           if (userGroups.length > 0 && userGroups[0].group) {
             // Cấu trúc cũ: GroupUser objects với relation group
             mappedGroups = userGroups
@@ -295,6 +294,18 @@ const useChatStore = create(
           onlineUsers: [],
           typingUsers: {},
           unreadCounts: {}
+        }),
+
+      // Select group by ID from conversations
+      selectGroupById: (groupId) => 
+        set((state) => {
+          const groupConversation = state.conversations.find(
+            conv => conv.type === 'group' && conv.groupId === groupId
+          );
+          if (groupConversation) {
+            return { activeConversation: groupConversation };
+          }
+          return {};
         })
     }),
     {

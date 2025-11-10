@@ -8,6 +8,15 @@ const groupController = new GroupController();
 // Tạo group
 router.post('/', authMiddleware, checkAccountStatus, groupController.createGroup);
 
+// Lấy danh sách group của user - phải đặt TRƯỚC các route với :groupId
+router.get('/my-groups', authMiddleware, checkAccountStatus, groupController.getUserGroups);
+
+// Lấy danh sách users có thể mời
+router.get('/:groupId/invitable-users', authMiddleware, checkAccountStatus, groupController.getInvitableUsers);
+
+// Mời user vào group
+router.post('/:groupId/invite', authMiddleware, checkAccountStatus, groupController.inviteUserToGroup);
+
 // Thêm thành viên vào group
 router.post('/:groupId/members', authMiddleware, checkAccountStatus, groupController.addMember);
 
@@ -25,9 +34,6 @@ router.delete('/:groupId', authMiddleware, checkAccountStatus, groupController.d
 
 // Lấy danh sách thành viên group
 router.get('/:groupId/members', authMiddleware, checkAccountStatus, groupController.getGroupMembers);
-
-// Lấy danh sách group của user
-router.get('/my-groups', authMiddleware, checkAccountStatus, groupController.getUserGroups);
 
 // Lấy danh sách thành viên pending (chỉ admin)
 router.get('/:groupId/pending', authMiddleware, checkAccountStatus, groupController.getPendingMembers);

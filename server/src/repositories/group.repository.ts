@@ -134,4 +134,22 @@ export class GroupRepository {
       .andWhere('gu.role = :role', { role: UserRole.PENDING })
       .getMany();
   }
+
+  // Get all users that can be invited (tất cả users không phải thành viên của group)
+  async getInvitableUsers(idGroup: number): Promise<User[]> {
+    const userRepository = AppDataSource.getRepository(User);
+    
+    // Lấy tất cả users trừ những users đã là thành viên của group
+    return await userRepository
+      .createQueryBuilder('u')
+      .leftJoin(
+        GroupUser,
+        'gu',
+        'gu.user.idUser = u.idUser AND gu.group.idGroup = :groupId',
+        { groupId: idGroup }
+      )
+      .where('gu.id IS NULL') // Không có record GroupUser = không phải thành viên
+      .andWhere('u.statusAccount = true') // Chỉ những user active
+      .getMany();
+  }
 }

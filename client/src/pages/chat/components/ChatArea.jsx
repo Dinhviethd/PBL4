@@ -50,6 +50,12 @@ const formatTimeAgo = (date) => {
   return messageDate.toLocaleDateString('vi-VN');
 };
 
+// Helper function to generate group avatar display (first letter)
+const getGroupAvatarDisplay = (groupName = '') => {
+  // Returns an SVG with the first letter (or colored circle)
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2360A5FA'/%3E%3Ctext x='50' y='65' font-size='40' font-weight='bold' fill='white' text-anchor='middle'%3E${groupName.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
+};
+
 export const ChatArea = ({ conversation }) => {
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
@@ -378,7 +384,7 @@ export const ChatArea = ({ conversation }) => {
             <AvatarImage 
               src={conversation.type === 'private' 
                 ? conversation.partner?.avatarUrl 
-                : '/images/group-avatar.png'
+                : getGroupAvatarDisplay(conversation.group?.name || 'G')
               } 
             />
             <AvatarFallback>

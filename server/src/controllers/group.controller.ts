@@ -168,6 +168,10 @@ export class GroupController {
 
   getUserGroups = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId;
+    const { page = 1, limit = 10, search = '', sort = 'asc' } = req.query;
+
+    console.log('📋 [getUserGroups] userId:', userId);
+    console.log('📋 [getUserGroups] params:', { page, limit, search, sort });
 
     if (!userId) {
       return res.status(401).json({
@@ -177,10 +181,13 @@ export class GroupController {
     }
 
     const groups = await this.groupService.getUserGroups(userId);
+    console.log('📋 [getUserGroups] groups fetched:', groups?.length || 0, 'groups');
 
     res.json({
       success: true,
-      data: groups
+      data: groups,
+      items: groups,
+      total: groups?.length || 0
     });
   });
 
@@ -202,4 +209,51 @@ export class GroupController {
       data: pendingMembers
     });
   });
+
+  // Get all users that can be invited to a group (tất cả users ngoài thành viên hiện tại)
+  getInvitableUsers = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    const invitableUsers = await this.groupService.getInvitableUsers(parseInt(groupId), userId);
+
+    res.json({
+      success: true,
+      data: invitableUsers
+    });
+  });
+
+  // Invite user to group
+  inviteUserToGroup = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    const requesterId = req.user?.userId;
+
+    if (!requesterId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    const result = await this.groupService.inviteUserToGroup(
+      parseInt(groupId),
+      userId,
+      requesterId
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+  });
 }
+

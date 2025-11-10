@@ -13,7 +13,8 @@ const ChatPage = () => {
 
   const {
     activeConversation,
-    loadInitialData
+    loadInitialData,
+    selectGroupById
   } = useChatStore();
 
   // Initialize WebRTC and Signaling
@@ -28,6 +29,16 @@ const ChatPage = () => {
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // Check if there's a selectedGroupId to load and select it
+  useEffect(() => {
+    const selectedGroupId = sessionStorage.getItem('selectedGroupId');
+    if (selectedGroupId) {
+      const groupIdNum = parseInt(selectedGroupId);
+      selectGroupById(groupIdNum);
+      sessionStorage.removeItem('selectedGroupId');
+    }
+  }, [selectGroupById]);
 
   const handleCreateGroup = () => {
     // TODO: Implement group creation

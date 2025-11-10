@@ -281,4 +281,59 @@ export class GroupService {
       } : null
     }));
   }
+
+  // Get all users that can be invited (tất cả users không phải thành viên)
+  async getInvitableUsers(groupId: number, requesterId: number) {
+    console.log('🎯 [getInvitableUsers]', { groupId, requesterId });
+    
+    // Kiểm tra user có trong group không
+    const requester = await this.groupRepository.findGroupMember(groupId, requesterId);
+    console.log('🎯 [getInvitableUsers] requester check:', !!requester);
+    
+    if (!requester) {
+      throw new AppError(403, 'You are not a member of this group');
+    }
+
+    // Lấy tất cả users không phải thành viên
+    const invitableUsers = await this.groupRepository.getInvitableUsers(groupId);
+    console.log('🎯 [getInvitableUsers] found', invitableUsers.length, 'invitable users');
+    
+    return invitableUsers.map((user: any) => ({
+      id: user.idUser,
+      idUser: user.idUser,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl
+    }));
+  }
+
+  // Invite user to group - thêm vào nhóm trực tiếp
+  async inviteUserToGroup(groupId: number, userId: number, requesterId: number) {
+    console.log('🎯 [inviteUserToGroup]', { groupId, userId, requesterId });
+    
+    // Kiểm tra requester có quyền (là thành viên của group)
+    const requester = await this.groupRepository.findGroupMember(groupId, requesterId);
+    console.log('🎯 [inviteUserToGroup] requester:', requester);
+    
+    if (!requester) {
+      throw new AppError(403, 'You are not a member of this group');
+    }
+
+    // Kiểm tra user đã trong group chưa
+    const existingMember = await this.groupRepository.findGroupMember(groupId, userId);
+    console.log('🎯 [inviteUserToGroup] existingMember:', existingMember);
+    
+    if (existingMember) {
+      throw new AppError(400, 'User is already a member of this group');
+    }
+
+    // Thêm user vào group
+    const groupUser = await this.groupRepository.addMember(groupId, userId, UserRole.USER);
+    console.log('🎯 [inviteUserToGroup] groupUser added:', groupUser);
+
+    return {
+      message: 'User added to group successfully',
+      data: groupUser
+    };
+  }
 }

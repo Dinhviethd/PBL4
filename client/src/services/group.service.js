@@ -121,6 +121,72 @@ const groupService = {
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch pending members' };
     }
+  },
+
+  // Get invitable users (tất cả users có thể mời, không chỉ bạn bè)
+  getInvitableUsers: async (groupId) => {
+    try {
+      const response = await instance.get(`/groups/${groupId}/invitable-users`);
+      // Response format: { success: true, data: [...] }
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Failed to fetch invitable users:', error);
+      throw error.response?.data || { message: 'Failed to fetch invitable users' };
+    }
+  },
+
+  // Invite user to group
+  inviteUserToGroup: async (groupId, userId) => {
+    try {
+      const response = await instance.post(`/groups/${groupId}/invite`, { userId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to invite user' };
+    }
+  },
+
+  // Get received invites
+  getReceivedInvites: async (page = 1, limit = 8) => {
+    try {
+      const response = await instance.get('/groups/invites/received', {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch received invites' };
+    }
+  },
+
+  // Get sent invites
+  getSentInvites: async (page = 1, limit = 8) => {
+    try {
+      const response = await instance.get('/groups/invites/sent', {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch sent invites' };
+    }
+  },
+
+  // Accept invite
+  acceptInvite: async (inviteId) => {
+    try {
+      const response = await instance.post(`/groups/invites/${inviteId}/accept`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to accept invite' };
+    }
+  },
+
+  // Delete invite
+  deleteInvite: async (inviteId) => {
+    try {
+      const response = await instance.delete(`/groups/invites/${inviteId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to delete invite' };
+    }
   }
 };
 

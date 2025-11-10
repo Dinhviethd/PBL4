@@ -49,6 +49,12 @@ const formatLastMessageTime = (time) => {
   }
 };
 
+// Helper function to generate group avatar display (first letter)
+const getGroupAvatarDisplay = (groupName = '') => {
+  // Returns an SVG with the first letter (or colored circle)
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2360A5FA'/%3E%3Ctext x='50' y='65' font-size='40' font-weight='bold' fill='white' text-anchor='middle'%3E${groupName.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
+};
+
 export const ConversationList = ({ onCreateGroup, onAddMember }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showStartConversation, setShowStartConversation] = useState(false);
@@ -150,7 +156,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                     <AvatarImage 
                       src={conversation.type === 'private' 
                         ? conversation.partner?.avatarUrl 
-                        : '/images/group-avatar.png'
+                        : getGroupAvatarDisplay(conversation.group?.name || 'G')
                       } 
                     />
                     <AvatarFallback className="bg-gray-200">
@@ -170,18 +176,18 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-900 truncate">
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-medium text-gray-900 truncate flex-1">
                       {conversation.type === 'private' 
                         ? conversation.partner?.name || 'Unknown User'
                         : conversation.group?.name || 'Unknown Group'
                       }
                     </h3>
                     
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {/* Time */}
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
                         {formatLastMessageTime(conversation.lastMessageTime)}
                       </span>
                       
