@@ -373,7 +373,7 @@ export const ChatArea = ({ conversation }) => {
           callInfo={callInfo}
           onAccept={handleAcceptIncomingCall}
           onDecline={handleDeclineIncomingCall}
-          autoRejectTime={10}
+          autoRejectTime={45}
         />
       )}
 

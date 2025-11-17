@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteVideoRef = null) => {
   const [localStream, setLocalStream] = useState(null);
@@ -216,6 +216,30 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     }
   }
 }, [localStream, localVideoRef, remoteVideoRef]);
+
+  // Listen for a global callEnded event to ensure all hook instances
+  // perform cleanup (useful when multiple hooks/components may hold streams)
+  useEffect(() => {
+    const handler = () => {
+      try {
+        console.log('useWebRTC: global callEnded received, cleaning up');
+        if (typeof closePeerConnection === 'function') closePeerConnection();
+        if (typeof stopLocalStream === 'function') stopLocalStream();
+      } catch (err) {
+        console.warn('Error during global callEnded handler:', err);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('callEnded', handler);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('callEnded', handler);
+      }
+    };
+  }, [closePeerConnection, stopLocalStream]);
 
   return {
     localVideoRef,

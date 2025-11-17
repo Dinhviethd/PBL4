@@ -104,6 +104,41 @@ export default function CallPage() {
     }
   }, [webRTC?.localStream]);
 
+  // Ensure we show a local preview immediately for video calls
+  // (so PiP/local video appears even before signaling/connect completes)
+  useEffect(() => {
+    let mounted = true;
+    const ensureLocalPreview = async () => {
+      try {
+        if (callType !== 'video') return;
+        // If there's already a stream, nothing to do
+        if (webRTC?.localStream) {
+          if (videoRef.current && webRTC.localStream) {
+            videoRef.current.srcObject = webRTC.localStream;
+            localStreamCacheRef.current = webRTC.localStream;
+          }
+          return;
+        }
+
+        // Try to get local stream for preview only (does not add tracks to peerConnection here)
+        if (webRTC && typeof webRTC.getLocalStream === 'function') {
+          const stream = await webRTC.getLocalStream();
+          if (!mounted) return;
+          localStreamCacheRef.current = stream;
+          if (videoRef.current) videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.warn('Could not get local preview stream:', err);
+      }
+    };
+
+    ensureLocalPreview();
+
+    return () => {
+      mounted = false;
+    };
+  }, [webRTC, callType]);
+
 
   useEffect(() => {
     if (webRTC?.remoteStream) {

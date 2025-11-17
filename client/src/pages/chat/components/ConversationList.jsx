@@ -67,7 +67,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
     activeConversation,
     setActiveConversation,
     unreadCounts,
-    groups,
+    _groups,
     onlineUsers,
     getConversationKey
   } = useChatStore();

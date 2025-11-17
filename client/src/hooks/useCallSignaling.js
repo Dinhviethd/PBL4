@@ -220,6 +220,15 @@ const useCallSignaling = (webRTC) => {
         toUserId
       });
 
+      // Dispatch a global event so any mounted WebRTC hooks can cleanup
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('callEnded', { detail: { callId, fromUserId: callId ? undefined : undefined } }));
+        }
+      } catch (e) {
+        console.warn('Could not dispatch callEnded event:', e);
+      }
+
       // Use setTimeout to avoid nested state updates warning
       setTimeout(() => {
         if (webRTC && webRTC.closePeerConnection) {
@@ -446,6 +455,24 @@ const useCallSignaling = (webRTC) => {
         // Immediately close WebRTC first
         if (webRTC && webRTC.closePeerConnection) {
           webRTC.closePeerConnection();
+        }
+
+        // Also explicitly stop local tracks if available (extra safety)
+        if (webRTC && typeof webRTC.stopLocalStream === 'function') {
+          try {
+            webRTC.stopLocalStream();
+          } catch (e) {
+            console.warn('Error stopping local stream during CALL_END:', e);
+          }
+        }
+
+        // Broadcast a global event so other hook instances also cleanup
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('callEnded', { detail: { callId: data.data?.callId } }));
+          }
+        } catch (e) {
+          console.warn('Could not dispatch callEnded event:', e);
         }
         
         // Clear signaling state immediately

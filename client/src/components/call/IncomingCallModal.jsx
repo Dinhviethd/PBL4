@@ -5,7 +5,7 @@ export const IncomingCallModal = ({
   callInfo, 
   onAccept, 
   onDecline,
-  autoRejectTime = 20 // seconds
+  autoRejectTime = 45 // seconds
 }) => {
   const [timeLeft, setTimeLeft] = useState(autoRejectTime);
   const [isDeclined, setIsDeclined] = useState(false);
@@ -130,7 +130,7 @@ export const IncomingCallModal = ({
 
         {/* Info Text */}
         <p className="text-center text-xs text-gray-500 mt-4">
-          Cuộc gọi sẽ bị từ chối nếu không trả lời trong 20 giây
+          Cuộc gọi sẽ bị từ chối nếu không trả lời trong {autoRejectTime} giây
         </p>
       </div>
 

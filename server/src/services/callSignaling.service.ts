@@ -356,15 +356,24 @@ class CallSignalingManager {
 
       await CallService.endCall(callId!);
 
-      const sent = this.sendToUser(toUserId, {
+      // Notify both parties (caller and callee) about call end to ensure
+      // all client instances (possibly mounted in different components)
+      // receive the termination signal and clean up media/peer connections.
+      const payload = {
         type: WSMessageType.CALL_END,
         data: {
           callId,
           fromUserId
         }
-      });
+      };
 
-      return { success: sent };
+      const sentToCallee = this.sendToUser(toUserId, payload);
+      const sentToCaller = this.sendToUser(fromUserId, payload);
+
+      console.log(`   📤 CALL_END sent to callee(${toUserId}): ${sentToCallee}`);
+      console.log(`   📤 CALL_END sent to caller(${fromUserId}): ${sentToCaller}`);
+
+      return { success: sentToCallee || sentToCaller };
     } catch (error) {
       console.error('Error ending call:', error);
       return { success: false, error: 'Failed to end call' };
