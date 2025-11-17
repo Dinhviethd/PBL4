@@ -7,6 +7,7 @@ import useChatStore from '@/zustand/chatStore';
 import useWebRTC from '@/hooks/useWebRTC';
 import useCallSignaling from '@/hooks/useCallSignaling';
 import { IncomingCallModal } from '@/components/call/IncomingCallModal';
+import { killAllMedia } from '@/lib/mediaCleanup';
 
 const ChatPage = () => {
   const navigate = useNavigate();
@@ -29,6 +30,31 @@ const ChatPage = () => {
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // Listen for callEnded event and cleanup WebRTC in ChatPage context
+  useEffect(() => {
+    const handler = () => {
+      console.log('   📱 ChatPage: callEnded event received, cleaning up WebRTC in ChatPage');
+      // Force cleanup ChatPage's own WebRTC hook
+      if (webRTC && typeof webRTC.closePeerConnection === 'function') {
+        webRTC.closePeerConnection();
+      }
+      if (webRTC && typeof webRTC.stopLocalStream === 'function') {
+        webRTC.stopLocalStream();
+      }
+      try { killAllMedia(); } catch { /* ignore */ }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('callEnded', handler);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('callEnded', handler);
+      }
+    };
+  }, [webRTC]);
 
   // Check if there's a selectedGroupId to load and select it
   useEffect(() => {

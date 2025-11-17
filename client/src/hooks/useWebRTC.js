@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { killAllMedia } from '@/lib/mediaCleanup';
 
 const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteVideoRef = null) => {
   const [localStream, setLocalStream] = useState(null);
@@ -109,7 +110,11 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     try {
       await addLocalStreamToPeerConnection();
       
-      const pc = peerConnectionRef.current;
+      let pc = peerConnectionRef.current;
+      if (!pc) {
+        console.log('   🔄 PeerConnection lost after addLocalStream, reinitializing');
+        pc = initializePeerConnection();
+      }
 
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
@@ -123,13 +128,17 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       console.error(' Error creating offer:', error);
       throw error;
     }
-  }, [addLocalStreamToPeerConnection, callType]);
+  }, [addLocalStreamToPeerConnection, callType, initializePeerConnection]);
 
   const createAnswer = useCallback(async () => {
     try {
       await addLocalStreamToPeerConnection();
       
-      const pc = peerConnectionRef.current;
+      let pc = peerConnectionRef.current;
+      if (!pc) {
+        console.log('   🔄 PeerConnection lost after addLocalStream, reinitializing');
+        pc = initializePeerConnection();
+      }
 
       const answer = await pc.createAnswer({
         offerToReceiveAudio: true,
@@ -143,11 +152,16 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       console.error(' Error creating answer:', error);
       throw error;
     }
-  }, [addLocalStreamToPeerConnection, callType]);
+  }, [addLocalStreamToPeerConnection, callType, initializePeerConnection]);
 
   const setRemoteDescription = useCallback(async (description) => {
     try {
-      const pc = peerConnectionRef.current;
+      let pc = peerConnectionRef.current;
+      // Auto-initialize if not yet created (handles case where offer arrives before init)
+      if (!pc) {
+        console.log('   🔄 PeerConnection not initialized, auto-initializing for setRemoteDescription');
+        pc = initializePeerConnection();
+      }
       if (!pc) throw new Error('Peer connection not initialized');
       await pc.setRemoteDescription(new RTCSessionDescription(description));
       
@@ -155,11 +169,16 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       console.error(` Error setting remote description:`, error);
       throw error;
     }
-  }, []);
+  }, [initializePeerConnection]);
 
   const addIceCandidate = useCallback(async (candidate) => {
     try {
-      const pc = peerConnectionRef.current;
+      let pc = peerConnectionRef.current;
+      // Auto-initialize if not yet created
+      if (!pc) {
+        console.log('   🔄 PeerConnection not initialized, auto-initializing for addIceCandidate');
+        pc = initializePeerConnection();
+      }
       if (!pc) throw new Error('Peer connection not initialized');
 
       if (candidate) {
@@ -168,27 +187,97 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     } catch (error) {
       console.error('Error adding ICE candidate:', error);
     }
-  }, []);
+  }, [initializePeerConnection]);
 
   const stopLocalStream = useCallback(() => {
+    console.log('🛑 stopLocalStream called');
+    
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      localStream.getTracks().forEach(track => {
+        console.log(`🛑 Stopping track: ${track.kind} (enabled=${track.enabled})`);
+        // Force disable track first
+        track.enabled = false;
+        // Then stop it
+        track.stop();
+      });
       setLocalStream(null);
     }
-  }, [localStream]);
+    
+    // Extra safety: explicitly clear video element srcObject
+    if (localVideoRef?.current) {
+      try {
+        localVideoRef.current.srcObject = null;
+        localVideoRef.current.pause();
+      } catch (e) {
+        console.warn('Error clearing local video element:', e);
+      }
+    }
+    
+    // Try to enumerate and verify devices are released
+    try {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+          const audioInputs = devices.filter(device => device.kind === 'audioinput' && device.deviceId !== 'default');
+          const videoInputs = devices.filter(device => device.kind === 'videoinput');
+          if (audioInputs.length > 0 || videoInputs.length > 0) {
+            console.log(`📱 Still-active devices: ${audioInputs.length} audio, ${videoInputs.length} video`);
+          }
+        });
+      }
+    } catch {
+      // Ignore errors from device enumeration
+    }
+  }, [localStream, localVideoRef]);
 
   const closePeerConnection = useCallback(() => {
   try {
     const pc = peerConnectionRef.current;
 
     if (pc && pc.connectionState !== 'closed') {
+      console.log('🔌 closePeerConnection: Closing PC and removing all tracks');
+      
+      // Remove all senders first
+      const senders = pc.getSenders();
+      console.log(`   📤 Found ${senders.length} senders to remove`);
+      senders.forEach((sender, idx) => {
+        try {
+          if (sender.track) {
+            console.log(`   🛑 Removing sender track ${idx}: ${sender.track.kind}`);
+            sender.track.enabled = false;
+            sender.track.stop();
+            pc.removeTrack(sender);
+          }
+        } catch (e) {
+          console.warn(`Error removing sender ${idx}:`, e);
+        }
+      });
+      
+      // Also try to remove all receivers
+      const receivers = pc.getReceivers();
+      console.log(`   📥 Found ${receivers.length} receivers to remove`);
+      receivers.forEach((receiver, idx) => {
+        try {
+          if (receiver.track) {
+            console.log(`   🛑 Stopping receiver track ${idx}: ${receiver.track.kind}`);
+            receiver.track.enabled = false;
+            receiver.track.stop();
+          }
+        } catch (e) {
+          console.warn(`Error stopping receiver ${idx}:`, e);
+        }
+      });
+      
       pc.close();
       peerConnectionRef.current = null;
+      console.log('✅ PeerConnection closed');
     }
 
     // Stop all local tracks
     if (localStream) {
-      localStream.getTracks().forEach(track => {
+      console.log(`🛑 Stopping ${localStream.getTracks().length} local tracks`);
+      localStream.getTracks().forEach((track, idx) => {
+        console.log(`   🛑 Stopping local track ${idx}: ${track.kind}`);
+        track.enabled = false;
         track.stop();
       });
       setLocalStream(null);
@@ -197,9 +286,19 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     // Clear video elements
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
+      try {
+        localVideoRef.current.pause();
+      } catch (e) {
+        console.warn('Error pausing local video:', e);
+      }
     }
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
+      try {
+        remoteVideoRef.current.pause();
+      } catch (e) {
+        console.warn('Error pausing remote video:', e);
+      }
     }
     
     setRemoteStream(null);
@@ -207,8 +306,14 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
   } catch (err) {
     console.error('Error closing peer connection:', err);
     try {
-      if (localVideoRef.current) localVideoRef.current.srcObject = null;
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+        localVideoRef.current.pause();
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+        remoteVideoRef.current.pause();
+      }
       setRemoteStream(null);
       setConnectionState('closed');
     } catch (e) {
@@ -225,6 +330,7 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
         console.log('useWebRTC: global callEnded received, cleaning up');
         if (typeof closePeerConnection === 'function') closePeerConnection();
         if (typeof stopLocalStream === 'function') stopLocalStream();
+        try { killAllMedia(); } catch { /* ignore */ }
       } catch (err) {
         console.warn('Error during global callEnded handler:', err);
       }

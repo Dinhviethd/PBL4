@@ -30,6 +30,9 @@ export default function VideoDisplay({
     const videoEl = localVideoRef?.current;
     if (localStream && videoEl && callType === 'video') {
       videoEl.srcObject = localStream;
+    } else if (videoEl) {
+      // Explicitly disconnect stream if localStream is null/undefined
+      videoEl.srcObject = null;
     }
     return () => {
       if (videoEl) {

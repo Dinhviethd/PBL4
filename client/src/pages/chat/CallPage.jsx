@@ -7,12 +7,24 @@ import useWebRTC from "@/hooks/useWebRTC";
 import useCallSignaling from "@/hooks/useCallSignaling";
 import VideoDisplay from "@/components/call/VideoDisplay";
 import { useNotification } from "@/hooks/useNotification";
+import { killAllMedia } from "@/lib/mediaCleanup";
 
 export default function CallPage() {
   const navigate = useNavigate();
   const { user } = useAuthInit();
   const { activeCall, clearActiveCall } = useChatStore();
   const { showNotification } = useNotification();
+  
+  // Log mount/unmount
+  useEffect(() => {
+    console.log('   📱 CallPage MOUNTED');
+    return () => {
+      console.log('   📱 CallPage UNMOUNTED - cleanup running');
+    };
+  }, []);
+  
+  // Flag to prevent rendering after call ends
+  const isCallEndingRef = useRef(false);
   
   // Get call type from activeCall state
   const callType = activeCall?.callType || 'audio';
@@ -139,6 +151,40 @@ export default function CallPage() {
     };
   }, [webRTC, callType]);
 
+  // Listen for global 'callEnded' event to reset CallPage state immediately
+  useEffect(() => {
+    const handler = () => {
+      console.log('   🧹 CallPage: callEnded event received, resetting all state and navigating away');
+      console.log('   🧹 Current location before navigate:', window.location.pathname);
+      
+      // Set flag to prevent re-renders
+      isCallEndingRef.current = true;
+      
+      setCameraEnabled(false);
+      setMicEnabled(false);
+      setSpeakerEnabled(false);
+      setMediaError(null);
+      clearActiveCall();
+      
+      // Hard kill any leftover tracks as a final safety
+      try { killAllMedia(); } catch { /* ignore */ }
+
+      // Navigate away IMMEDIATELY to unmount CallPage and stop rendering video
+      console.log('   🧹 Calling navigate("/", { replace: true })');
+      navigate('/', { replace: true });
+      console.log('   🧹 Navigate called, new location should be /');
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('callEnded', handler);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('callEnded', handler);
+      }
+    };
+  }, [navigate, clearActiveCall]);
 
   useEffect(() => {
     if (webRTC?.remoteStream) {
@@ -306,8 +352,17 @@ export default function CallPage() {
       const callId = activeCall?.idCall || callInfo?.callId;
       const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;
       
+      console.log('   🔴 handleEndCall triggered with:', {
+        callId,
+        toUserId,
+        activeCall: activeCall ? { toUserId: activeCall.toUserId, fromUserId: activeCall.fromUserId, idCall: activeCall.idCall } : 'null',
+        callInfo: callInfo ? { toUserId: callInfo.toUserId, fromUserId: callInfo.fromUserId, callId: callInfo.callId } : 'null'
+      });
+      
       if (callId && toUserId) {
         endCall(callId, toUserId);
+      } else {
+        console.warn('   ⚠️ Missing callId or toUserId for endCall');
       }
       
       // Close WebRTC connection
@@ -357,6 +412,12 @@ export default function CallPage() {
 
       {/* Main Video Container */}
       {(() => {
+        // Early return if call is ending to prevent unnecessary renders
+        if (isCallEndingRef.current) {
+          console.log('   🧹 Skipping render - isCallEnding is true');
+          return null;
+        }
+        
         console.log('📺 CallPage rendering VideoDisplay with:', {
           callType,
           remoteStream: webRTC?.remoteStream ? `Tracks: ${webRTC.remoteStream.getTracks().length}` : 'null',
@@ -367,17 +428,20 @@ export default function CallPage() {
         });
         return null;
       })()}
-      <VideoDisplay
-        callType={callType}
-        remoteStream={webRTC?.remoteStream || null}
-        localStream={webRTC?.localStream || null}
-        cameraEnabled={cameraEnabled}
-        user={user}
-        remoteVideoRef={remoteVideoRef}
-        localVideoRef={videoRef}
-      />
+      {!isCallEndingRef.current && (
+        <VideoDisplay
+          callType={callType}
+          remoteStream={webRTC?.remoteStream || null}
+          localStream={webRTC?.localStream || null}
+          cameraEnabled={cameraEnabled}
+          user={user}
+          remoteVideoRef={remoteVideoRef}
+          localVideoRef={videoRef}
+        />
+      )}
 
       {/* Control Buttons - Bottom Center */}
+      {!isCallEndingRef.current && (
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4 z-10">
         {/* Mute Mic Button */}
         <button
@@ -427,9 +491,10 @@ export default function CallPage() {
           <PhoneOff size={24} />
         </button>
       </div>
+      )}
 
       {/* Call Info - Top Center */}
-      {activeCall && (
+      {!isCallEndingRef.current && activeCall && (
         <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm px-6 py-3 rounded-full text-white z-10">
           <p className="text-sm font-medium">
             {callType === 'video' ? '📹 Video Call' : '☎️ Audio Call'} 

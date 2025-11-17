@@ -213,6 +213,7 @@ const useCallSignaling = (webRTC) => {
    */
   const endCall = useCallback((callId, toUserId) => {
     try {
+      console.log(`🔴 endCall: Kết thúc cuộc gọi callId=${callId}, toUserId=${toUserId}`);
       setSignalingState('idle');
       sendSignalingMessage({
         type: 'CALL_END',
@@ -221,13 +222,17 @@ const useCallSignaling = (webRTC) => {
       });
 
       // Dispatch a global event so any mounted WebRTC hooks can cleanup
+      console.log(`📡 Phát sự kiện 'callEnded' toàn cục`);
       try {
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('callEnded', { detail: { callId, fromUserId: callId ? undefined : undefined } }));
+          window.dispatchEvent(new CustomEvent('callEnded', { detail: { callId, toUserId } }));
         }
       } catch (e) {
         console.warn('Could not dispatch callEnded event:', e);
       }
+
+      // Clear activeCall from zustand so components react
+      setActiveCall(null);
 
       // Use setTimeout to avoid nested state updates warning
       setTimeout(() => {
@@ -238,7 +243,7 @@ const useCallSignaling = (webRTC) => {
     } catch (err) {
       console.error('Error ending call:', err);
     }
-  }, [webRTC, sendSignalingMessage]);
+  }, [webRTC, sendSignalingMessage, setActiveCall]);
 
   /**
    * Xử lý incoming offer
@@ -450,7 +455,8 @@ const useCallSignaling = (webRTC) => {
         }, 300);
         break;
 
-      case 'CALL_END':
+      case 'CALL_END': {
+        console.log(`🔴 Nhận CALL_END từ peer (callId=${data.data?.callId})`);
         
         // Immediately close WebRTC first
         if (webRTC && webRTC.closePeerConnection) {
@@ -467,6 +473,7 @@ const useCallSignaling = (webRTC) => {
         }
 
         // Broadcast a global event so other hook instances also cleanup
+        console.log(`📡 Phát sự kiện 'callEnded' cho tất cả hook instances`);
         try {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('callEnded', { detail: { callId: data.data?.callId } }));
@@ -481,7 +488,7 @@ const useCallSignaling = (webRTC) => {
         // Clear callInfo immediately - this closes the popup
         setCallInfo(null);
         
-        //Clear activeCall when peer ends the call
+        // Clear activeCall when peer ends the call
         setActiveCall(null);
         
         // Navigate back to home after a short delay
@@ -489,6 +496,7 @@ const useCallSignaling = (webRTC) => {
           navigate('/', { replace: true });
         }, 300);
         break;
+      }
 
       case 'CALL_ERROR':
         // Error in call
@@ -499,7 +507,7 @@ const useCallSignaling = (webRTC) => {
       default:
         break;
     }
-  }, [handleIncomingOffer, handleIncomingAnswer, handleIncomingIceCandidate, webRTC, navigate, showError, callInfo, activeCall, setActiveCall, sendSignalingMessage, signalingState]);
+  }, [handleIncomingOffer, handleIncomingAnswer, handleIncomingIceCandidate, webRTC, navigate, showError, activeCall, setActiveCall, sendSignalingMessage]);
 
   /**
    * Setup WebSocket listeners

@@ -339,7 +339,7 @@ class CallSignalingManager {
 
     console.log(`   Message sent to Caller (User ${toUserId}): ${sentToCaller}`);
 
-    // Clean up after 5 seconds
+    // Clean up after 5 seconds`
     setTimeout(() => {
       this.processedDeclines.delete(callId!);
     }, 5000);
@@ -353,6 +353,11 @@ class CallSignalingManager {
   async handleCallEnd(data: CallSignalingData) {
     try {
       const { callId, fromUserId, toUserId } = data;
+
+      console.log(`\n📞 CALL_END Handler:`);
+      console.log(`   fromUserId: ${fromUserId}`);
+      console.log(`   toUserId: ${toUserId}`);
+      console.log(`   callId: ${callId}`);
 
       await CallService.endCall(callId!);
 
