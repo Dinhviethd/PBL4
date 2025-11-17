@@ -322,6 +322,35 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
   }
 }, [localStream, localVideoRef, remoteVideoRef]);
 
+  const resetWebRTC = useCallback(() => {
+    console.log('🔄 Resetting WebRTC state');
+
+    // Log current state before reset
+    console.log('   Current peerConnection:', peerConnectionRef.current);
+    console.log('   Current localStream:', localStream);
+    console.log('   Current remoteStream:', remoteStream);
+    console.log('   Current connectionState:', connectionState);
+
+    // Close peer connection
+    closePeerConnection();
+
+    // Stop local stream
+    stopLocalStream();
+
+    // Clear refs and state
+    peerConnectionRef.current = null;
+    setLocalStream(null);
+    setRemoteStream(null);
+    setConnectionState('new');
+
+    // Log state after reset
+    console.log('✅ WebRTC state reset');
+    console.log('   peerConnection after reset:', peerConnectionRef.current);
+    console.log('   localStream after reset:', localStream);
+    console.log('   remoteStream after reset:', remoteStream);
+    console.log('   connectionState after reset:', connectionState);
+  }, [closePeerConnection, stopLocalStream, connectionState, localStream, remoteStream]);
+
   // Listen for a global callEnded event to ensure all hook instances
   // perform cleanup (useful when multiple hooks/components may hold streams)
   useEffect(() => {
@@ -362,6 +391,7 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     addIceCandidate,
     stopLocalStream,
     closePeerConnection,
+    resetWebRTC,
     peerConnection: peerConnectionRef.current
   };
 };

@@ -469,6 +469,20 @@ class CallSignalingManager {
       connectionState: client?.ws.readyState
     };
   }
+
+  /**
+   * Đảm bảo các tin nhắn CAMERA_TOGGLE được xử lý và chuyển tiếp đến các peer
+   */
+  handleCameraToggle(callId: string, userId: string, isCameraOn: boolean) {
+    const message = {
+      type: 'CAMERA_TOGGLE',
+      data: {
+        userId,
+        isCameraOn,
+      },
+    };
+    this.sendToUser(Number(userId), message);
+  }
 }
 
 export default new CallSignalingManager();

@@ -457,18 +457,27 @@ const useCallSignaling = (webRTC) => {
 
       case 'CALL_END': {
         console.log(`🔴 Nhận CALL_END từ peer (callId=${data.data?.callId})`);
-        
+
         // Immediately close WebRTC first
         if (webRTC && webRTC.closePeerConnection) {
           webRTC.closePeerConnection();
         }
 
-        // Also explicitly stop local tracks if available (extra safety)
+        // Explicitly stop local tracks if available (extra safety)
         if (webRTC && typeof webRTC.stopLocalStream === 'function') {
           try {
             webRTC.stopLocalStream();
           } catch (e) {
             console.warn('Error stopping local stream during CALL_END:', e);
+          }
+        }
+
+        // Reset WebRTC instance for new calls
+        if (webRTC && typeof webRTC.reset === 'function') {
+          try {
+            webRTC.reset();
+          } catch (e) {
+            console.warn('Error resetting WebRTC instance:', e);
           }
         }
 
@@ -481,16 +490,16 @@ const useCallSignaling = (webRTC) => {
         } catch (e) {
           console.warn('Could not dispatch callEnded event:', e);
         }
-        
+
         // Clear signaling state immediately
         setSignalingState('idle');
-        
+
         // Clear callInfo immediately - this closes the popup
         setCallInfo(null);
-        
+
         // Clear activeCall when peer ends the call
         setActiveCall(null);
-        
+
         // Navigate back to home after a short delay
         setTimeout(() => {
           navigate('/', { replace: true });
@@ -503,6 +512,21 @@ const useCallSignaling = (webRTC) => {
         setError(data.data.error);
         setSignalingState('idle');
         break;
+
+      case 'CAMERA_TOGGLE': {
+        // Handle camera toggle
+        const { userId, isCameraOn } = data.data;
+        console.log(`📷 CAMERA_TOGGLE received: userId=${userId}, isCameraOn=${isCameraOn}`);
+
+        if (webRTC && typeof webRTC.updateRemoteStream === 'function') {
+          try {
+            webRTC.updateRemoteStream(userId, isCameraOn);
+          } catch (err) {
+            console.error('Error updating remote stream for CAMERA_TOGGLE:', err);
+          }
+        }
+        break;
+      }
 
       default:
         break;
