@@ -1,11 +1,11 @@
 import React from 'react';
 import { UserPlus, Users2, Handshake } from 'lucide-react';
 
-const Sidebar = ({ activeSection, setActiveSection }) => {
+const Sidebar = ({ activeSection, setActiveSection, pendingInviteCount = 0 }) => {
   const menuItems = [
     { id: 'friends', title: 'Danh sách bạn bè', icon: <UserPlus className="w-5 h-5" /> },
     { id: 'groups', title: 'Danh sách nhóm', icon: <Users2 className="w-5 h-5" /> },
-    { id: 'invites', title: 'Lời mời kết bạn', icon: <UserPlus className="w-5 h-5" /> },
+    { id: 'invites', title: 'Lời mời kết bạn', icon: <UserPlus className="w-5 h-5" />, badge: pendingInviteCount },
     { id: 'pending', title: 'Lời mời vào nhóm', icon: <Handshake className="w-5 h-5" /> }
   ];
 
@@ -21,12 +21,17 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
           <div
             key={item.id}
             onClick={() => setActiveSection(item.id)}
-            className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg cursor-pointer transition-colors ${
+            className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg cursor-pointer transition-colors relative ${
               activeSection === item.id ? 'bg-blue-100 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
             <div className={`${activeSection === item.id ? 'text-blue-600' : 'text-gray-500'}`}>{item.icon}</div>
             <span className="text-sm font-medium">{item.title}</span>
+            {item.badge > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                +{item.badge}
+              </span>
+            )}
           </div>
         ))}
       </div>

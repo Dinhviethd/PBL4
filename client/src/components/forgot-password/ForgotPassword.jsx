@@ -12,8 +12,9 @@ import {
 import { Input } from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import authService from "@/services/auth.service"
+import { useTabCommunication } from "@/utils/tabCommunication"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email không hợp lệ" }),
@@ -37,6 +38,17 @@ const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const tabCommunication = useTabCommunication();
+
+  // Đăng ký tab hiện tại là tab gốc cho password reset
+  useEffect(() => {
+    tabCommunication.registerAsPasswordResetTab();
+    
+    // Cleanup khi component unmount
+    return () => {
+      // Không clear tab info khi component unmount vì user có thể navigate đi nhưng vẫn muốn giữ tab info
+    };
+  }, [tabCommunication]);
 
   const onSubmit = async (data) => {
     try {
@@ -113,8 +125,7 @@ const ForgotPassword = () => {
                     <FormLabel>Mật khẩu mới</FormLabel>
                     <FormControl>
                       <Input 
-                        type="password" 
-                        placeholder="••••••••••"
+                        type="password"
                         {...field}
                       />
                     </FormControl>
@@ -132,7 +143,6 @@ const ForgotPassword = () => {
                     <FormControl>
                       <Input 
                         type="password" 
-                        placeholder="••••••••••"
                         {...field}
                       />
                     </FormControl>

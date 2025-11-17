@@ -9,3 +9,8 @@ export const updateUserSchema = z.object({
     message: "Invalid date format"
   }).optional(),
 });
+
+export const confirmPasswordChangeSchema = z.object({
+  verificationId: z.number(),
+  email: z.string().email()
+});

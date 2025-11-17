@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import userService from "@/services/user.service";
-import { updateUserSchema } from "@/schemas/user.schema";
+import emailService from "@/services/email.service";
+import { updateUserSchema, confirmPasswordChangeSchema } from "@/schemas/user.schema";
 import { AppError } from "@/utils/error.response";
 import { hashPassword, passwordCompare } from "@/utils/password";
 
@@ -73,6 +74,10 @@ export const changePassword = async (req: Request, res: Response) => {
     
     const { currentPassword, newPassword } = req.body;
     
+    console.log(`Debug Controller: Change password request for user ${userId}`);
+    console.log(`Debug Controller: Current password provided: ${currentPassword ? 'YES' : 'NO'}`);
+    console.log(`Debug Controller: New password provided: ${newPassword ? 'YES' : 'NO'}`);
+    
     if (!currentPassword || !newPassword) {
       throw new AppError(400, "Thiếu thông tin mật khẩu");
     }
@@ -81,34 +86,37 @@ export const changePassword = async (req: Request, res: Response) => {
       throw new AppError(400, "Mật khẩu mới phải có ít nhất 6 ký tự");
     }
     
-    // Lấy thông tin user hiện tại để kiểm tra mật khẩu
+    // Request password change verification
+    const result = await userService.requestPasswordChange(userId, currentPassword, newPassword);
+    
+    // Get user email to send verification email
     const user = await userService.getUserById(userId);
     if (!user) {
       throw new AppError(404, "Không tìm thấy người dùng");
     }
+
+    // Create confirmation link với redirect route
+    const baseUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const confirmationLink = `${baseUrl}/password-change-redirect?token=${result.verificationId}&email=${encodeURIComponent(user.email || '')}`;
     
-    if (!user.password) {
-      throw new AppError(400, "Tài khoản không có mật khẩu");
+    try {
+      // Send email using email service
+      await emailService.sendPasswordResetConfirmationEmail(user.email || '', confirmationLink);
+    } catch (error) {
+      // If email fails, still log the link for development
+      console.log(`Password change confirmation email for ${user.email}:`);
+      console.log(`Click this link to confirm your password change: ${confirmationLink}`);
+      console.log(`Verification ID: ${result.verificationId}`);
+      console.error('Failed to send email, but link is logged above');
     }
     
-    // Kiểm tra mật khẩu hiện tại
-    const isCurrentPasswordValid = await passwordCompare(currentPassword, user.password);
-    if (!isCurrentPasswordValid) {
-      throw new AppError(400, "Mật khẩu hiện tại không đúng");
-    }
-    
-    // Kiểm tra mật khẩu mới không được giống mật khẩu cũ
-    const isSamePassword = await passwordCompare(newPassword, user.password);
-    if (isSamePassword) {
-      throw new AppError(400, "Mật khẩu mới không được giống mật khẩu hiện tại");
-    }
-    
-    // Hash mật khẩu mới và cập nhật
-    const hashedNewPassword = await hashPassword(newPassword);
-    await userService.updatePassword(userId, hashedNewPassword);
-    
-    res.json({ success: true, message: "Đổi mật khẩu thành công" });
+    res.json({ 
+      success: true, 
+      message: "Email xác nhận đã được gửi! Vui lòng kiểm tra email của bạn để xác nhận thay đổi mật khẩu.",
+      verificationId: result.verificationId
+    });
   } catch (error: any) {
+    console.error('Debug Controller: Error in changePassword:', error);
     throw error;
   }
 };
@@ -135,6 +143,45 @@ export const reactivateAccount = async (req: Request, res: Response) => {
     
     await userService.reactivateAccount(userId);
     res.json({ success: true, message: "Tài khoản đã được kích hoạt lại" });
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export const confirmPasswordChange = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError(401, "Unauthorized");
+    
+    const validatedData = confirmPasswordChangeSchema.parse(req.body);
+
+    await userService.confirmPasswordChange(userId, validatedData.verificationId, validatedData.email);
+    
+    res.json({ 
+      success: true, 
+      message: "Mật khẩu đã được thay đổi thành công!" 
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new AppError(400, 'Validation failed');
+    }
+    throw error;
+  }
+};
+
+// Debug endpoint - remove in production
+export const testPasswordValidation = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError(401, "Unauthorized");
+    
+    const { testPassword } = req.body;
+    if (!testPassword) {
+      throw new AppError(400, "Test password is required");
+    }
+    
+    const result = await userService.testPasswordValidation(userId, testPassword);
+    res.json({ success: true, data: result });
   } catch (error: any) {
     throw error;
   }

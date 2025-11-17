@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronRight, Key, UserX, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import userService from "@/services/user.service";
 import useAuthStore from "@/zustand/authStore";
 import { useNotification } from "@/hooks/useNotification";
+import { useTabCommunication } from "@/utils/tabCommunication";
 
 const AccountSecurity = () => {
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -33,6 +34,14 @@ const AccountSecurity = () => {
   const navigate = useNavigate();
   const { clearAuth } = useAuthStore();
   const { showSuccess, showError } = useNotification();
+  const tabCommunication = useTabCommunication();
+
+  // Đăng ký tab hiện tại làm tab gốc cho password change khi component mount
+  useEffect(() => {
+    // Xóa thông tin tab cũ nếu có và đăng ký tab mới cho password change
+    tabCommunication.clearPasswordResetTab();
+    tabCommunication.registerAsPasswordResetTab();
+  }, [tabCommunication]);
 
   // Validation functions
   const validateCurrentPassword = () => {
@@ -97,12 +106,12 @@ const AccountSecurity = () => {
 
     setLoading(true);
     try {
-      await userService.changePassword({
+      const response = await userService.changePassword({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword
       });
       
-      showSuccess("Thành công", "Mật khẩu đã được cập nhật thành công!");
+      showSuccess("Thành công", "Email xác nhận đã được gửi! Vui lòng kiểm tra email của bạn để xác nhận thay đổi mật khẩu.");
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setErrors({ currentPassword: "", newPassword: "", confirmPassword: "", deactivatePassword: "", deletePassword: "" });
       setShowChangePassword(false);

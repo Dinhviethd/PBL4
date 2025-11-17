@@ -158,8 +158,9 @@ export class AuthService {
             user: user
         });
 
-        // Create confirmation link
-        const confirmationLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/confirm-password-reset?token=${verification.idVerifiedCode}&email=${encodeURIComponent(email)}`;
+        // Create confirmation link với redirect route
+        const baseUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+        const confirmationLink = `${baseUrl}/auth/password-reset-redirect?token=${verification.idVerifiedCode}&email=${encodeURIComponent(email)}`;
         
         try {
             // Send email using email service

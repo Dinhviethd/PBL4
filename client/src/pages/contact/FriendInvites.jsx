@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Eye, UserX } from "lucide-react";
 import { getReceivedRequests, getSentRequests, acceptFriendRequest, deleteRequest } from "@/services/friendShip.service";
 
-const FriendInvites = () => {
+const FriendInvites = ({ onInviteCountChange }) => {
   const [activeInviteTab, setActiveInviteTab] = useState("received");
   const [receivedInvites, setReceivedInvites] = useState([]);
   const [sentInvites, setSentInvites] = useState([]);
@@ -40,6 +40,10 @@ const FriendInvites = () => {
     try {
       await acceptFriendRequest(requestId);
       await fetchInvites();
+      // Gọi callback để update badge
+      if (onInviteCountChange) {
+        onInviteCountChange();
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,6 +56,10 @@ const FriendInvites = () => {
     try {
       await deleteRequest(requestId);
       await fetchInvites();
+      // Gọi callback để update badge
+      if (onInviteCountChange) {
+        onInviteCountChange();
+      }
     } catch (err) {
       console.error(err);
     } finally {

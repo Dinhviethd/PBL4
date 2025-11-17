@@ -120,6 +120,71 @@ class NotificationService {
 
         return savedNotification;
     }
+
+    async createFriendRequestNotification(senderId: number, receiverId: number, friendshipId: number): Promise<Notification> {
+        // Lấy thông tin người gửi lời mời
+        const sender = await this.userRepository.findOne({ where: { idUser: senderId } });
+        const receiver = await this.userRepository.findOne({ where: { idUser: receiverId } });
+        
+        if (!sender || !receiver) {
+            throw new Error("User not found");
+        }
+
+        const notificationContent = `Bạn có lời mời kết bạn từ ${sender.name || sender.email}`;
+
+        const notification = this.notificationRepository.create({
+            user_id: receiver,
+            content: notificationContent,
+            status: StatusNoti.PENDING,
+            type: NotiType.FRIEND_REQUEST,
+            type_id: friendshipId, // ID của lời mời kết bạn
+        });
+
+        const savedNotification = await this.notificationRepository.save(notification);
+
+        // Gửi thông báo real-time qua WebSocket
+        try {
+            wsService.sendToUser(receiverId, {
+                type: 'NOTIFICATION',
+                data: {
+                    id: savedNotification.idNotification,
+                    content: savedNotification.content,
+                    type: savedNotification.type,
+                    status: savedNotification.status,
+                    createdAt: savedNotification.createdAt,
+                    senderId: senderId,
+                    senderName: sender.name || sender.email,
+                    friendshipId: friendshipId
+                }
+            });
+        } catch (error) {
+            console.error('Failed to send real-time friend request notification:', error);
+        }
+
+        return savedNotification;
+    }
+
+    async markAsSeen(notificationId: number, userId: number): Promise<void> {
+        const notification = await this.notificationRepository.findOne({
+            where: { idNotification: notificationId },
+            relations: ['user_id']
+        });
+
+        if (!notification) {
+            throw new Error("Notification not found");
+        }
+
+        // Verify that this notification belongs to the user
+        if (notification.user_id.idUser !== userId) {
+            throw new Error("Unauthorized");
+        }
+
+        // Update status to SEEN
+        await this.notificationRepository.update(
+            { idNotification: notificationId },
+            { status: StatusNoti.SEEN }
+        );
+    }
 }
 
 export default new NotificationService();

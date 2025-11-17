@@ -2,7 +2,8 @@ import { AppError } from "@/utils/error.response";
 import { FriendshipRepository } from "@/repositories/friendship.repository";
 import { UserRepository } from "@/repositories/user.repository";
 import { FriendStatus } from "@/constants/constants";
-import { PaginationUtil, PaginationResult, createPaginationQuery } from "@/utils/pagination"
+import { PaginationUtil, PaginationResult, createPaginationQuery } from "@/utils/pagination";
+import notificationService from "@/services/notification.service";
 
 class FriendshipService {
   private friendshipRepository = new FriendshipRepository();
@@ -19,7 +20,17 @@ class FriendshipService {
     const existing = await this.friendshipRepository.findFriendship(senderId, receiverId);
     if (existing) throw new AppError(400, "Đã tồn tại mối quan hệ giữa 2 người dùng");
 
-    return await this.friendshipRepository.createRequest(sender!, receiver, message);
+    const friendship = await this.friendshipRepository.createRequest(sender!, receiver, message);
+
+    // Tạo thông báo lời mời kết bạn
+    try {
+      await notificationService.createFriendRequestNotification(senderId, receiverId, friendship.idFriendShip);
+    } catch (error) {
+      console.error('Failed to create friend request notification:', error);
+      // Không throw error để không ảnh hưởng đến quá trình gửi lời mời
+    }
+
+    return friendship;
   }
 
   async acceptRequest(userId: number, requestId: number) {
