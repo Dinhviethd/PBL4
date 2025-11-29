@@ -1,12 +1,12 @@
 import React from 'react';
 import { UserPlus, Users2, Handshake } from 'lucide-react';
 
-const Sidebar = ({ activeSection, setActiveSection, pendingInviteCount = 0 }) => {
+const Sidebar = ({ activeSection, setActiveSection, pendingInviteCount = 0, pendingGroupInviteCount = 0 }) => {
   const menuItems = [
     { id: 'friends', title: 'Danh sách bạn bè', icon: <UserPlus className="w-5 h-5" /> },
     { id: 'groups', title: 'Danh sách nhóm', icon: <Users2 className="w-5 h-5" /> },
-    { id: 'invites', title: 'Lời mời kết bạn', icon: <UserPlus className="w-5 h-5" />, badge: pendingInviteCount },
-    { id: 'pending', title: 'Lời mời vào nhóm', icon: <Handshake className="w-5 h-5" /> }
+    { id: 'invites', title: 'Lời mời kết bạn', icon: <UserPlus className="w-5 h-5" />, hasBadge: pendingInviteCount > 0 },
+    { id: 'pending', title: 'Lời mời vào nhóm', icon: <Handshake className="w-5 h-5" />, hasBadge: pendingGroupInviteCount > 0 }
   ];
 
   return (
@@ -27,10 +27,8 @@ const Sidebar = ({ activeSection, setActiveSection, pendingInviteCount = 0 }) =>
           >
             <div className={`${activeSection === item.id ? 'text-blue-600' : 'text-gray-500'}`}>{item.icon}</div>
             <span className="text-sm font-medium">{item.title}</span>
-            {item.badge > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                +{item.badge}
-              </span>
+            {item.hasBadge && (
+              <div className="ml-auto w-2 h-2 bg-red-500 rounded-full"></div>
             )}
           </div>
         ))}

@@ -31,6 +31,23 @@ const GroupInvites = () => {
     }
   }, [activeInviteTab, page]);
 
+  // Fetch all invites on mount to show counts in tabs
+  useEffect(() => {
+    const fetchAllCounts = async () => {
+      try {
+        const receivedRes = await groupService.getReceivedInvites(1, 100);
+        setReceivedInvites(receivedRes.items || []);
+        
+        const sentRes = await groupService.getSentInvites(1, 100);
+        setSentInvites(sentRes.items || []);
+      } catch (err) {
+        console.error('Failed to fetch group invites counts:', err);
+      }
+    };
+
+    fetchAllCounts();
+  }, []);
+
   useEffect(() => {
     fetchInvites();
   }, [fetchInvites]);
@@ -97,15 +114,22 @@ const GroupInvites = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">Lời mời tham gia nhóm</h2>
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-2">Lời mời tham gia nhóm</h2>
+        {activeInviteTab === 'received' && invites.length > 0 && (
+          <p className="text-gray-600 text-sm">
+            Có <span className="text-blue-600 font-semibold">{invites.length}</span> lời mời chưa xử lý
+          </p>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-4 mb-6">
         <button onClick={() => { setActiveInviteTab('sent'); setPage(1); }} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeInviteTab === 'sent' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-          Lời mời đã gửi
+          Lời mời đã gửi {sentInvites.length > 0 && <span className="ml-2 inline-block">{sentInvites.length}</span>}
         </button>
         <button onClick={() => { setActiveInviteTab('received'); setPage(1); }} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeInviteTab === 'received' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-          Lời mời đã nhận
+          Lời mời đã nhận {receivedInvites.length > 0 && <span className="ml-2 inline-block">{receivedInvites.length}</span>}
         </button>
       </div>
 

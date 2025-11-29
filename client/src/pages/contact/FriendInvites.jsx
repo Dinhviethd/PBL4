@@ -31,6 +31,23 @@ const FriendInvites = ({ onInviteCountChange }) => {
     }
   }, [activeInviteTab, page]);
 
+  // Fetch all invites on mount to show counts in tabs
+  useEffect(() => {
+    const fetchAllCounts = async () => {
+      try {
+        const receivedRes = await getReceivedRequests(1, 100);
+        setReceivedInvites(receivedRes.items || []);
+        
+        const sentRes = await getSentRequests(1, 100);
+        setSentInvites(sentRes.items || []);
+      } catch (err) {
+        console.error("Failed to fetch invites counts:", err);
+      }
+    };
+
+    fetchAllCounts();
+  }, []);
+
   useEffect(() => {
     fetchInvites();
   }, [fetchInvites]);
@@ -119,7 +136,14 @@ const FriendInvites = ({ onInviteCountChange }) => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">Lời mời kết bạn</h2>
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-2">Lời mời kết bạn</h2>
+        {activeInviteTab === 'received' && invitesData.length > 0 && (
+          <p className="text-gray-600 text-sm">
+            Có <span className="text-blue-600 font-semibold">{invitesData.length}</span> lời mời chưa xử lý
+          </p>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-4 mb-6">
@@ -131,7 +155,7 @@ const FriendInvites = ({ onInviteCountChange }) => {
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          Lời mời đã gửi
+          Lời mời đã gửi {sentInvites.length > 0 && <span className="ml-2 inline-block">{sentInvites.length}</span>}
         </button>
         <button
           onClick={() => setActiveInviteTab("received")}
@@ -141,7 +165,7 @@ const FriendInvites = ({ onInviteCountChange }) => {
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          Lời mời đã nhận
+          Lời mời đã nhận {receivedInvites.length > 0 && <span className="ml-2 inline-block">{receivedInvites.length}</span>}
         </button>
       </div>
 

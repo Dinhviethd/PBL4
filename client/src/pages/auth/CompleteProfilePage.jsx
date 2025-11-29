@@ -75,7 +75,7 @@ export default function CompleteProfilePage() {
     try {
       setLoading(true);
       const birthday = `${formData.year}-${formData.month.padStart(2, "0")}-${formData.day.padStart(2, "0")}`;
-      const updateData = {
+      const updateData = {      
         gender: formData.gender,
         birthday,
       };

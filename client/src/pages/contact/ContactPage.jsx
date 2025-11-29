@@ -5,10 +5,12 @@ import GroupsList from './GroupsList';
 import FriendInvites from './FriendInvites';
 import GroupInvites from './GroupInvites';
 import { getReceivedRequests } from '@/services/friendShip.service';
+import groupService from '@/services/group.service';
 
 const ContactPage = () => {
   const [activeSection, setActiveSection] = useState('friends');
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
+  const [pendingGroupInviteCount, setPendingGroupInviteCount] = useState(0);
 
   // Fetch số lời mời kết bạn chưa xử lý
   const fetchPendingCount = useCallback(async () => {
@@ -20,9 +22,20 @@ const ContactPage = () => {
     }
   }, []);
 
+  // Fetch số lời mời vào nhóm
+  const fetchPendingGroupCount = useCallback(async () => {
+    try {
+      const res = await groupService.getReceivedInvites(1, 100);
+      setPendingGroupInviteCount(res.total || 0);
+    } catch (err) {
+      console.error('Failed to fetch pending group invites count:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPendingCount();
-  }, [fetchPendingCount]);
+    fetchPendingGroupCount();
+  }, [fetchPendingCount, fetchPendingGroupCount]);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -36,7 +49,7 @@ const ContactPage = () => {
 
   return (
     <div className="h-screen bg-gray-50 flex">
-      <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} pendingInviteCount={pendingInviteCount} />
+      <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} pendingInviteCount={pendingInviteCount} pendingGroupInviteCount={pendingGroupInviteCount} />
       <div className="flex-1 overflow-auto">{renderContent()}</div>
     </div>
   );
