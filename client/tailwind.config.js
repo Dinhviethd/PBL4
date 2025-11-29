@@ -63,7 +63,32 @@ module.exports = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))'
         }
-      }
+      },
+      animation: {
+        float: 'float 6s infinite ease-in-out',
+        'float-reverse': 'float-reverse 6s infinite ease-in-out',
+        'fade-in': 'fade-in 1s ease-in-out',
+        'slide-in': 'slide-in 1s ease-in-out',
+        'fade-in-delay': 'fade-in 1.5s ease-in-out',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-20px)' },
+        },
+        'float-reverse': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(20px)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'slide-in': {
+          '0%': { transform: 'translateX(-30px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+      },
     }
   },
   plugins: [require("tailwindcss-animate")],
