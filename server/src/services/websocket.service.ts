@@ -21,14 +21,18 @@ class WebSocketService {
   private clients: Map<number, WebSocket> = new Map();
 
   addClient(userId: number, socket: WebSocket) {
+    console.log(`🔌 [WebSocket] Adding client - userId: ${userId}, type: ${typeof userId}`);
+    
     // Xóa kết nối cũ nếu có
     const existingSocket = this.clients.get(userId);
     if (existingSocket && existingSocket.readyState === WebSocket.OPEN) {
+      console.log(`⚠️  [WebSocket] Closing existing connection for user ${userId}`);
       existingSocket.close();
     }
 
     this.clients.set(userId, socket);
-    console.log(`User ${userId} connected. Total clients: ${this.clients.size}`);
+    console.log(`✅ [WebSocket] User ${userId} connected. Total clients: ${this.clients.size}`);
+    console.log(`📊 [WebSocket] All connected users:`, Array.from(this.clients.keys()));
 
     // Thông báo cho tất cả users khác rằng user này đã online
     this.broadcastUserStatus(userId, WSMessageType.USER_ONLINE);
@@ -65,18 +69,28 @@ class WebSocketService {
 
   // Gửi tin nhắn 1-1
   sendPrivateMessage(fromUserId: number, toUserId: number, data: any) {
+    console.log(`📤 [WebSocket] Sending PRIVATE_MESSAGE from ${fromUserId} (${typeof fromUserId}) to ${toUserId} (${typeof toUserId})`);
+    console.log(`📊 [WebSocket] Current connected users:`, Array.from(this.clients.keys()));
+    console.log(`🔍 [WebSocket] Checking if ${toUserId} exists in clients...`);
+    console.log(`🔍 [WebSocket] this.clients.has(${toUserId}):`, this.clients.has(toUserId));
+    console.log(`🔍 [WebSocket] this.clients.get(${toUserId}):`, this.clients.get(toUserId) ? 'Socket exists' : 'No socket');
+    
     const receiverSocket = this.clients.get(toUserId);
     
     if (receiverSocket && receiverSocket.readyState === WebSocket.OPEN) {
+      // Separate message content type (text/image) from WebSocket type
       const message: WebSocketMessage = {
         type: WSMessageType.PRIVATE_MESSAGE,
         from: fromUserId,
-        ...data
+        data: data  // Wrap data to avoid spreading 'type' field
       };
       
+      console.log(`✅ [WebSocket] Sending message to receiver ${toUserId}:`, message);
       receiverSocket.send(JSON.stringify(message));
       return true;
     }
+    
+    console.log(`❌ [WebSocket] Cannot send - receiver ${toUserId} not connected or socket closed`);
     return false;
   }
 
@@ -90,7 +104,7 @@ class WebSocketService {
           const message: WebSocketMessage = {
             type: WSMessageType.GROUP_MESSAGE,
             from: fromUserId,
-            ...data
+            data: data  // Wrap data to avoid spreading 'type' field
           };
           socket.send(JSON.stringify(message));
           sentCount++;

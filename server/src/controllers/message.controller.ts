@@ -23,9 +23,12 @@ export class MessageController {
       throw new AppError(400, 'Receiver ID and content are required');
     }
 
+    // Convert receiverId to number to ensure type consistency
+    const receiverIdNum = typeof receiverId === 'string' ? parseInt(receiverId, 10) : receiverId;
+
     const result = await this.messageService.sendPrivateMessage(
       senderId,
-      receiverId,
+      receiverIdNum,
       content,
       type,
       fileURL

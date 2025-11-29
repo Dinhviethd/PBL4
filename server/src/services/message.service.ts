@@ -47,12 +47,20 @@ export class MessageService {
 
     // Gửi qua WebSocket
     wsService.sendPrivateMessage(senderId, receiverId, {
-      messageId: message.idMessage,
+      idMessage: message.idMessage,
       content: message.content,
       type: message.type,
       fileURL: message.fileURL,
       createdAt: message.createdAt,
+      isEdited: false,
+      isDeleted: false,
+      isRead: false,
       sender: {
+        idUser: sender.idUser,
+        name: sender.name,
+        avatarUrl: sender.avatarUrl
+      },
+      sentBy: {
         idUser: sender.idUser,
         name: sender.name,
         avatarUrl: sender.avatarUrl
@@ -117,14 +125,22 @@ export class MessageService {
       .map(m => m.user.idUser);
 
     wsService.sendGroupMessage(senderId, memberIds, {
-      messageId: message.idMessage,
+      idMessage: message.idMessage,
       content: message.content,
       type: message.type,
       fileURL: message.fileURL,
       createdAt: message.createdAt,
+      isEdited: false,
+      isDeleted: false,
+      isRead: false,
       groupId: group.idGroup,
       groupName: group.name,
       sender: {
+        idUser: sender.idUser,
+        name: sender.name,
+        avatarUrl: sender.avatarUrl
+      },
+      sentBy: {
         idUser: sender.idUser,
         name: sender.name,
         avatarUrl: sender.avatarUrl

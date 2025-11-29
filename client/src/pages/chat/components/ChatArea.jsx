@@ -152,10 +152,8 @@ export const ChatArea = ({ conversation }) => {
         // Mark as read if there are unread messages
         // Use unreadCount from conversation object (from API) instead of store
         const currentUnreadCount = conversation.unreadCount || 0;
-        console.log(`📊 [ChatArea] Unread count for this conversation: ${currentUnreadCount} (from conversation object)`);
         
         if (currentUnreadCount > 0) {
-          console.log(`📡 [ChatArea] Marking conversation as read...`);
           try {
             // Update UI immediately - optimistic update
             const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
@@ -167,7 +165,6 @@ export const ChatArea = ({ conversation }) => {
               conversation.type,
               conversationId
             );
-            console.log(`✅ [ChatArea] Successfully marked conversation as read`);
           } catch (error) {
             console.error('❌ [ChatArea] Failed to mark conversation as read:', error);
             // Rollback on error
@@ -178,7 +175,6 @@ export const ChatArea = ({ conversation }) => {
             );
           }
         } else {
-          console.log(`ℹ️  [ChatArea] No unread messages, skipping mark as read`);
           clearUnreadCount(conversationKey);
         }
       } catch (error) {
@@ -221,6 +217,8 @@ export const ChatArea = ({ conversation }) => {
 
     const messageContent = message.trim();
     setMessage('');
+    
+    console.log(`📤 [ChatArea] Sending message to ${conversation.type} conversation:`, conversationKey);
 
     try {
       let response;
@@ -236,9 +234,11 @@ export const ChatArea = ({ conversation }) => {
         );
       }
 
+      console.log(`✅ [ChatArea] Message sent successfully, adding to store:`, response.data);
       addMessage(conversationKey, response.data);
+      console.log(`📊 [ChatArea] Messages in store after send:`, messages[conversationKey]?.length);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('❌ [ChatArea] Failed to send message:', error);
       // Re-add message to input on error
       setMessage(messageContent);
     }

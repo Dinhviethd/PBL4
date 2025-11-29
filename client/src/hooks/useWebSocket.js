@@ -177,26 +177,90 @@ const useWebSocket = () => {
     }
   };
 
-  const handlePrivateMessage = (data) => {
-    const conversationKey = `private_${data.sender.idUser}`;
-    addMessage(conversationKey, data);
+  const handlePrivateMessage = (messageData) => {
+    console.log('📬 [WebSocket] Received PRIVATE_MESSAGE:', messageData);
     
-    // Add to conversations if not exists
+    // Extract actual message data (backend wraps it in 'data' field)
+    const data = messageData.data || messageData;
+    const conversationKey = `private_${data.sender.idUser}`;
+    
+    // Check if message already exists (avoid duplicate)
+    const state = useChatStore.getState();
+    const existingMessages = state.messages[conversationKey] || [];
+    const isDuplicate = existingMessages.some(msg => msg.idMessage === data.idMessage);
+    
+    if (isDuplicate) {
+      console.log(`⚠️  [WebSocket] Message ${data.idMessage} already exists, skipping`);
+      return;
+    }
+    
+    console.log(`✅ [WebSocket] Adding message to conversation: ${conversationKey}`);
+    
+    // Add message to store with full structure
+    addMessage(conversationKey, {
+      idMessage: data.idMessage,
+      content: data.content,
+      type: data.type,
+      fileURL: data.fileURL,
+      createdAt: data.createdAt,
+      isEdited: data.isEdited || false,
+      isDeleted: data.isDeleted || false,
+      isRead: data.isRead || false,
+      sender: data.sender,
+      sentBy: data.sentBy || data.sender
+    });
+    
+    console.log(`📊 [WebSocket] Current messages count in ${conversationKey}:`, (state.messages[conversationKey] || []).length + 1);
+    
+    // Update conversation's last message
     addConversation({
       type: 'private',
       partnerId: data.sender.idUser,
       partner: data.sender,
       lastMessage: data.content,
       lastMessageTime: data.createdAt,
+      lastMessageType: data.type,
       unreadCount: 1
     });
   };
 
-  const handleGroupMessage = (data) => {
-    const conversationKey = `group_${data.groupId}`;
-    addMessage(conversationKey, data);
+  const handleGroupMessage = (messageData) => {
+    console.log('📬 [WebSocket] Received GROUP_MESSAGE:', messageData);
     
-    // Add to conversations if not exists
+    // Extract actual message data (backend wraps it in 'data' field)
+    const data = messageData.data || messageData;
+    const conversationKey = `group_${data.groupId}`;
+    
+    // Check if message already exists (avoid duplicate)
+    const state = useChatStore.getState();
+    const existingMessages = state.messages[conversationKey] || [];
+    const isDuplicate = existingMessages.some(msg => msg.idMessage === data.idMessage);
+    
+    if (isDuplicate) {
+      console.log(`⚠️  [WebSocket] Message ${data.idMessage} already exists, skipping`);
+      return;
+    }
+    
+    console.log(`✅ [WebSocket] Adding message to conversation: ${conversationKey}`);
+    
+    // Add message to store with full structure
+    addMessage(conversationKey, {
+      idMessage: data.idMessage,
+      content: data.content,
+      type: data.type,
+      fileURL: data.fileURL,
+      createdAt: data.createdAt,
+      isEdited: data.isEdited || false,
+      isDeleted: data.isDeleted || false,
+      isRead: data.isRead || false,
+      sender: data.sender,
+      sentBy: data.sentBy || data.sender,
+      groupId: data.groupId
+    });
+    
+    console.log(`📊 [WebSocket] Current messages count in ${conversationKey}:`, (state.messages[conversationKey] || []).length + 1);
+    
+    // Update conversation's last message
     addConversation({
       type: 'group',
       groupId: data.groupId,
@@ -206,6 +270,7 @@ const useWebSocket = () => {
       },
       lastMessage: data.content,
       lastMessageTime: data.createdAt,
+      lastMessageType: data.type,
       unreadCount: 1
     });
   };
@@ -234,7 +299,6 @@ const useWebSocket = () => {
 
   const handleMessageRead = (data) => {
     // data: { messageId, readBy, readAt } or { conversationKey, readBy, readAt }
-    console.log(`📬 [WebSocket] MESSAGE_READ event received:`, data);
     
     // If reading an entire conversation
     if (data.conversationKey) {
@@ -255,7 +319,6 @@ const useWebSocket = () => {
         });
       });
       
-      console.log(`✅ [WebSocket] Conversation ${conversationKey} marked as read`);
     } 
     // If reading a single message
     else if (data.messageId) {
@@ -263,7 +326,6 @@ const useWebSocket = () => {
       const state = useChatStore.getState();
       const userId = state.user?.idUser || user?.idUser || user?.id || user?.userId;
       
-      console.log(`📊 [WebSocket] Updating single message ${messageId}`);
       
       // Find which conversation contains this message
       Object.keys(state.messages).forEach(conversationKey => {
@@ -271,7 +333,6 @@ const useWebSocket = () => {
         const message = messages.find(msg => msg.idMessage === messageId);
         
         if (message) {
-          console.log(`✅ [WebSocket] Found message ${messageId} in ${conversationKey}, marking as read`);
           updateMessage(conversationKey, messageId, {
             isRead: true,
             readAt: data.readAt
