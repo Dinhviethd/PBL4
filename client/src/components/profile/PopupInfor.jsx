@@ -161,6 +161,17 @@ export default function ProfilePopup({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate ngày sinh không được ở tương lai
+    const birthdayDate = new Date(`${formData.year}-${formData.month.padStart(2, "0")}-${formData.day.padStart(2, "0")}`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (birthdayDate > today) {
+      showWarning("Cảnh báo", "Ngày sinh không được ở tương lai");
+      return;
+    }
+    
     const birthday = `${formData.year}-${formData.month.padStart(2, "0")}-${formData.day.padStart(2, "0")}`;
     const updateData = {
       name: formData.name,
@@ -270,9 +281,10 @@ export default function ProfilePopup({ isOpen, onClose }) {
             <div className="text-center mt-4">
               <h2 className="font-bold text-3xl text-gray-800">{user?.name || "Người dùng"}</h2>
               <div className="flex flex-col items-center mt-6 space-y-4">
+                <p className="text-lg text-gray-700"><span className="font-semibold">Email:</span> {user?.email || ""}</p>
                 <p className="text-lg text-gray-700"><span className="font-semibold">Giới tính:</span> {user?.gender || ""}</p>
                 <p className="text-lg text-gray-700"><span className="font-semibold">Ngày sinh:</span> {user?.birthday ? `${user.birthday.split("-")[2]}/${user.birthday.split("-")[1]}/${user.birthday.split("-")[0]}` : ""}</p>
-                <p className="text-lg text-gray-700"><span className="font-semibold">Điện thoại:</span> {user?.phone || ""}</p>
+                {user?.phone && <p className="text-lg text-gray-700"><span className="font-semibold">Điện thoại:</span> {user.phone}</p>}
               </div>
             </div>
 
@@ -303,6 +315,7 @@ export default function ProfilePopup({ isOpen, onClose }) {
             <div className="flex items-center mb-4 space-x-4">
               <label><input type="radio" name="gender" value="Nam" checked={formData.gender === "Nam"} onChange={handleChange} className="mr-1" />Nam</label>
               <label><input type="radio" name="gender" value="Nữ" checked={formData.gender === "Nữ"} onChange={handleChange} className="mr-1" />Nữ</label>
+              <label><input type="radio" name="gender" value="Khác" checked={formData.gender === "Khác"} onChange={handleChange} className="mr-1" />Khác</label>
             </div>
 
             <label className="block text-gray-700 font-medium mb-1">Ngày sinh</label>

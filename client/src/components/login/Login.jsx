@@ -59,10 +59,18 @@ const Login = () => {
   const onSubmit = async (data) => {
     try {
       setIsLoading(true);
-      await authService.login(data.email, data.password, data.remember);
+      const authResponse = await authService.login(data.email, data.password, data.remember);
       
       showSuccess("Đăng nhập thành công", "Chào mừng bạn đã quay trở lại ChatMate!");
-      navigate("/"); // sau khi login thành công
+      
+      // Kiểm tra xem có phải đăng nhập lần đầu (thiếu thông tin profile)
+      const user = authResponse?.user;
+      if (user && !user.gender && !user.birthday && !user.avatarUrl) {
+        // Đăng nhập lần đầu, cần điền thông tin
+        navigate("/auth/complete-profile");
+      } else {
+        navigate("/"); // Đăng nhập thường, về trang chủ
+      }
     } catch (err) {
       console.error("Login error:", err);
       

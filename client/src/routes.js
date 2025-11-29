@@ -7,6 +7,7 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ConfirmPasswordResetPage from "./pages/auth/ConfirmPasswordResetPage";
 import PasswordResetRedirectPage from "./pages/auth/PasswordResetRedirectPage";
+import CompleteProfilePage from "./pages/auth/CompleteProfilePage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import ConfirmChangePasswordPage from "./pages/settings/ConfirmChangePasswordPage";
 import PasswordChangeRedirectPage from "./pages/settings/PasswordChangeRedirectPage";
@@ -43,6 +44,7 @@ const routes = [
           { path: "forgot-password", Component: ForgotPasswordPage },
           { path: "password-reset-redirect", Component: PasswordResetRedirectPage },
           { path: "confirm-password-reset", Component: ConfirmPasswordResetPage },
+          { path: "complete-profile", Component: CompleteProfilePage },
         ],
       },
     ],
