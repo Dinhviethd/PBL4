@@ -65,6 +65,7 @@ export class MessageService {
       type: message.type,
       fileURL: message.fileURL,
       createdAt: message.createdAt,
+      isRead: false,
       sender: {
         idUser: sender.idUser,
         name: sender.name,
@@ -136,6 +137,7 @@ export class MessageService {
       type: message.type,
       fileURL: message.fileURL,
       createdAt: message.createdAt,
+      isRead: false,
       group: {
         idGroup: group.idGroup,
         name: group.name
@@ -159,6 +161,9 @@ export class MessageService {
     const messagesWithReads = await Promise.all(
       result.data.map(async (message) => {
         const readers = await this.messageRepository.getMessageReaders(message.idMessage);
+        const isRead = message.sentBy.idUser === userId 
+          ? readers.some(r => r.user.idUser !== userId) // Nếu là người gửi, kiểm tra người nhận đã đọc chưa
+          : readers.some(r => r.user.idUser === userId); // Nếu là người nhận, kiểm tra mình đã đọc chưa
         
         const messageData: any = {
           idMessage: message.idMessage,
@@ -168,6 +173,7 @@ export class MessageService {
           createdAt: message.createdAt,
           isEdited: message.isEdited,
           editedAt: message.editedAt,
+          isRead: isRead,
           sender: {
             idUser: message.sentBy.idUser,
             name: message.sentBy.name,
@@ -223,6 +229,9 @@ export class MessageService {
     const messagesWithReads = await Promise.all(
       result.data.map(async (message) => {
         const readers = await this.messageRepository.getMessageReaders(message.idMessage);
+        const isRead = message.sentBy.idUser === userId 
+          ? readers.some(r => r.user.idUser !== userId) // Nếu là người gửi, kiểm tra có ai khác đã đọc chưa
+          : readers.some(r => r.user.idUser === userId); // Nếu là người nhận, kiểm tra mình đã đọc chưa
         
         return {
           idMessage: message.idMessage,
@@ -232,6 +241,7 @@ export class MessageService {
           createdAt: message.createdAt,
           isEdited: message.isEdited,
           editedAt: message.editedAt,
+          isRead: isRead,
           sender: {
             idUser: message.sentBy.idUser,
             name: message.sentBy.name,
@@ -380,6 +390,74 @@ export class MessageService {
     });
 
     return { message: 'Message marked as read' };
+  }
+
+  async markPrivateConversationAsRead(userId: number, partnerId: number) {
+    console.log(`🔵 [Service] markPrivateConversationAsRead called - userId: ${userId}, partnerId: ${partnerId}`);
+    
+    const markedCount = await this.messageRepository.markPrivateConversationAsRead(userId, partnerId);
+    console.log(`📊 [Service] Repository returned markedCount: ${markedCount}`);
+
+    // Gửi thông báo cho partner qua WebSocket
+    if (markedCount > 0) {
+      console.log(`📡 [Service] Sending MESSAGE_READ notification to partner ${partnerId}`);
+      wsService.sendToUser(partnerId, {
+        type: 'MESSAGE_READ',
+        data: {
+          conversationKey: `private_${userId}`,
+          readBy: userId,
+          readAt: new Date(),
+          count: markedCount
+        }
+      });
+      console.log(`✅ [Service] MESSAGE_READ notification sent successfully`);
+    } else {
+      console.log(`ℹ️  [Service] No messages to mark as read, skipping WebSocket notification`);
+    }
+
+    return { 
+      message: `Marked ${markedCount} messages as read`,
+      count: markedCount 
+    };
+  }
+
+  async markGroupConversationAsRead(userId: number, groupId: number) {
+    console.log(`🔵 [Service] markGroupConversationAsRead called - userId: ${userId}, groupId: ${groupId}`);
+    
+    // Kiểm tra user có trong nhóm không
+    const member = await this.groupRepository.findGroupMember(groupId, userId);
+    if (!member) {
+      console.log(`❌ [Service] User ${userId} is not a member of group ${groupId}`);
+      throw new AppError(403, 'You are not a member of this group');
+    }
+    console.log(`✅ [Service] User ${userId} is a valid member of group ${groupId}`);
+
+    const markedCount = await this.messageRepository.markGroupConversationAsRead(userId, groupId);
+    console.log(`📊 [Service] Repository returned markedCount: ${markedCount}`);
+
+    // Gửi thông báo cho các thành viên nhóm
+    if (markedCount > 0) {
+      const members = await this.groupRepository.getGroupMembers(groupId);
+      const memberIds = members.map(m => m.user.idUser).filter(id => id !== userId);
+      console.log(`📡 [Service] Broadcasting MESSAGE_READ to ${memberIds.length} group members`);
+      
+      memberIds.forEach(memberId => {
+        wsService.sendToUser(memberId, {
+          type: 'MESSAGE_READ',
+          data: {
+            conversationKey: `group_${groupId}`,
+            readBy: userId,
+            readAt: new Date(),
+            count: markedCount
+          }
+        });
+      });
+    }
+
+    return { 
+      message: `Marked ${markedCount} messages as read`,
+      count: markedCount 
+    };
   }
 
   async getRecentConversations(userId: number) {

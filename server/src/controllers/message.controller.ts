@@ -175,6 +175,54 @@ export class MessageController {
     });
   });
 
+  markPrivateConversationAsRead = asyncHandler(async (req: Request, res: Response) => {
+    const { partnerId } = req.params;
+    const userId = req.user?.userId;
+
+    console.log(`🟢 [Controller] POST /messages/private/${partnerId}/mark-read - userId: ${userId}`);
+
+    if (!userId) {
+      console.log(`❌ [Controller] Unauthorized - no userId in request`);
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.messageService.markPrivateConversationAsRead(
+      userId,
+      parseInt(partnerId)
+    );
+    
+    console.log(`✅ [Controller] markPrivateConversationAsRead completed:`, result);
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  markGroupConversationAsRead = asyncHandler(async (req: Request, res: Response) => {
+    const { groupId } = req.params;
+    const userId = req.user?.userId;
+
+    console.log(`🟢 [Controller] POST /messages/group/${groupId}/mark-read - userId: ${userId}`);
+
+    if (!userId) {
+      console.log(`❌ [Controller] Unauthorized - no userId in request`);
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    const result = await this.messageService.markGroupConversationAsRead(
+      userId,
+      parseInt(groupId)
+    );
+    
+    console.log(`✅ [Controller] markGroupConversationAsRead completed:`, result);
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
   getRecentConversations = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId;
 

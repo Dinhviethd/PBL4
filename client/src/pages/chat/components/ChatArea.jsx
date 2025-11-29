@@ -74,6 +74,8 @@ export const ChatArea = ({ conversation }) => {
     deleteMessage,
     getConversationKey,
     clearUnreadCount,
+    updateConversation,
+    unreadCounts,
     typingUsers,
     socket,
     activeCall,
@@ -132,23 +134,61 @@ export const ChatArea = ({ conversation }) => {
   // Load messages when conversation changes
   useEffect(() => {
     const loadMessages = async () => {
+      console.log(`🟢 [ChatArea] Loading messages for conversation:`, conversation);
+      
       try {
         let response;
         if (conversation.type === 'private') {
+          console.log(`📬 [ChatArea] Fetching private messages with partner ${conversation.partnerId}`);
           response = await messageService.getPrivateMessages(conversation.partnerId);
         } else {
+          console.log(`📬 [ChatArea] Fetching group messages for group ${conversation.groupId}`);
           response = await messageService.getGroupMessages(conversation.groupId);
         }
         
+        console.log(`✅ [ChatArea] Received ${response.data?.length || 0} messages`);
         setMessages(conversationKey, response.data || []);
-        clearUnreadCount(conversationKey);
+        
+        // Mark as read if there are unread messages
+        // Use unreadCount from conversation object (from API) instead of store
+        const currentUnreadCount = conversation.unreadCount || 0;
+        console.log(`📊 [ChatArea] Unread count for this conversation: ${currentUnreadCount} (from conversation object)`);
+        
+        if (currentUnreadCount > 0) {
+          console.log(`📡 [ChatArea] Marking conversation as read...`);
+          try {
+            // Update UI immediately - optimistic update
+            const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
+            updateConversation(conversation.type, conversationId, { unreadCount: 0 });
+            clearUnreadCount(conversationKey);
+            
+            // Then call API
+            await messageService.markConversationAsRead(
+              conversation.type,
+              conversationId
+            );
+            console.log(`✅ [ChatArea] Successfully marked conversation as read`);
+          } catch (error) {
+            console.error('❌ [ChatArea] Failed to mark conversation as read:', error);
+            // Rollback on error
+            updateConversation(
+              conversation.type,
+              conversation.type === 'private' ? conversation.partnerId : conversation.groupId,
+              { unreadCount: currentUnreadCount }
+            );
+          }
+        } else {
+          console.log(`ℹ️  [ChatArea] No unread messages, skipping mark as read`);
+          clearUnreadCount(conversationKey);
+        }
       } catch (error) {
-        console.error('Failed to load messages:', error);
+        console.error('❌ [ChatArea] Failed to load messages:', error);
       }
     };
 
     loadMessages();
-  }, [conversation.type, conversation.partnerId, conversation.groupId, conversationKey, setMessages, clearUnreadCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationKey]); // Only run when conversation changes
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -558,37 +598,16 @@ export const ChatArea = ({ conversation }) => {
                         {formatTimeAgo(msg.createdAt)}
                       </span>
                       
-                      {isOwn && (
+                      {isOwn && !msg.isDeleted && (
                         <div className="flex items-center">
-                          {msg.readers?.length > 0 ? (
-                            <CheckCheck className="w-3 h-3 text-blue-500" />
+                          {msg.isRead ? (
+                            <CheckCheck className="w-3 h-3 text-blue-500" title="Đã đọc" />
                           ) : (
-                            <Check className="w-3 h-3 text-gray-400" />
+                            <Check className="w-3 h-3 text-gray-400" title="Đã gửi" />
                           )}
                         </div>
                       )}
                     </div>
-
-                    {/* Read receipts */}
-                    {isOwn && msg.readers?.length > 0 && (
-                      <div className="flex items-center mt-1">
-                        <div className="flex -space-x-1">
-                          {msg.readers.slice(0, 3).map((reader) => (
-                            <Avatar key={reader.idUser} className="w-4 h-4 border border-white">
-                              <AvatarImage src={reader.avatarUrl} />
-                              <AvatarFallback className="text-xs">
-                                {reader.name?.charAt(0)?.toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))}
-                        </div>
-                        {msg.readers.length > 3 && (
-                          <span className="text-xs text-gray-500 ml-2">
-                            +{msg.readers.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

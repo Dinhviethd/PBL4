@@ -76,6 +76,19 @@ const useChatStore = create(
           }
         }),
       
+      updateConversation: (type, id, updates) =>
+        set((state) => {
+          const updatedConversations = state.conversations.map(conv => {
+            if (type === 'private' && conv.type === 'private' && conv.partnerId === id) {
+              return { ...conv, ...updates };
+            } else if (type === 'group' && conv.type === 'group' && conv.groupId === id) {
+              return { ...conv, ...updates };
+            }
+            return conv;
+          });
+          return { conversations: updatedConversations };
+        }),
+      
       setMessages: (conversationKey, messages) =>
         set((state) => ({
           messages: { ...state.messages, [conversationKey]: messages }

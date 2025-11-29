@@ -140,7 +140,8 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
             const conversationKey = getConversationKey(conversation);
             const isActive = activeConversation && 
               getConversationKey(activeConversation) === conversationKey;
-            const unreadCount = unreadCounts[conversationKey] || 0;
+            // Use unreadCount from conversation object (API) instead of store
+            const unreadCount = conversation.unreadCount || 0;
 
             return (
               <div
@@ -167,10 +168,18 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                     </AvatarFallback>
                   </Avatar>
                   
+                  {/* Red dot indicator for unread messages */}
+                  {unreadCount > 0 && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center">
+                      <span className="sr-only">{unreadCount} tin nhắn chưa đọc</span>
+                    </div>
+                  )}
+                  
                   {/* Online indicator for private chats */}
                   {conversation.type === 'private' && 
                    Array.isArray(onlineUsers) &&
-                   onlineUsers.includes(conversation.partnerId) && (
+                   onlineUsers.includes(conversation.partnerId) && 
+                   unreadCount === 0 && ( // Only show if no unread to avoid overlap
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   )}
                 </div>
@@ -210,17 +219,18 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                   
                   {/* Last message */}
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-sm text-gray-600 truncate flex-1">
+                    <p className={`text-sm truncate flex-1 ${
+                      unreadCount > 0 ? 'font-semibold text-gray-900' : 'text-gray-600'
+                    }`}>
                       {conversation.lastMessage || 
                        (conversation.type === 'group' ? 'Nhóm đã được tạo' : 'Bắt đầu cuộc trò chuyện')
                       }
                     </p>
                     
-                    {/* Unread badge */}
+                    {/* Unread badge with count */}
                     {unreadCount > 0 && (
                       <Badge 
-                        variant="destructive" 
-                        className="ml-2 px-2 py-1 text-xs rounded-full min-w-[20px] h-5"
+                        className="ml-2 px-2 py-0.5 text-xs rounded-full min-w-[20px] h-5 bg-red-500 hover:bg-red-600 text-white border-0"
                       >
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </Badge>

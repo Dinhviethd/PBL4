@@ -26,6 +26,12 @@ router.delete('/:messageId', authMiddleware, checkAccountStatus, messageControll
 // Đánh dấu đã đọc
 router.post('/:messageId/read', authMiddleware, checkAccountStatus, messageController.markAsRead);
 
+// Đánh dấu tất cả tin nhắn trong cuộc hội thoại riêng tư là đã đọc
+router.post('/private/:partnerId/mark-read', authMiddleware, checkAccountStatus, messageController.markPrivateConversationAsRead);
+
+// Đánh dấu tất cả tin nhắn trong nhóm là đã đọc
+router.post('/group/:groupId/mark-read', authMiddleware, checkAccountStatus, messageController.markGroupConversationAsRead);
+
 // Lấy cuộc hội thoại gần đây
 router.get('/conversations/recent', authMiddleware, checkAccountStatus, messageController.getRecentConversations);
 

@@ -233,7 +233,52 @@ const useWebSocket = () => {
   };
 
   const handleMessageRead = (data) => {
-    console.log('Message read:', data);
+    // data: { messageId, readBy, readAt } or { conversationKey, readBy, readAt }
+    console.log(`📬 [WebSocket] MESSAGE_READ event received:`, data);
+    
+    // If reading an entire conversation
+    if (data.conversationKey) {
+      const { conversationKey, readBy } = data;
+      const state = useChatStore.getState();
+      const conversationMessages = state.messages[conversationKey] || [];
+      
+      console.log(`📊 [WebSocket] Updating ${conversationMessages.length} messages in conversation ${conversationKey}`);
+      
+      // Mark all messages from current user as read
+      conversationMessages.forEach(msg => {
+        if (msg.sender?.idUser === readBy || msg.sentBy?.idUser === readBy) {
+          return; // Skip own messages
+        }
+        updateMessage(conversationKey, msg.idMessage, {
+          isRead: true,
+          readAt: data.readAt
+        });
+      });
+      
+      console.log(`✅ [WebSocket] Conversation ${conversationKey} marked as read`);
+    } 
+    // If reading a single message
+    else if (data.messageId) {
+      const { messageId, readBy } = data;
+      const state = useChatStore.getState();
+      const userId = state.user?.idUser || user?.idUser || user?.id || user?.userId;
+      
+      console.log(`📊 [WebSocket] Updating single message ${messageId}`);
+      
+      // Find which conversation contains this message
+      Object.keys(state.messages).forEach(conversationKey => {
+        const messages = state.messages[conversationKey] || [];
+        const message = messages.find(msg => msg.idMessage === messageId);
+        
+        if (message) {
+          console.log(`✅ [WebSocket] Found message ${messageId} in ${conversationKey}, marking as read`);
+          updateMessage(conversationKey, messageId, {
+            isRead: true,
+            readAt: data.readAt
+          });
+        }
+      });
+    }
   };
 
   const handleGroupAdded = (data) => {
