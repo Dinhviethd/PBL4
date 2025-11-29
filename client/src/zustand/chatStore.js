@@ -60,22 +60,54 @@ const useChatStore = create(
       
       addConversation: (conversation) =>
         set((state) => {
-          const existingIndex = state.conversations.findIndex(c => 
-            c.type === conversation.type && 
-            (c.partnerId === conversation.partnerId || c.groupId === conversation.groupId)
-          );
+          console.log('🔄 [chatStore] addConversation called:', conversation);
+          console.log('📋 [chatStore] Current conversations count:', state.conversations.length);
+          console.log('🆔 [chatStore] Looking for:', {
+            type: conversation.type,
+            partnerId: conversation.partnerId,
+            groupId: conversation.groupId
+          });
+          
+          const existingIndex = state.conversations.findIndex((c, idx) => {
+            console.log(`  Checking index ${idx}:`, {
+              type: c.type,
+              partnerId: c.partnerId,
+              groupId: c.groupId,
+              match: conversation.type === 'private' && c.type === 'private' 
+                ? (c.partnerId == conversation.partnerId)
+                : (c.groupId == conversation.groupId)
+            });
+            
+            if (conversation.type === 'private' && c.type === 'private') {
+              // Use == for loose comparison (handles string/number mismatch)
+              return c.partnerId == conversation.partnerId;
+            } else if (conversation.type === 'group' && c.type === 'group') {
+              return c.groupId == conversation.groupId;
+            }
+            return false;
+          });
+          
+          console.log('🔍 [chatStore] Existing conversation index:', existingIndex);
           
           if (existingIndex >= 0) {
             // Update existing conversation and move to the top
             const updatedConversations = [...state.conversations];
-            const updatedConversation = { ...updatedConversations[existingIndex], ...conversation };
+            const existingConv = updatedConversations[existingIndex];
+            const updatedConversation = { ...existingConv, ...conversation };
+            
+            console.log('✏️ [chatStore] Updating existing conversation at index:', existingIndex);
+            console.log('📝 [chatStore] Old conversation:', existingConv);
+            console.log('📝 [chatStore] Updated conversation:', updatedConversation);
             
             // Remove from old position
             updatedConversations.splice(existingIndex, 1);
             
+            console.log('🔼 [chatStore] Moving conversation to top. New order will have', updatedConversations.length + 1, 'conversations');
+            
             // Add to the beginning
             return { conversations: [updatedConversation, ...updatedConversations] };
           } else {
+            console.log('➕ [chatStore] Adding new conversation to the beginning');
             // Add new conversation to the beginning
             return { conversations: [conversation, ...state.conversations] };
           }

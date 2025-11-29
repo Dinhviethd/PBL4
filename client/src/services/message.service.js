@@ -86,16 +86,13 @@ const messageService = {
 
   // Mark all messages in a conversation as read
   markConversationAsRead: async (type, id) => {
-    console.log(`🟢 [MessageService] markConversationAsRead called - type: ${type}, id: ${id}`);
     try {
       // type: 'private' or 'group'
       // id: partnerId or groupId
       const endpoint = type === 'private' 
         ? `/messages/private/${id}/mark-read` 
         : `/messages/group/${id}/mark-read`;
-      console.log(`📡 [MessageService] POST ${endpoint}`);
       const response = await instance.post(endpoint);
-      console.log(`✅ [MessageService] markConversationAsRead success:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ [MessageService] markConversationAsRead failed:`, error.response?.data || error);

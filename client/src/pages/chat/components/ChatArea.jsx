@@ -82,6 +82,7 @@ export const ChatArea = ({ conversation }) => {
     getConversationKey,
     clearUnreadCount,
     updateConversation,
+    addConversation,
     unreadCounts,
     typingUsers,
     socket,
@@ -308,7 +309,6 @@ export const ChatArea = ({ conversation }) => {
   const handleInputFocus = async () => {
     // Always mark as read when user focuses on input (regardless of unreadCount)
     try {
-      console.log('📝 [ChatArea] Input focused - marking conversation as read');
       
       const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
       const currentUnreadCount = conversation.unreadCount || 0;
@@ -359,12 +359,24 @@ export const ChatArea = ({ conversation }) => {
 
       addMessage(conversationKey, response.data);
       
-      // Update conversation with the new last message
-      const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
-      updateConversation(conversation.type, conversationId, {
+      console.log('📤 [ChatArea] Sending message and updating conversation:', {
+        type: conversation.type,
+        partnerId: conversation.partnerId,
+        groupId: conversation.groupId,
+        lastMessage: messageContent
+      });
+      
+      // Update conversation with the new last message and move to top
+      addConversation({
+        type: conversation.type,
+        partnerId: conversation.type === 'private' ? conversation.partnerId : undefined,
+        groupId: conversation.type === 'group' ? conversation.groupId : undefined,
+        partner: conversation.type === 'private' ? conversation.partner : undefined,
+        group: conversation.type === 'group' ? conversation.group : undefined,
         lastMessage: messageContent,
         lastMessageTime: response.data.createdAt || new Date().toISOString(),
-        lastMessageType: 'text'
+        lastMessageType: 'text',
+        unreadCount: 0 // Own message, so unreadCount is 0
       });
     } catch (error) {
       console.error('❌ [ChatArea] Failed to send message:', error);
