@@ -358,6 +358,14 @@ export const ChatArea = ({ conversation }) => {
       }
 
       addMessage(conversationKey, response.data);
+      
+      // Update conversation with the new last message
+      const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
+      updateConversation(conversation.type, conversationId, {
+        lastMessage: messageContent,
+        lastMessageTime: response.data.createdAt || new Date().toISOString(),
+        lastMessageType: 'text'
+      });
     } catch (error) {
       console.error('❌ [ChatArea] Failed to send message:', error);
       // Re-add message to input on error
