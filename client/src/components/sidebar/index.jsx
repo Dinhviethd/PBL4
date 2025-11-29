@@ -94,11 +94,9 @@ export default function Sidebar() {
               title={link.label}
             >
               {link.icon}
-              {/* Badge for notifications */}
+              {/* Badge for notifications - only red dot */}
               {link.to === "/notifications" && unreadCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full shadow-md"></div>
               )}
               <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
                 {link.label}

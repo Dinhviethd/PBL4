@@ -114,7 +114,15 @@ const NotificationPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Thông báo</h1>
-              <p className="text-gray-500 mt-1">Quản lý tất cả thông báo của bạn tại đây</p>
+              <p className="text-gray-500 mt-1">
+                {unreadCount > 0 ? (
+                  <>
+                    Có <span className="text-blue-600 font-semibold">{unreadCount}</span> thông báo chưa đọc
+                  </>
+                ) : (
+                  "Quản lý tất cả thông báo của bạn tại đây"
+                )}
+              </p>
             </div>
             {unreadCount > 0 && (
               <div className="text-right">
