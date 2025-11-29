@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthInit } from "@/hooks/useAuthInit";
 import { NavLink, useNavigate } from "react-router-dom";
 import { MessageCircle, Users, Bell, UserPlus, Settings, PlusSquare, LogOut, AlertCircle } from "lucide-react";
 import PopupInfo from "@/components/profile/PopupInfor";
 import CreateGroupModal from './CreateGroupModal';
 import authService from "@/services/auth.service";
+import notificationService from "@/services/notification.service";
+import { useNotificationContext } from "@/contexts/NotificationCountContext";
 
 const links = [
   { to: "/", label: "Tin nhắn", icon: <MessageCircle size={22} /> },
@@ -17,8 +19,30 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const { user } = useAuthInit();
+  const { user, accessToken } = useAuthInit();
+  const { unreadCount, updateUnreadCount } = useNotificationContext();
   const navigate = useNavigate();
+
+  // Fetch notifications count on mount and poll every 5 seconds
+  useEffect(() => {
+    const fetchNotificationCount = async () => {
+      try {
+        if (accessToken) {
+          const response = await notificationService.getNotifications();
+          const unread = response.data.filter(n => n.status === "pending").length;
+          updateUnreadCount(unread);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notification count:", error);
+      }
+    };
+
+    fetchNotificationCount();
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchNotificationCount, 5000);
+    return () => clearInterval(interval);
+  }, [accessToken, updateUnreadCount]);
 
   const handleLogoutConfirm = async () => {
     try {
@@ -70,6 +94,12 @@ export default function Sidebar() {
               title={link.label}
             >
               {link.icon}
+              {/* Badge for notifications */}
+              {link.to === "/notifications" && unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </div>
+              )}
               <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
                 {link.label}
               </span>
