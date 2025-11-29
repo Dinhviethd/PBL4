@@ -1,7 +1,8 @@
-
+import React from "react";
 import App from "./App";
 import MainLayout from "./layouts/MainLayout";
 import AuthLayout from "./layouts/AuthLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -16,6 +17,16 @@ import AddFriendPage from "./pages/contact/AddFriendPage";
 import NotificationPage from "./pages/publics/NotificationPage";
 import ChatPage from '@/pages/chat/ChatPage'
 import CallPage from "@/pages/chat/CallPage"
+
+// Wrapper components for protected routes
+const ProtectedChatPage = () => React.createElement(ProtectedRoute, {}, React.createElement(ChatPage));
+const ProtectedContactPage = () => React.createElement(ProtectedRoute, {}, React.createElement(ContactPage));
+const ProtectedAddFriendPage = () => React.createElement(ProtectedRoute, {}, React.createElement(AddFriendPage));
+const ProtectedSettingsPage = () => React.createElement(ProtectedRoute, {}, React.createElement(SettingsPage));
+const ProtectedConfirmChangePasswordPage = () => React.createElement(ProtectedRoute, {}, React.createElement(ConfirmChangePasswordPage));
+const ProtectedPasswordChangeRedirectPage = () => React.createElement(ProtectedRoute, {}, React.createElement(PasswordChangeRedirectPage));
+const ProtectedNotificationPage = () => React.createElement(ProtectedRoute, {}, React.createElement(NotificationPage));
+const ProtectedCallPage = () => React.createElement(ProtectedRoute, {}, React.createElement(CallPage));
 const routes = [
   {
     path: "/",
@@ -25,14 +36,14 @@ const routes = [
         path: "/",
         Component: MainLayout,
         children: [
-          { path: "", Component: ChatPage },
-          { path: "contact", Component: ContactPage },
-          { path: "add-friend", Component: AddFriendPage },
-          { path: "settings", Component: SettingsPage },
-          { path: "confirm-password-change", Component: ConfirmChangePasswordPage },
-          { path: "password-change-redirect", Component: PasswordChangeRedirectPage },
-          { path: "notifications", Component: NotificationPage},
-          { path: "call", Component: CallPage },
+          { path: "", Component: ProtectedChatPage },
+          { path: "contact", Component: ProtectedContactPage },
+          { path: "add-friend", Component: ProtectedAddFriendPage },
+          { path: "settings", Component: ProtectedSettingsPage },
+          { path: "confirm-password-change", Component: ProtectedConfirmChangePasswordPage },
+          { path: "password-change-redirect", Component: ProtectedPasswordChangeRedirectPage },
+          { path: "notifications", Component: ProtectedNotificationPage},
+          { path: "call", Component: ProtectedCallPage },
         ],
       },
       {
