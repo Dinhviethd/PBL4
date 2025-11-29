@@ -168,18 +168,10 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                     </AvatarFallback>
                   </Avatar>
                   
-                  {/* Red dot indicator for unread messages */}
-                  {unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center">
-                      <span className="sr-only">{unreadCount} tin nhắn chưa đọc</span>
-                    </div>
-                  )}
-                  
                   {/* Online indicator for private chats */}
                   {conversation.type === 'private' && 
                    Array.isArray(onlineUsers) &&
-                   onlineUsers.includes(conversation.partnerId) && 
-                   unreadCount === 0 && ( // Only show if no unread to avoid overlap
+                   onlineUsers.includes(conversation.partnerId) && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   )}
                 </div>

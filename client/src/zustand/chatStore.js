@@ -257,14 +257,31 @@ const useChatStore = create(
           );
           
           // Merge recent conversations with group conversations
-          const allConversations = [...recentConversations];
+          // First, deduplicate recentConversations to prevent duplicate entries
+          const deduplicatedConversations = [];
+          const seenConversations = new Set();
+          
+          recentConversations.forEach(conv => {
+            const key = conv.type === 'private' 
+              ? `private_${conv.partnerId}` 
+              : `group_${conv.groupId}`;
+            
+            if (!seenConversations.has(key)) {
+              seenConversations.add(key);
+              deduplicatedConversations.push(conv);
+            } else {
+              console.warn(`⚠️ Duplicate conversation detected: ${key}`);
+            }
+          });
+          
+          const allConversations = [...deduplicatedConversations];
           
           // Add group conversations that are not in recent conversations
           groupConversations.forEach(groupConv => {
-            const exists = allConversations.find(conv => 
-              conv.type === 'group' && conv.groupId === groupConv.groupId
-            );
-            if (!exists) {
+            const key = `group_${groupConv.groupId}`;
+            
+            if (!seenConversations.has(key)) {
+              seenConversations.add(key);
               allConversations.push(groupConv);
             } else {
               // Update existing conversation with memberCount

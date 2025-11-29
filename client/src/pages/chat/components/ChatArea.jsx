@@ -64,10 +64,12 @@ export const ChatArea = ({ conversation }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const messagesEndRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const inputRef = useRef(null);
   const previousScrollHeight = useRef(0);
+  const previousMessageCount = useRef(0);
 
   const { user } = useAuthStore();
   
@@ -114,7 +116,21 @@ export const ChatArea = ({ conversation }) => {
 
   // Merge messages and calls into a single timeline
   const timeline = useMemo(() => {
-    const items = conversationMessages.map(msg => {
+    // First, deduplicate call messages by callId
+    const seenCallIds = new Set();
+    const deduplicatedMessages = conversationMessages.filter(msg => {
+      if (msg.type === 'call' && msg.call) {
+        const callId = msg.call.idCall;
+        if (seenCallIds.has(callId)) {
+          console.warn(`⚠️ Duplicate call message detected for callId: ${callId}`);
+          return false; // Skip duplicate
+        }
+        seenCallIds.add(callId);
+      }
+      return true;
+    });
+    
+    const items = deduplicatedMessages.map(msg => {
       if (msg.type === 'call' && msg.call) {
         // Call message type - use call data for timestamp
         return {
@@ -144,6 +160,8 @@ export const ChatArea = ({ conversation }) => {
       // Reset pagination state when conversation changes
       setPage(1);
       setHasMore(true);
+      setIsInitialLoad(true); // Mark as initial load
+      previousMessageCount.current = 0;
       
       try {
         let response;
@@ -158,6 +176,7 @@ export const ChatArea = ({ conversation }) => {
         console.log(`✅ [ChatArea] Received ${response.data?.length || 0} messages`);
         setMessages(conversationKey, response.data || []);
         setHasMore(response.data?.length === 20); // If less than 20, no more messages
+        previousMessageCount.current = response.data?.length || 0;
         
         // Mark as read if there are unread messages
         // Use unreadCount from conversation object (from API) instead of store
@@ -196,10 +215,26 @@ export const ChatArea = ({ conversation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationKey]); // Only run when conversation changes
 
-  // Scroll to bottom when new messages arrive
+  // Scroll to bottom only for initial load or new messages (not when loading more old messages)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversationMessages]);
+    const currentMessageCount = conversationMessages.length;
+    
+    // Only scroll to bottom if:
+    // 1. Initial load (first time opening conversation)
+    // 2. New message added (count increased and not loading more)
+    if (isInitialLoad) {
+      // Initial load - scroll to bottom after a brief delay to ensure DOM is ready
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        setIsInitialLoad(false);
+      }, 100);
+    } else if (currentMessageCount > previousMessageCount.current && !isLoadingMore) {
+      // New message arrived (not from loading more old messages)
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    previousMessageCount.current = currentMessageCount;
+  }, [conversationMessages, isInitialLoad, isLoadingMore]);
 
   // Handle scroll to load more messages
   const handleScroll = async (e) => {
@@ -229,7 +264,11 @@ export const ChatArea = ({ conversation }) => {
           
           // Prepend old messages to existing messages
           const currentMessages = messages[conversationKey] || [];
-          setMessages(conversationKey, [...response.data, ...currentMessages]);
+          const newMessages = [...response.data, ...currentMessages];
+          
+          // Update message count before setting messages to prevent scroll to bottom
+          previousMessageCount.current = newMessages.length;
+          setMessages(conversationKey, newMessages);
           
           setPage(nextPage);
           setHasMore(response.data.length === 20);

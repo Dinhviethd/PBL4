@@ -8,6 +8,7 @@ import authService from "@/services/auth.service";
 import notificationService from "@/services/notification.service";
 import { useNotificationContext } from "@/contexts/NotificationCountContext";
 import { getReceivedRequests } from "@/services/friendShip.service";
+import useChatStore from '@/zustand/chatStore';
 
 const links = [
   { to: "/", label: "Tin nhắn", icon: <MessageCircle size={22} /> },
@@ -23,7 +24,13 @@ export default function Sidebar() {
   const [hasPendingInvites, setHasPendingInvites] = useState(false);
   const { user, accessToken } = useAuthInit();
   const { unreadCount, updateUnreadCount } = useNotificationContext();
+  const { conversations } = useChatStore();
   const navigate = useNavigate();
+
+  // Calculate total unread messages from all conversations
+  const totalUnreadMessages = conversations.reduce((total, conv) => {
+    return total + (conv.unreadCount || 0);
+  }, 0);
 
   // Fetch notifications count on mount and poll every 5 seconds
   useEffect(() => {
@@ -116,6 +123,10 @@ export default function Sidebar() {
               title={link.label}
             >
               {link.icon}
+              {/* Badge for unread messages - only red dot */}
+              {link.to === "/" && totalUnreadMessages > 0 && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full shadow-md"></div>
+              )}
               {/* Badge for notifications - only red dot */}
               {link.to === "/notifications" && unreadCount > 0 && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full shadow-md"></div>
