@@ -66,10 +66,15 @@ const useChatStore = create(
           );
           
           if (existingIndex >= 0) {
-            // Update existing conversation
+            // Update existing conversation and move to the top
             const updatedConversations = [...state.conversations];
-            updatedConversations[existingIndex] = { ...updatedConversations[existingIndex], ...conversation };
-            return { conversations: updatedConversations };
+            const updatedConversation = { ...updatedConversations[existingIndex], ...conversation };
+            
+            // Remove from old position
+            updatedConversations.splice(existingIndex, 1);
+            
+            // Add to the beginning
+            return { conversations: [updatedConversation, ...updatedConversations] };
           } else {
             // Add new conversation to the beginning
             return { conversations: [conversation, ...state.conversations] };

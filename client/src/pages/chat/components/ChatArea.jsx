@@ -155,7 +155,6 @@ export const ChatArea = ({ conversation }) => {
   // Load messages when conversation changes
   useEffect(() => {
     const loadMessages = async () => {
-      console.log(`🟢 [ChatArea] Loading messages for conversation:`, conversation);
       
       // Reset pagination state when conversation changes
       setPage(1);
@@ -166,14 +165,11 @@ export const ChatArea = ({ conversation }) => {
       try {
         let response;
         if (conversation.type === 'private') {
-          console.log(`📬 [ChatArea] Fetching private messages with partner ${conversation.partnerId}`);
           response = await messageService.getPrivateMessages(conversation.partnerId, 1, 20);
         } else {
-          console.log(`📬 [ChatArea] Fetching group messages for group ${conversation.groupId}`);
           response = await messageService.getGroupMessages(conversation.groupId, 1, 20);
         }
         
-        console.log(`✅ [ChatArea] Received ${response.data?.length || 0} messages`);
         setMessages(conversationKey, response.data || []);
         setHasMore(response.data?.length === 20); // If less than 20, no more messages
         previousMessageCount.current = response.data?.length || 0;
@@ -243,7 +239,6 @@ export const ChatArea = ({ conversation }) => {
     
     // Check if scrolled near top (within 100px)
     if (scrollTop < 100 && !isLoadingMore && hasMore) {
-      console.log('📜 [ChatArea] Loading more messages...');
       setIsLoadingMore(true);
       
       // Save current scroll height to restore position after loading
@@ -260,7 +255,6 @@ export const ChatArea = ({ conversation }) => {
         }
         
         if (response.data && response.data.length > 0) {
-          console.log(`✅ [ChatArea] Loaded ${response.data.length} more messages`);
           
           // Prepend old messages to existing messages
           const currentMessages = messages[conversationKey] || [];
@@ -280,7 +274,6 @@ export const ChatArea = ({ conversation }) => {
             scrollElement.scrollTop = scrollTop + scrollDiff;
           }, 100);
         } else {
-          console.log('📭 [ChatArea] No more messages to load');
           setHasMore(false);
         }
       } catch (error) {
@@ -313,32 +306,33 @@ export const ChatArea = ({ conversation }) => {
   }, [message, socket, conversation]);
 
   const handleInputFocus = async () => {
-    // Mark as read when user focuses on input
-    const currentUnreadCount = conversation.unreadCount || 0;
-    
-    if (currentUnreadCount > 0) {
-      try {
-        console.log('📝 [ChatArea] Input focused - marking conversation as read');
-        
-        // Update UI immediately - optimistic update
-        const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
-        updateConversation(conversation.type, conversationId, { unreadCount: 0 });
-        clearUnreadCount(conversationKey);
-        
-        // Then call API
-        await messageService.markConversationAsRead(
-          conversation.type,
-          conversationId
-        );
-      } catch (error) {
-        console.error('❌ [ChatArea] Failed to mark conversation as read:', error);
-        // Rollback on error
-        updateConversation(
-          conversation.type,
-          conversation.type === 'private' ? conversation.partnerId : conversation.groupId,
-          { unreadCount: currentUnreadCount }
-        );
-      }
+    // Always mark as read when user focuses on input (regardless of unreadCount)
+    try {
+      console.log('📝 [ChatArea] Input focused - marking conversation as read');
+      
+      const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
+      const currentUnreadCount = conversation.unreadCount || 0;
+      
+      // Update UI immediately - optimistic update
+      updateConversation(conversation.type, conversationId, { unreadCount: 0 });
+      clearUnreadCount(conversationKey);
+      
+      // Always call API to ensure backend is synced
+      await messageService.markConversationAsRead(
+        conversation.type,
+        conversationId
+      );
+      
+    } catch (error) {
+      console.error('❌ [ChatArea] Failed to mark conversation as read:', error);
+      // Rollback on error
+      const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
+      const currentUnreadCount = conversation.unreadCount || 0;
+      updateConversation(
+        conversation.type,
+        conversationId,
+        { unreadCount: currentUnreadCount }
+      );
     }
   };
 
@@ -348,7 +342,6 @@ export const ChatArea = ({ conversation }) => {
     const messageContent = message.trim();
     setMessage('');
     
-    console.log(`📤 [ChatArea] Sending message to ${conversation.type} conversation:`, conversationKey);
 
     try {
       let response;
@@ -364,9 +357,7 @@ export const ChatArea = ({ conversation }) => {
         );
       }
 
-      console.log(`✅ [ChatArea] Message sent successfully, adding to store:`, response.data);
       addMessage(conversationKey, response.data);
-      console.log(`📊 [ChatArea] Messages in store after send:`, messages[conversationKey]?.length);
     } catch (error) {
       console.error('❌ [ChatArea] Failed to send message:', error);
       // Re-add message to input on error
@@ -642,7 +633,7 @@ export const ChatArea = ({ conversation }) => {
 
             return (
               <div
-                key={msg.idMessage}
+                key={`message-${msg.idMessage}`}
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`flex items-start max-w-[70%] ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>

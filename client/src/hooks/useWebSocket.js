@@ -57,7 +57,6 @@ const useWebSocket = () => {
           userId: userId,
         };
 
-        // console.log('Sending auth message:', authMessage);
         ws.send(JSON.stringify(authMessage));
       };
 
@@ -178,7 +177,6 @@ const useWebSocket = () => {
   };
 
   const handlePrivateMessage = (messageData) => {
-    console.log('📬 [WebSocket] Received PRIVATE_MESSAGE:', messageData);
     
     // Extract actual message data (backend wraps it in 'data' field)
     const data = messageData.data || messageData;
@@ -194,7 +192,6 @@ const useWebSocket = () => {
       return;
     }
     
-    console.log(`✅ [WebSocket] Adding message to conversation: ${conversationKey}`);
     
     // Add message to store with full structure
     addMessage(conversationKey, {
@@ -210,18 +207,39 @@ const useWebSocket = () => {
       sentBy: data.sentBy || data.sender
     });
     
-    console.log(`📊 [WebSocket] Current messages count in ${conversationKey}:`, (state.messages[conversationKey] || []).length + 1);
     
     // Update conversation's last message
-    addConversation({
-      type: 'private',
-      partnerId: data.sender.idUser,
-      partner: data.sender,
-      lastMessage: data.content,
-      lastMessageTime: data.createdAt,
-      lastMessageType: data.type,
-      unreadCount: 1
-    });
+    // Check if conversation already exists
+    const existingConversation = state.conversations.find(conv => 
+      conv.type === 'private' && conv.partnerId === data.sender.idUser
+    );
+    
+    if (existingConversation) {
+      // Update existing conversation - increment unreadCount
+      const currentUserId = user?.idUser || user?.id || user?.userId;
+      const isOwnMessage = data.sender.idUser === currentUserId;
+      
+      addConversation({
+        type: 'private',
+        partnerId: data.sender.idUser,
+        partner: data.sender,
+        lastMessage: data.content,
+        lastMessageTime: data.createdAt,
+        lastMessageType: data.type,
+        unreadCount: isOwnMessage ? 0 : (existingConversation.unreadCount || 0) + 1
+      });
+    } else {
+      // Create new conversation
+      addConversation({
+        type: 'private',
+        partnerId: data.sender.idUser,
+        partner: data.sender,
+        lastMessage: data.content,
+        lastMessageTime: data.createdAt,
+        lastMessageType: data.type,
+        unreadCount: 1
+      });
+    }
   };
 
   const handleGroupMessage = (messageData) => {
@@ -258,21 +276,45 @@ const useWebSocket = () => {
       groupId: data.groupId
     });
     
-    console.log(`📊 [WebSocket] Current messages count in ${conversationKey}:`, (state.messages[conversationKey] || []).length + 1);
     
     // Update conversation's last message
-    addConversation({
-      type: 'group',
-      groupId: data.groupId,
-      group: {
-        idGroup: data.groupId,
-        name: data.groupName
-      },
-      lastMessage: data.content,
-      lastMessageTime: data.createdAt,
-      lastMessageType: data.type,
-      unreadCount: 1
-    });
+    // Check if conversation already exists
+    const existingConversation = state.conversations.find(conv => 
+      conv.type === 'group' && conv.groupId === data.groupId
+    );
+    
+    if (existingConversation) {
+      // Update existing conversation - increment unreadCount
+      const currentUserId = user?.idUser || user?.id || user?.userId;
+      const isOwnMessage = data.sender.idUser === currentUserId;
+      
+      addConversation({
+        type: 'group',
+        groupId: data.groupId,
+        group: {
+          idGroup: data.groupId,
+          name: data.groupName || existingConversation.group?.name
+        },
+        lastMessage: data.content,
+        lastMessageTime: data.createdAt,
+        lastMessageType: data.type,
+        unreadCount: isOwnMessage ? 0 : (existingConversation.unreadCount || 0) + 1
+      });
+    } else {
+      // Create new conversation
+      addConversation({
+        type: 'group',
+        groupId: data.groupId,
+        group: {
+          idGroup: data.groupId,
+          name: data.groupName
+        },
+        lastMessage: data.content,
+        lastMessageTime: data.createdAt,
+        lastMessageType: data.type,
+        unreadCount: 1
+      });
+    }
   };
 
   const handleMessageEdited = (data) => {
@@ -298,34 +340,45 @@ const useWebSocket = () => {
   };
 
   const handleMessageRead = (data) => {
-    // data: { messageId, readBy, readAt } or { conversationKey, readBy, readAt }
+    console.log('📖 [WebSocket] MESSAGE_READ event:', data);
     
-    // If reading an entire conversation
+    // data: { conversationKey, readBy, readAt, messageIds }
+    
     if (data.conversationKey) {
       const { conversationKey, readBy } = data;
       const state = useChatStore.getState();
       const conversationMessages = state.messages[conversationKey] || [];
+      const currentUserId = user?.idUser || user?.id || user?.userId;
       
-      console.log(`📊 [WebSocket] Updating ${conversationMessages.length} messages in conversation ${conversationKey}`);
       
-      // Mark all messages from current user as read
+      // Only update if someone ELSE read the messages (not current user)
+      // This means current user is the SENDER and should see checkmarks
+      if (readBy === currentUserId) {
+        console.log('⚠️ [WebSocket] Current user read their own messages, skipping update');
+        return;
+      }
+      
+      // Mark all messages that current user SENT as read
+      // (because someone else just read them)
+      let updatedCount = 0;
       conversationMessages.forEach(msg => {
-        if (msg.sender?.idUser === readBy || msg.sentBy?.idUser === readBy) {
-          return; // Skip own messages
+        const senderId = msg.sender?.idUser || msg.sentBy?.idUser;
+        
+        // Only mark messages sent BY current user as read
+        if (senderId === currentUserId) {
+          updateMessage(conversationKey, msg.idMessage, {
+            isRead: true,
+            readAt: data.readAt
+          });
+          updatedCount++;
         }
-        updateMessage(conversationKey, msg.idMessage, {
-          isRead: true,
-          readAt: data.readAt
-        });
       });
       
     } 
     // If reading a single message
     else if (data.messageId) {
-      const { messageId, readBy } = data;
+      const { messageId } = data;
       const state = useChatStore.getState();
-      const userId = state.user?.idUser || user?.idUser || user?.id || user?.userId;
-      
       
       // Find which conversation contains this message
       Object.keys(state.messages).forEach(conversationKey => {
