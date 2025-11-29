@@ -61,8 +61,13 @@ export const ChatArea = ({ conversation }) => {
   const [message, setMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef(null);
+  const scrollAreaRef = useRef(null);
   const inputRef = useRef(null);
+  const previousScrollHeight = useRef(0);
 
   const { user } = useAuthStore();
   
@@ -136,18 +141,23 @@ export const ChatArea = ({ conversation }) => {
     const loadMessages = async () => {
       console.log(`🟢 [ChatArea] Loading messages for conversation:`, conversation);
       
+      // Reset pagination state when conversation changes
+      setPage(1);
+      setHasMore(true);
+      
       try {
         let response;
         if (conversation.type === 'private') {
           console.log(`📬 [ChatArea] Fetching private messages with partner ${conversation.partnerId}`);
-          response = await messageService.getPrivateMessages(conversation.partnerId);
+          response = await messageService.getPrivateMessages(conversation.partnerId, 1, 20);
         } else {
           console.log(`📬 [ChatArea] Fetching group messages for group ${conversation.groupId}`);
-          response = await messageService.getGroupMessages(conversation.groupId);
+          response = await messageService.getGroupMessages(conversation.groupId, 1, 20);
         }
         
         console.log(`✅ [ChatArea] Received ${response.data?.length || 0} messages`);
         setMessages(conversationKey, response.data || []);
+        setHasMore(response.data?.length === 20); // If less than 20, no more messages
         
         // Mark as read if there are unread messages
         // Use unreadCount from conversation object (from API) instead of store
@@ -190,6 +200,57 @@ export const ChatArea = ({ conversation }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversationMessages]);
+
+  // Handle scroll to load more messages
+  const handleScroll = async (e) => {
+    const scrollElement = e.target;
+    const scrollTop = scrollElement.scrollTop;
+    
+    // Check if scrolled near top (within 100px)
+    if (scrollTop < 100 && !isLoadingMore && hasMore) {
+      console.log('📜 [ChatArea] Loading more messages...');
+      setIsLoadingMore(true);
+      
+      // Save current scroll height to restore position after loading
+      previousScrollHeight.current = scrollElement.scrollHeight;
+      
+      try {
+        const nextPage = page + 1;
+        let response;
+        
+        if (conversation.type === 'private') {
+          response = await messageService.getPrivateMessages(conversation.partnerId, nextPage, 20);
+        } else {
+          response = await messageService.getGroupMessages(conversation.groupId, nextPage, 20);
+        }
+        
+        if (response.data && response.data.length > 0) {
+          console.log(`✅ [ChatArea] Loaded ${response.data.length} more messages`);
+          
+          // Prepend old messages to existing messages
+          const currentMessages = messages[conversationKey] || [];
+          setMessages(conversationKey, [...response.data, ...currentMessages]);
+          
+          setPage(nextPage);
+          setHasMore(response.data.length === 20);
+          
+          // Restore scroll position after a brief delay to allow DOM update
+          setTimeout(() => {
+            const newScrollHeight = scrollElement.scrollHeight;
+            const scrollDiff = newScrollHeight - previousScrollHeight.current;
+            scrollElement.scrollTop = scrollTop + scrollDiff;
+          }, 100);
+        } else {
+          console.log('📭 [ChatArea] No more messages to load');
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error('❌ [ChatArea] Failed to load more messages:', error);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    }
+  };
 
   // Handle typing indicator
   useEffect(() => {
@@ -499,8 +560,21 @@ export const ChatArea = ({ conversation }) => {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef} onScrollCapture={handleScroll}>
         <div className="space-y-4">
+          {/* Loading indicator for more messages */}
+          {isLoadingMore && (
+            <div className="flex justify-center py-2">
+              <div className="text-sm text-gray-500">Đang tải thêm tin nhắn...</div>
+            </div>
+          )}
+          
+          {!hasMore && conversationMessages.length > 20 && (
+            <div className="flex justify-center py-2">
+              <div className="text-sm text-gray-400">Đã tải hết tin nhắn</div>
+            </div>
+          )}
+          
           {timeline.map((item, idx) => {
             // Render Call History Item
             if (item.type === 'call') {
