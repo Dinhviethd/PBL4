@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuthInit } from "@/hooks/useAuthInit";
 import { NavLink, useNavigate } from "react-router-dom";
-import { MessageCircle, Users, Bell, UserPlus, Settings, PlusSquare, LogOut } from "lucide-react";
+import { MessageCircle, Users, Bell, UserPlus, Settings, PlusSquare, LogOut, AlertCircle } from "lucide-react";
 import PopupInfo from "@/components/profile/PopupInfor";
 import CreateGroupModal from './CreateGroupModal';
 import authService from "@/services/auth.service";
@@ -16,10 +16,11 @@ const links = [
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { user } = useAuthInit();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
+  const handleLogoutConfirm = async () => {
     try {
       await authService.logout();
       navigate("/auth/login");
@@ -28,6 +29,10 @@ export default function Sidebar() {
       // Vẫn redirect đến login ngay cả khi có lỗi
       navigate("/login");
     }
+  };
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
   };
 
   const avatarUrl = user?.avatarUrl
@@ -112,6 +117,58 @@ export default function Sidebar() {
 
   {/* Create Group Modal */}
   <CreateGroupModal isOpen={showCreate} onClose={() => setShowCreate(false)} currentUser={user} />
+
+  {/* Logout Confirmation Modal */}
+  {showLogoutConfirm && (
+    <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full mx-4 relative overflow-hidden">
+        {/* Gradient background decoration */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-100 to-red-50 rounded-full -mr-20 -mt-20 opacity-50"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-blue-50 to-transparent rounded-full -ml-16 -mb-16 opacity-30"></div>
+        
+        <div className="relative z-10">
+          {/* Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+              <LogOut className="w-8 h-8 text-white" />
+            </div>
+          </div>
+
+          {/* Title */}
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-3">Xác nhận đăng xuất</h2>
+          
+          {/* Description */}
+          <p className="text-center text-gray-600 mb-8 text-base leading-relaxed">
+            Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này không?
+          </p>
+
+          {/* Warning note */}
+          <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 mb-8">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng ứng dụng.</p>
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowLogoutConfirm(false)}
+              className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all duration-300 hover:shadow-md"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleLogoutConfirm}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+            >
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
     </nav>
   );
 }
