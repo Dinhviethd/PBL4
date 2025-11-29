@@ -212,6 +212,36 @@ export const ChatArea = ({ conversation }) => {
     }
   }, [message, socket, conversation]);
 
+  const handleInputFocus = async () => {
+    // Mark as read when user focuses on input
+    const currentUnreadCount = conversation.unreadCount || 0;
+    
+    if (currentUnreadCount > 0) {
+      try {
+        console.log('📝 [ChatArea] Input focused - marking conversation as read');
+        
+        // Update UI immediately - optimistic update
+        const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
+        updateConversation(conversation.type, conversationId, { unreadCount: 0 });
+        clearUnreadCount(conversationKey);
+        
+        // Then call API
+        await messageService.markConversationAsRead(
+          conversation.type,
+          conversationId
+        );
+      } catch (error) {
+        console.error('❌ [ChatArea] Failed to mark conversation as read:', error);
+        // Rollback on error
+        updateConversation(
+          conversation.type,
+          conversation.type === 'private' ? conversation.partnerId : conversation.groupId,
+          { unreadCount: currentUnreadCount }
+        );
+      }
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!message.trim()) return;
 
@@ -651,6 +681,7 @@ export const ChatArea = ({ conversation }) => {
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onFocus={handleInputFocus}
               placeholder="Nhập tin nhắn..."
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
