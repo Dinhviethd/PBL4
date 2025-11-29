@@ -92,7 +92,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Incoming Call Modal */}
       {callInfo && (
         <IncomingCallModal
@@ -104,7 +104,7 @@ const ChatPage = () => {
       )}
 
       {/* Conversation List */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
         <ConversationList 
           onCreateGroup={handleCreateGroup}
           onAddMember={() => {}} // Không cần nữa vì đã có trong GroupSettingsDialog
@@ -112,7 +112,7 @@ const ChatPage = () => {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-full">
         {activeConversation ? (
           <ChatArea conversation={activeConversation} />
         ) : (

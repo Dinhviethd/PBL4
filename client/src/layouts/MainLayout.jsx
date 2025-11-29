@@ -57,10 +57,10 @@ export default function MainLayout() {
     return <Navigate to="/auth/login" replace />;
   }
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <Sidebar />
       {/* make the main content a positioned container so child absolute overlays center inside it */}
-      <div style={{ flex: 1, padding: 20, background: "#f0f4ff", position: 'relative' }}>
+      <div style={{ flex: 1, background: "#f0f4ff", position: 'relative', overflow: "hidden" }}>
         <Outlet />
       </div>
     </div>
