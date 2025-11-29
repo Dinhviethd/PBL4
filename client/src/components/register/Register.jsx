@@ -13,13 +13,16 @@ import { Input } from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
 import authService from "@/services/auth.service"
+import userService from "@/services/user.service"
+import { useNotification } from "@/hooks/useNotification"
+import { useState } from "react"
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Họ và tên phải chứa ít nhất 2 kí tự." }),
-  phone: z.string().optional().refine(
+  phone: z.string().refine(
     (value) => !value || /^[0-9]{10,11}$/.test(value),
     { message: "Số điện thoại không hợp lệ (10-11 chữ số)" }
-  ),
+  ).optional().or(z.literal("")),
   email: z.string().email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 kí tự" }),
   confirmPassword: z.string()
@@ -40,26 +43,57 @@ const Register = () => {
     }
   })
 
-  // const [isLoading, setIsLoading] = useState(false);
-  // const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotification();
 
   const onSubmit = async (data) => {
     try {
+      setIsLoading(true);
+      
+      // Check if phone already exists (nếu có nhập số điện thoại)
+      if (data.phone && data.phone.trim()) {
+        const existingPhoneUser = await userService.lookup({ phone: data.phone });
+        if (existingPhoneUser) {
+          showError("Lỗi đăng ký", "Số điện thoại đã được sử dụng");
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       await authService.register({
         name: data.name,
-        phone: data.phone,
+        phone: data.phone && data.phone.trim() ? data.phone : undefined,
         email: data.email,
         password: data.password,
         confirmPassword: data.confirmPassword
       });
       // Chuyển hướng đến trang đăng nhập sau khi đăng ký thành công
+      showSuccess("Đăng ký thành công", "Vui lòng đăng nhập với tài khoản của bạn!");
       navigate('/auth/login', { 
         state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' }
       });
     } catch (err) {
-      console.log(err || 'Đăng ký thất bại');
-      // Có thể xử lý lỗi ở đây nếu muốn hiển thị
+      let errorMessage = "Đăng ký thất bại. Vui lòng thử lại.";
+      
+      // Lấy message lỗi từ response
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        // Xử lý validation errors từ backend
+        const firstError = err.response.data.errors[0];
+        if (firstError?.message) {
+          errorMessage = firstError.message;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Hiển thị lỗi cụ thể
+      showError("Lỗi đăng ký", errorMessage);
+      console.error("Register error:", err);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -185,8 +219,8 @@ const Register = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-200">
-                Đăng ký
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-200" disabled={isLoading}>
+                {isLoading ? "Đang đăng ký..." : "Đăng ký"}
               </Button>
 
               <p className="text-center text-sm text-gray-600 pt-2">

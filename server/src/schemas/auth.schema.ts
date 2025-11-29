@@ -5,7 +5,10 @@ export const registerSchema = z.object({
     password: z.string().min(6).max(50),
     confirmPassword: z.string().min(6).max(50),
     name: z.string().min(3).max(100),
-    phone: z.string().min(10).max(15).optional(),
+    phone: z.string().refine(
+        (value) => !value || (value.length >= 10 && value.length <= 15),
+        { message: "Số điện thoại không hợp lệ (10-15 chữ số)" }
+    ).optional().or(z.literal("")),
     avatarUrl: z.string().url().optional()
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
