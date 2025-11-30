@@ -34,6 +34,7 @@ export const ChatPrivateSettingsDialog = ({ open, onClose, partner }) => {
           if (!mounted) return;
           setRelation(rel?.status || 'none');
         } catch (err) {
+          console.log(err)
           setRelation('none');
         }
       } else {
@@ -45,13 +46,13 @@ export const ChatPrivateSettingsDialog = ({ open, onClose, partner }) => {
     return () => { mounted = false; };
   }, [open, partner]);
 
-  const info = userInfo || partner;
+  const info = userInfo || partner || {};
   // Debug: log all info
   console.log('[ChatPrivateSettingsDialog] info:', info, 'relation:', relation);
 
   // Format birthday if available
   let birthday = '';
-  if (info.birthday) {
+  if (info && info.birthday) {
     try {
       const date = new Date(info.birthday);
       birthday = date.toLocaleDateString('vi-VN');
@@ -62,7 +63,7 @@ export const ChatPrivateSettingsDialog = ({ open, onClose, partner }) => {
 
   // Format gender
   let gender = '';
-  if (info.gender) {
+  if (info && info.gender) {
     if (info.gender === 'male' || info.gender === 'nam') gender = 'Nam';
     else if (info.gender === 'female' || info.gender === 'nữ') gender = 'Nữ';
     else gender = info.gender;
@@ -96,12 +97,10 @@ export const ChatPrivateSettingsDialog = ({ open, onClose, partner }) => {
                   <span className="max-w-[200px] truncate break-words whitespace-nowrap" title={info.email}>{info.email}</span>
                 </div>
               )}
-              {birthday && (
-                <div className="flex items-center text-gray-700 text-sm">
-                  <span className="font-medium min-w-[80px]">Ngày sinh:</span>
-                  <span>{birthday}</span>
-                </div>
-              )}
+              <div className="flex items-center text-gray-700 text-sm">
+                <span className="font-medium min-w-[80px]">Ngày sinh:</span>
+                <span>{birthday ? birthday : "Chưa cập nhật"}</span>
+              </div>
               {gender && (
                 <div className="flex items-center text-gray-700 text-sm">
                   <span className="font-medium min-w-[80px]">Giới tính:</span>

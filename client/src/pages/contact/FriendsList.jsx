@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ChatPrivateSettingsDialog from "@/pages/chat/components/ChatPrivateSettingsDialog";
 import { Search, MoreHorizontal, Eye, UserX, Ban, ChevronDown } from "lucide-react";
 import { getFriends, deleteFriendship, blockFriend } from "@/services/friendShip.service";
 
@@ -14,6 +15,23 @@ const FriendsList = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmBlock, setConfirmBlock] = useState(null);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Đóng dialog khi click ngoài
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    const handleClickOutsideDialog = (event) => {
+      const dialog = document.getElementById("chat-private-settings-dialog");
+      if (dialog && !dialog.contains(event.target)) {
+        setIsDialogOpen(false);
+        setSelectedFriend(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutsideDialog);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideDialog);
+    };
+  }, [isDialogOpen]);
 
   const deleteRef = useRef();
   const blockRef = useRef();
@@ -184,7 +202,14 @@ const FriendsList = () => {
                       {openDropdown === `friend-${friend.id}` && (
                         <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                           <div className="py-2">
-                            <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+                            <button
+                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                              onClick={() => {
+                                setSelectedFriend(friend);
+                                setIsDialogOpen(true);
+                                setOpenDropdown(null);
+                              }}
+                            >
                               <Eye className="w-5 h-5" />
                               Xem thông tin
                             </button>
@@ -284,6 +309,21 @@ const FriendsList = () => {
             </div>
           </div>
         )}
+      {/* ChatPrivateSettingsDialog */}
+      {isDialogOpen && selectedFriend && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div id="chat-private-settings-dialog">
+            <ChatPrivateSettingsDialog
+              open={isDialogOpen}
+              onClose={() => {
+                setIsDialogOpen(false);
+                setSelectedFriend(null);
+              }}
+              partner={{ idUser: selectedFriend.id, ...selectedFriend }}
+            />
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
