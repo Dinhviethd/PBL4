@@ -168,6 +168,9 @@ class FriendshipService {
     }
 
     // Other statuses (e.g., blocked)
+    if (friendship.status === FriendStatus.BLOCKED) {
+      return { status: 'blocked', requestId: friendship.idFriendShip };
+    }
     return { status: 'none' };
   }
 

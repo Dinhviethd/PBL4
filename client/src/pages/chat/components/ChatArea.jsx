@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import * as friendshipService from '@/services/friendShip.service';
 import { useNavigate } from 'react-router-dom';
 import Button from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,25 @@ const getGroupAvatarDisplay = (groupName = '') => {
   const { activeConversation } = useChatStore();
   // Nếu activeConversation tồn tại, ưu tiên lấy từ store
   const conversation = useMemo(() => activeConversation || propConversation, [activeConversation, propConversation]);
+  const [isBlocked, setIsBlocked] = useState(false);
+  // Kiểm tra trạng thái BLOCKED khi mở chat private
+  useEffect(() => {
+    const checkBlocked = async () => {
+      if (!conversation || conversation.type !== 'private') {
+        setIsBlocked(false);
+        return;
+      }
+      try {
+        const rel = await friendshipService.getRelationStatus(conversation.partnerId);
+        console.log('[ChatArea] Relation status:', rel);
+        setIsBlocked(rel?.status === 'blocked');
+      } catch (err) {
+        console.error('[ChatArea] Error checking relation:', err);
+        setIsBlocked(false);
+      }
+    };
+    checkBlocked();
+  }, [conversation]);
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
@@ -585,8 +605,8 @@ const getGroupAvatarDisplay = (groupName = '') => {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Call Buttons - chỉ hiển thị cho private conversations */}
-          {conversation.type === 'private' && (
+          {/* Nếu bị block thì không hiển thị call buttons */}
+          {conversation.type === 'private' && !isBlocked && (
             <CallButtons
               onAudioCallClick={handleAudioCall}
               onVideoCallClick={handleVideoCall}
@@ -796,49 +816,55 @@ const getGroupAvatarDisplay = (groupName = '') => {
 
       {/* Message Input */}
       <div className="p-4 border-t border-gray-200 bg-white">
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 hover:bg-gray-100">
-            <Paperclip className="w-4 h-4" />
-          </Button>
-          
-          <div className="flex-1 relative">
-            <Input
-              ref={inputRef}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onFocus={handleInputFocus}
-              placeholder="Nhập tin nhắn..."
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              className="pr-10 rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              style={{ borderRadius: '20px' }}
-            />
+        {conversation.type === 'private' && isBlocked ? (
+          <div className="flex items-center justify-center py-6">
+            <span className="px-6 py-3 bg-red-100 text-red-700 rounded-full font-semibold shadow">Bạn đã chặn người này. Không thể nhắn tin hoặc gọi.</span>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 hover:bg-gray-100">
+              <Paperclip className="w-4 h-4" />
+            </Button>
+            
+            <div className="flex-1 relative">
+              <Input
+                ref={inputRef}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onFocus={handleInputFocus}
+                placeholder="Nhập tin nhắn..."
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                className="pr-10 rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                style={{ borderRadius: '20px' }}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                <Smile className="w-4 h-4" />
+              </Button>
+            </div>
+
             <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
+              className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10 p-0 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ 
+                background: message.trim() 
+                  ? 'linear-gradient(135deg, #0084ff 0%, #0066cc 100%)' 
+                  : undefined 
+              }}
             >
-              <Smile className="w-4 h-4" />
+              <Send className="w-4 h-4" />
             </Button>
           </div>
-
-          <Button
-            onClick={handleSendMessage}
-            disabled={!message.trim()}
-            className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10 p-0 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ 
-              background: message.trim() 
-                ? 'linear-gradient(135deg, #0084ff 0%, #0066cc 100%)' 
-                : undefined 
-            }}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* Group Settings Dialog */}
