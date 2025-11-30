@@ -159,7 +159,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                     <h3 className="font-medium text-gray-900 truncate flex-1">
                       {conversation.type === 'private' 
                         ? conversation.partner?.name || 'Unknown User'
-                        : conversation.group?.name || 'Unknown Group'
+                        : conversation.group?.name || conversation.name || 'Unknown Group'
                       }
                     </h3>
                     

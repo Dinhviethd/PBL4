@@ -1,3 +1,4 @@
+
 // src/hooks/useWebSocket.js
 import { useEffect, useRef } from 'react';
 import useAuthStore from '@/zustand/authStore';
@@ -127,6 +128,15 @@ const useWebSocket = () => {
             case 'GROUP_DELETED':
               handleGroupDeleted(data.data);
               break;
+
+            case 'GROUP_MEMBER_KICKED':
+              handleGroupMemberKicked(data.data);
+              break;
+
+            case 'GROUP_UPDATED':
+              handleGroupUpdated(data.data);
+              break;
+              
             
             // Handle all CALL_* signaling messages
             case 'CALL_INITIATE':
@@ -316,6 +326,9 @@ const useWebSocket = () => {
       });
     }
   };
+  const handleGroupMemberKicked = (data) => {
+    console.log("handleGroupMemberKicked", data)
+  };
 
   const handleMessageEdited = (data) => {
     const userId = user?.idUser || user?.id || user?.userId;
@@ -358,9 +371,6 @@ const useWebSocket = () => {
         return;
       }
       
-      // Mark all messages that current user SENT as read
-      // (because someone else just read them)
-      let updatedCount = 0;
       conversationMessages.forEach(msg => {
         const senderId = msg.sender?.idUser || msg.sentBy?.idUser;
         
@@ -370,7 +380,6 @@ const useWebSocket = () => {
             isRead: true,
             readAt: data.readAt
           });
-          updatedCount++;
         }
       });
       
@@ -419,11 +428,40 @@ const useWebSocket = () => {
 
   const handleKickedFromGroup = (data) => {
     console.log('Kicked from group:', data);
+    // Remove group from store and UI
+    const { groupId } = data;
+    if (groupId) {
+      useChatStore.getState().removeGroup(groupId);
+      // Optional: show notification or redirect
+      if (window.location.pathname.startsWith('/chat')) {
+        window.location.href = '/'; // Redirect to home or another page
+      }
+    }
   };
 
   const handleGroupDeleted = (data) => {
     console.log('Group deleted:', data);
   };
+    const handleGroupUpdated = (data) => {
+      // Cập nhật thông tin nhóm trong conversations (cả group.name và name ở root)
+      const state = useChatStore.getState();
+      const updatedConversations = state.conversations.map(conv => {
+        if (conv.type === 'group' && conv.groupId === data.groupId) {
+          return {
+            ...conv,
+            name: data.name, // Đảm bảo đồng bộ tên ở root
+            group: {
+              ...conv.group,
+              name: data.name,
+              statusGroup: data.statusGroup
+            }
+          };
+        }
+        return conv;
+      });
+      useChatStore.setState({ conversations: updatedConversations });
+      console.log('Group updated:', data);
+    };
 
   useEffect(() => {
     if (accessToken && user) {

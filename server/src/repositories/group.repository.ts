@@ -1,3 +1,4 @@
+
 import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
 import { GroupInvitation } from '@/models/group_invitation.model';
@@ -13,6 +14,14 @@ export class GroupRepository {
   constructor() {
     this.groupRepo = AppDataSource.getRepository(Group);
     this.groupUserRepo = AppDataSource.getRepository(GroupUser);
+  }
+  async updateGroup(groupId: number, update: { name?: string; statusGroup?: boolean }): Promise<Group | null> {
+    const group = await this.groupRepo.findOne({ where: { idGroup: groupId } });
+    if (!group) return null;
+    if (typeof update.name !== 'undefined') group.name = update.name;
+    if (typeof update.statusGroup !== 'undefined') group.statusGroup = update.statusGroup;
+    await this.groupRepo.save(group);
+    return group;
   }
 
   async createGroup(name: string, createdBy: User): Promise<Group> {

@@ -58,7 +58,10 @@ const getGroupAvatarDisplay = (groupName = '') => {
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2360A5FA'/%3E%3Ctext x='50' y='65' font-size='40' font-weight='bold' fill='white' text-anchor='middle'%3E${groupName.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
 };
 
-export const ChatArea = ({ conversation }) => {
+  export const ChatArea = ({ conversation: propConversation }) => {
+  const { activeConversation } = useChatStore();
+  // Nếu activeConversation tồn tại, ưu tiên lấy từ store
+  const conversation = useMemo(() => activeConversation || propConversation, [activeConversation, propConversation]);
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
@@ -74,8 +77,6 @@ export const ChatArea = ({ conversation }) => {
   const previousScrollHeight = useRef(0);
   const previousMessageCount = useRef(0);
 
-  console.log('🟢 ChatArea render - showGroupSettings:', showGroupSettings);
-  console.log('🟢 Conversation type:', conversation.type);
 
   const { user } = useAuthStore();
   
@@ -363,12 +364,6 @@ export const ChatArea = ({ conversation }) => {
 
       addMessage(conversationKey, response.data);
       
-      console.log('📤 [ChatArea] Sending message and updating conversation:', {
-        type: conversation.type,
-        partnerId: conversation.partnerId,
-        groupId: conversation.groupId,
-        lastMessage: messageContent
-      });
       
       // Update conversation with the new last message and move to top
       addConversation({
@@ -576,7 +571,7 @@ export const ChatArea = ({ conversation }) => {
             <h2 className="font-semibold text-gray-900">
               {conversation.type === 'private' 
                 ? (conversation.partner?.name || 'Unknown User')
-                : (conversation.group?.name || 'Unknown Group')
+                : (conversation.group?.name ?? conversation.name ?? 'Unknown Group')
               }
             </h2>
             {conversation.type === 'private' ? (

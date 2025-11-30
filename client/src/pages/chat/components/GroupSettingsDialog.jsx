@@ -32,12 +32,17 @@ import userService from '@/services/user.service';
 import useChatStore from '@/zustand/chatStore';
 import { getAvatarUrl } from '@/lib/utils';
 import useAuthStore from '@/zustand/authStore';
+// import { P } from 'framer-motion/dist/types.d-BJcRxCew';
 
 export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const { showSuccess, showError } = useNotification();
     const [inviteMessages, setInviteMessages] = useState({}); // { userId: message }
   const [isEditingName, setIsEditingName] = useState(false);
-  const [groupName, setGroupName] = useState('');
+  // Luôn lấy tên nhóm mới nhất từ store nếu có conversation/group cập nhật
+  const { conversations } = useChatStore();
+  const currentConversation = conversations.find(conv => conv.type === 'group' && conv.groupId === group?.idGroup);
+  const latestGroupName = currentConversation?.group?.name || group?.name || '';
+  const [groupName, setGroupName] = useState(latestGroupName);
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,9 +71,8 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       try {
         const pendingResponse = await groupService.getPendingMembers(group.idGroup);
         setPendingMembers(pendingResponse.data || []);
-        console.log("pending ne", pendingResponse.data)
       } catch (pendingError) {
-        console.log('⚠️ No pending members API or error:', pendingError);
+        console.log(pendingError)
         setPendingMembers([]);
       }
     } catch (error) {
@@ -100,10 +104,11 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
 
   useEffect(() => {
     if (open && group) {
-      setGroupName(group.name);
+      // Luôn cập nhật groupName từ store/conversation khi dialog mở hoặc group thay đổi
+      setGroupName(latestGroupName);
       loadGroupData();
     }
-  }, [open, group, loadGroupData]);
+  }, [open, group, latestGroupName, loadGroupData]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -121,7 +126,6 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       setIsEditingName(false);
       return;
     }
-
     setIsLoading(true);
     try {
       await groupService.updateGroup(group.idGroup, { name: groupName.trim() });
@@ -170,21 +174,29 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   };
 
 
-  const handleKickMember = async (userId) => {
-    if (!confirm('Bạn có chắc muốn kick thành viên này khỏi nhóm?')) return;
-    
+  // Kick member confirmation dialog state
+  const [kickMemberId, setKickMemberId] = useState(null);
+  const [showKickConfirm, setShowKickConfirm] = useState(false);
+
+  const handleKickMember = (userId) => {
+    setKickMemberId(userId);
+    setShowKickConfirm(true);
+  };
+
+  const confirmKickMember = async () => {
+    if (!kickMemberId) return;
     setIsLoading(true);
     try {
-      await groupService.kickMember(group.idGroup, userId);
-      
+      await groupService.kickMember(group.idGroup, kickMemberId);
       showSuccess('Thành công', 'Thành viên đã bị kick khỏi nhóm');
-      
       loadGroupData();
     } catch (error) {
       console.error('Kick member error:', error);
       showError('Lỗi', 'Không thể kick thành viên');
     } finally {
       setIsLoading(false);
+      setShowKickConfirm(false);
+      setKickMemberId(null);
     }
   };
 
@@ -284,11 +296,11 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                       <div className="flex items-center gap-2 mb-2">
                         <Input value={groupName} onChange={e => setGroupName(e.target.value)} className="text-lg font-bold" placeholder="Tên nhóm" autoFocus />
                         <Button size="sm" onClick={handleUpdateGroupName} disabled={isLoading} className="bg-green-500 hover:bg-green-600"><Save className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="outline" onClick={() => { setIsEditingName(false); setGroupName(group.name); }}><X className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="outline" onClick={() => { setIsEditingName(false); setGroupName(latestGroupName); }}><X className="w-4 h-4" /></Button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-xl font-bold text-gray-900">{group.name}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">{latestGroupName}</h3>
                         {isAdmin && (
                           <Button size="sm" variant="ghost" onClick={() => setIsEditingName(true)} className="h-7 w-7 p-0"><Edit3 className="w-4 h-4 text-blue-500" /></Button>
                         )}
@@ -349,9 +361,11 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                             </div>
                           </div>
                           {isAdmin && !isCurrentUser && !memberIsAdmin && (
-                            <Button size="sm" variant="ghost" onClick={() => handleKickMember(member.idUser)} disabled={isLoading} className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-2" title="Xóa thành viên">
-                              <UserX className="w-4 h-4" />
-                            </Button>
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => handleKickMember(member.idUser)} disabled={isLoading} className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-2" title="Xóa thành viên">
+                                <UserX className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       );
@@ -446,6 +460,16 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
           </div>
         </ScrollArea>
 
+        {/* Kick member confirmation dialog */}
+        <ConfirmDialog
+          open={showKickConfirm}
+          title="Xác nhận kick thành viên"
+          description="Bạn có chắc muốn kick thành viên này khỏi nhóm? Hành động này không thể hoàn tác."
+          onConfirm={confirmKickMember}
+          onCancel={() => { setShowKickConfirm(false); setKickMemberId(null); }}
+          confirmText="Kick thành viên"
+          cancelText="Hủy"
+        />
         {/* Footer */}
         <div className="flex justify-end pt-4 border-t mt-4">
           <Button variant="outline" onClick={handleClose} className="px-6">Đóng</Button>

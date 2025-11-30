@@ -28,6 +28,14 @@ const groupService = {
       throw error.response?.data || { message: 'Failed to create group' };
     }
   },
+  updateGroup: async (groupId, { name, statusGroup }) => {
+    try {
+      const response = await instance.put(`/groups/${groupId}`, { name, statusGroup });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update group' };
+    }
+  },
 
   // Add member to group
   addMember: async (groupId, userId) => {

@@ -23,6 +23,8 @@ router.delete('/:groupId/leave', authMiddleware, checkAccountStatus, groupContro
 // Kick thành viên (chỉ admin)
 router.delete('/:groupId/members', authMiddleware, checkAccountStatus, groupController.kickMember);
 
+// Cập nhật group (chỉ admin)
+router.put('/:groupId', authMiddleware, checkAccountStatus, groupController.updateGroup);
 // Xóa group (chỉ admin)
 router.delete('/:groupId', authMiddleware, checkAccountStatus, groupController.deleteGroup);
 

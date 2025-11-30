@@ -3,6 +3,22 @@ import { asyncHandler } from '@/utils/error.response';
 import { GroupService } from '@/services/group.service';
 
 export class GroupController {
+    updateGroup = asyncHandler(async (req: Request, res: Response) => {
+      const { groupId } = req.params;
+      const { name, statusGroup } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      if (!name && typeof statusGroup === 'undefined') {
+        return res.status(400).json({ success: false, message: 'No update data provided' });
+      }
+
+      const result = await this.groupService.updateGroup(parseInt(groupId), userId, { name, statusGroup });
+      res.json({ success: true, message: 'Group updated', data: result });
+    });
   private groupService: GroupService;
 
   constructor() {

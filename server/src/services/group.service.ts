@@ -1,3 +1,4 @@
+
 import { GroupRepository } from '@/repositories/group.repository';
 import { AppDataSource } from '@/configs/database.config';
 import { User } from '@/models/users.model';
@@ -12,6 +13,35 @@ export class GroupService {
   constructor() {
     this.groupRepository = new GroupRepository();
     this.userRepository = AppDataSource.getRepository(User);
+  }
+    async updateGroup(groupId: number, userId: number, update: { name?: string; statusGroup?: boolean }) {
+    // Kiểm tra quyền admin
+    const member = await this.groupRepository.findGroupMember(groupId, userId);
+    if (!member || member.role !== UserRole.ADMIN) {
+      throw new AppError(403, 'Only admin can update group');
+    }
+    const group = await this.groupRepository.updateGroup(groupId, update);
+    if (!group) {
+      throw new AppError(404, 'Group not found');
+    }
+    // Lấy danh sách thành viên để thông báo
+    const members = await this.groupRepository.getGroupMembers(groupId);
+    members.forEach(member => {
+      wsService.sendToUser(member.user.idUser, {
+        type: 'GROUP_UPDATED',
+        data: {
+          groupId: groupId,
+          name: group.name,
+          statusGroup: group.statusGroup,
+          updatedBy: userId
+        }
+      });
+    });
+    return {
+      idGroup: group.idGroup,
+      name: group.name,
+      statusGroup: group.statusGroup
+    };
   }
 
   async createGroup(name: string, creatorId: number) {
@@ -175,6 +205,21 @@ export class GroupService {
       data: {
         groupId: groupId,
         kickedBy: adminId
+      }
+    });
+
+    // Thông báo cho các thành viên còn lại (trừ admin và user bị kick)
+    const members = await this.groupRepository.getGroupMembers(groupId);
+    members.forEach(member => {
+      if (member.user.idUser !== targetUserId && member.user.idUser !== adminId) {
+        wsService.sendToUser(member.user.idUser, {
+          type: 'GROUP_MEMBER_KICKED',
+          data: {
+            groupId: groupId,
+            kickedUserId: targetUserId,
+            kickedBy: adminId
+          }
+        });
       }
     });
 

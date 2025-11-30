@@ -119,7 +119,12 @@ const useChatStore = create(
             if (type === 'private' && conv.type === 'private' && conv.partnerId === id) {
               return { ...conv, ...updates };
             } else if (type === 'group' && conv.type === 'group' && conv.groupId === id) {
-              return { ...conv, ...updates };
+              // Nếu cập nhật tên nhóm, đồng bộ cả group.name và name ở root
+              let newConv = { ...conv, ...updates };
+              if (updates.name) {
+                newConv.group = { ...newConv.group, name: updates.name };
+              }
+              return newConv;
             }
             return conv;
           });

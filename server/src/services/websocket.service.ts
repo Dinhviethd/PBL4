@@ -69,12 +69,6 @@ class WebSocketService {
 
   // Gửi tin nhắn 1-1
   sendPrivateMessage(fromUserId: number, toUserId: number, data: any) {
-    console.log(`📤 [WebSocket] Sending PRIVATE_MESSAGE from ${fromUserId} (${typeof fromUserId}) to ${toUserId} (${typeof toUserId})`);
-    console.log(`📊 [WebSocket] Current connected users:`, Array.from(this.clients.keys()));
-    console.log(`🔍 [WebSocket] Checking if ${toUserId} exists in clients...`);
-    console.log(`🔍 [WebSocket] this.clients.has(${toUserId}):`, this.clients.has(toUserId));
-    console.log(`🔍 [WebSocket] this.clients.get(${toUserId}):`, this.clients.get(toUserId) ? 'Socket exists' : 'No socket');
-    
     const receiverSocket = this.clients.get(toUserId);
     
     if (receiverSocket && receiverSocket.readyState === WebSocket.OPEN) {
