@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Phone, PhoneOff, User } from 'lucide-react';
 
 export const IncomingCallModal = ({ 
@@ -7,6 +7,8 @@ export const IncomingCallModal = ({
   onDecline,
   autoRejectTime = 45 // seconds
 }) => {
+  const audioRef = useRef(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const [timeLeft, setTimeLeft] = useState(autoRejectTime);
   const [isDeclined, setIsDeclined] = useState(false);
 
@@ -17,7 +19,6 @@ export const IncomingCallModal = ({
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // Auto reject khi hết thời gian
           setIsDeclined(true);
           onDecline();
           return 0;
@@ -27,7 +28,39 @@ export const IncomingCallModal = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [callInfo, isDeclined, onDecline]); // Add isDeclined to stop countdown once declined
+  }, [callInfo, isDeclined, onDecline]);
+
+  // Play ringtone when call modal is shown
+  useEffect(() => {
+    if (callInfo && !isDeclined && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {
+        setAudioBlocked(true);
+      });
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    // Pause ringtone when modal is closed
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, [callInfo, isDeclined]);
+
+  // Handler for user-triggered play
+  const handlePlayAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().then(() => {
+        setAudioBlocked(false);
+      }).catch(() => {
+        setAudioBlocked(true);
+      });
+    }
+  };
 
   // Reset timeLeft khi callInfo change
   useEffect(() => {
@@ -45,16 +78,36 @@ export const IncomingCallModal = ({
 
   const handleAccept = () => {
     setIsDeclined(true);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     onAccept?.();
   };
 
   const handleDecline = () => {
     setIsDeclined(true);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     onDecline?.();
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+      {/* Ringtone audio element */}
+      <audio ref={audioRef} src="/sounds/ringtone.mp3" loop preload="auto" />
+      {audioBlocked && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+          <button
+            onClick={handlePlayAudio}
+            className="bg-yellow-400 text-white px-4 py-2 rounded shadow font-semibold animate-pulse"
+          >
+            Bấm để phát chuông
+          </button>
+        </div>
+      )}
       {/* Modal Container */}
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-96 animate-in fade-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
