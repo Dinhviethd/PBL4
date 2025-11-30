@@ -2,14 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { GroupSettingsDialog } from '@/pages/chat/components/GroupSettingsDialog';
 import { Search, Filter, ChevronDown, MoreHorizontal, LogOut, UserPlus, Eye, MessageSquare } from 'lucide-react';
 import groupService from '@/services/group.service';
-import { useContext } from 'react';
-import NotificationContext from '@/contexts/NotificationContext';
 
 const GroupsList = () => {
-  const [confirmLeave, setConfirmLeave] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { showSuccess, showError } = useContext(NotificationContext);
 
   const [groups, setGroups] = useState([]);
   const [page, setPage] = useState(1);
