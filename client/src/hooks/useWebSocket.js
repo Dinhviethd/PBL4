@@ -136,7 +136,13 @@ const useWebSocket = () => {
             case 'GROUP_UPDATED':
               handleGroupUpdated(data.data);
               break;
-              
+             case 'NOTIFICATION': {
+              console.log('[WebSocket] Received NOTIFICATION:', data.data);
+
+              handleNotification(data.data);
+              break;
+            }
+     
             
             // Handle all CALL_* signaling messages
             case 'CALL_INITIATE':
@@ -251,7 +257,9 @@ const useWebSocket = () => {
       });
     }
   };
-
+  const handleNotification = (notificationData) => {
+    window.dispatchEvent(new CustomEvent('notificationReceived', { detail: notificationData }));
+  };
   const handleGroupMessage = (messageData) => {
     console.log('📬 [WebSocket] Received GROUP_MESSAGE:', messageData);
     
@@ -351,6 +359,7 @@ const useWebSocket = () => {
     
     deleteMessage(conversationKey, data.messageId);
   };
+  
 
   const handleMessageRead = (data) => {
     console.log('📖 [WebSocket] MESSAGE_READ event:', data);
@@ -438,6 +447,9 @@ const useWebSocket = () => {
       }
     }
   };
+              
+
+         
 
   const handleGroupDeleted = (data) => {
     console.log('Group deleted:', data);
@@ -463,6 +475,7 @@ const useWebSocket = () => {
       console.log('Group updated:', data);
     };
 
+           
   useEffect(() => {
     if (accessToken && user) {
       connect();

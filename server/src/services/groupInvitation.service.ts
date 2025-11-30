@@ -4,6 +4,7 @@ import { AppError } from '@/utils/error.response';
 import { UserResponse } from '@/DTOs/user.dto';
 import { th } from 'zod/v4/locales/index.cjs';
 import { GroupInvitationStatus } from '@/constants/constants';
+import notificationService from '@/services/notification.service';
 
 export class GroupInvitationService {
       // Lấy toàn bộ danh sách pending members của nhóm (không phân trang)
@@ -76,6 +77,14 @@ export class GroupInvitationService {
     // Chỉ tạo invitation, không thêm vào nhóm
     const inv = await groupInvitationRepository.createInvitation(groupId, userId, inviteeId, message);
     if (!inv) return { status: 'error' };
+
+    // Tạo thông báo lời mời vào nhóm
+    try {
+      await notificationService.createGroupInviteNotification(userId, inviteeId, groupId, inv.idGroup.name);
+    } catch (error) {
+      console.error('Failed to create group invite notification:', error);
+    }
+
     const mapUser = (u: any): UserResponse => ({
       idUser: u?.idUser,
       name: u?.name || u?.fullName,
@@ -132,14 +141,59 @@ export class GroupInvitationService {
       // Admin duyệt trực tiếp, thêm thành viên vào nhóm và xóa lời mời
       await this.groupRepository.addMember(inv.idGroup.idGroup, inv.invitee.idUser);
       await groupInvitationRepository.deleteInvitationById(invitationId);
+      // Tạo thông báo thành viên mới vào nhóm
+      try {
+        if (inv.invitee && inv.idGroup) {
+          // Lấy danh sách thành viên hiện tại của nhóm
+          const members = await this.groupRepository.getGroupMembers(inv.idGroup.idGroup);
+          const memberIds = members.map(m => m.user.idUser);
+          await notificationService.createGroupMemberJoinedNotification(
+            inv.invitee.idUser,
+            inv.idGroup.idGroup,
+            inv.idGroup.name,
+            memberIds
+          );
+        }
+      } catch (error) {
+        console.error('Failed to create group member joined notification:', error);
+      }
       return { message: 'Admin đã duyệt, thành viên đã được thêm vào nhóm' };
     } else if (inv.needAdminApprove) {
       // Nếu cần admin duyệt, chỉ chuyển status sang accepted
       await groupInvitationRepository.updateInvitationStatus(invitationId, GroupInvitationStatus.ACCEPTED);
+      try {
+        if (inv.invitee && inv.idGroup && inv.idGroup.createdBy) {
+          await notificationService.createGroupInviteAdminNotification(
+            inv.invitee.idUser,
+            inv.idGroup.createdBy.idUser,
+            inv.idGroup.idGroup,
+            inv.idGroup.name
+          );
+        } else {
+          console.error('Missing invitee or group creator info for notification');
+        }
+      } catch (error) {
+        console.error('Failed to create group invite notification:', error);
+      }
       return { message: 'Đã xác nhận, chờ admin duyệt' };
     } else {
       await this.groupRepository.addMember(inv.idGroup.idGroup, userId);
       await groupInvitationRepository.deleteInvitationById(invitationId);
+      // Tạo thông báo thành viên mới vào nhóm
+      try {
+        if (inv.invitee && inv.idGroup) {
+          const members = await this.groupRepository.getGroupMembers(inv.idGroup.idGroup);
+          const memberIds = members.map(m => m.user.idUser);
+          await notificationService.createGroupMemberJoinedNotification(
+            userId,
+            inv.idGroup.idGroup,
+            inv.idGroup.name,
+            memberIds
+          );
+        }
+      } catch (error) {
+        console.error('Failed to create group member joined notification:', error);
+      }
       return { message: 'Joined group successfully' };
     }
   }

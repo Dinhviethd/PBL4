@@ -75,6 +75,16 @@ export class GroupService {
     // Thêm người tạo làm admin
     await this.groupRepository.addUserToGroup(group, creator, UserRole.ADMIN);
 
+    // Gửi thông báo GROUP_ADDED cho admin
+    wsService.sendToUser(creator.idUser, {
+      type: 'GROUP_ADDED',
+      data: {
+        groupId: group.idGroup,
+        groupName: group.name,
+        addedBy: creator
+      }
+    });
+
     return {
       idGroup: group.idGroup,
       name: group.name,

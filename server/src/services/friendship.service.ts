@@ -55,6 +55,14 @@ class FriendshipService {
     if (request.friend_id.idUser !== userId) throw new AppError(403, "Bạn không thể chấp nhận lời mời này");
 
     await this.friendshipRepository.updateStatus(requestId, FriendStatus.ACCEPTED);
+
+    // Gửi thông báo cho người gửi khi được chấp nhận
+    try {
+      await notificationService.createFriendAcceptNotification(request.sender_id.idUser, userId, requestId);
+    } catch (error) {
+      console.error('Failed to create friend accept notification:', error);
+    }
+
     return { message: "Đã chấp nhận lời mời kết bạn" };
   }
 

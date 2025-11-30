@@ -1,3 +1,4 @@
+
 import { AppDataSource } from "../configs/database.config";
 import { Notification } from "../models/notification.model";
 import { Repository, Not } from "typeorm";
@@ -118,6 +119,129 @@ class NotificationService {
             console.error('Failed to send real-time notification:', error);
         }
 
+        return savedNotification;
+    }
+        // Thông báo khi có lời mời vào nhóm (cho user được mời)
+    async createGroupInviteNotification(inviterId: number, invitedUserId: number, groupId: number, groupName: string): Promise<Notification> {
+        const inviter = await this.userRepository.findOne({ where: { idUser: inviterId } });
+        const invitedUser = await this.userRepository.findOne({ where: { idUser: invitedUserId } });
+        if (!inviter || !invitedUser) throw new Error("User not found");
+        const notificationContent = `Bạn được mời vào nhóm '${groupName}' bởi ${inviter.name || inviter.email}`;
+        const notification = this.notificationRepository.create({
+            user_id: invitedUser,
+            content: notificationContent,
+            status: StatusNoti.PENDING,
+            type: NotiType.GROUP_INVITE,
+            type_id: groupId,
+        });
+        const savedNotification = await this.notificationRepository.save(notification);
+        wsService.sendToUser(invitedUserId, {
+            type: 'NOTIFICATION',
+            data: {
+                id: savedNotification.idNotification,
+                content: savedNotification.content,
+                type: savedNotification.type,
+                status: savedNotification.status,
+                createdAt: savedNotification.createdAt,
+                inviterId,
+                groupId,
+                groupName
+            }
+        });
+        return savedNotification;
+    }
+
+    // Thông báo cho admin khi có lời mời vào nhóm cần xử lý
+    async createGroupInviteAdminNotification(invitedUserId: number, adminId: number, groupId: number, groupName: string): Promise<Notification> {
+        const invitedUser = await this.userRepository.findOne({ where: { idUser: invitedUserId } });
+        const admin = await this.userRepository.findOne({ where: { idUser: adminId } });
+        if (!invitedUser || !admin) throw new Error("User not found");
+        const notificationContent = `Có lời mời vào nhóm '${groupName}' cần xử lý cho ${invitedUser.name || invitedUser.email}`;
+        const notification = this.notificationRepository.create({
+            user_id: admin,
+            content: notificationContent,
+            status: StatusNoti.PENDING,
+            type: NotiType.GROUP_INVITE_ADMIN,
+            type_id: groupId,
+        });
+        const savedNotification = await this.notificationRepository.save(notification);
+        wsService.sendToUser(adminId, {
+            type: 'NOTIFICATION',
+            data: {
+                id: savedNotification.idNotification,
+                content: savedNotification.content,
+                type: savedNotification.type,
+                status: savedNotification.status,
+                createdAt: savedNotification.createdAt,
+                invitedUserId,
+                groupId,
+                groupName
+            }
+        });
+        return savedNotification;
+    }
+
+    // Thông báo khi có thành viên mới tham gia vào nhóm (cho các thành viên khác)
+    async createGroupMemberJoinedNotification(newUserId: number, groupId: number, groupName: string, memberIds: number[]): Promise<void> {
+        const newUser = await this.userRepository.findOne({ where: { idUser: newUserId } });
+        if (!newUser) throw new Error("User not found");
+        const notificationContent = `${newUser.name || newUser.email} đã tham gia nhóm '${groupName}'`;
+        for (const memberId of memberIds) {
+            if (memberId === newUserId) continue;
+            const member = await this.userRepository.findOne({ where: { idUser: memberId } });
+            if (!member) continue;
+            const notification = this.notificationRepository.create({
+                user_id: member,
+                content: notificationContent,
+                status: StatusNoti.PENDING,
+                type: NotiType.GROUP_MEMBER_JOINED,
+                type_id: groupId,
+            });
+            const savedNotification = await this.notificationRepository.save(notification);
+            wsService.sendToUser(memberId, {
+                type: 'NOTIFICATION',
+                data: {
+                    id: savedNotification.idNotification,
+                    content: savedNotification.content,
+                    type: savedNotification.type,
+                    status: savedNotification.status,
+                    createdAt: savedNotification.createdAt,
+                    newUserId,
+                    groupId,
+                    groupName
+                }
+            });
+        }
+    }
+
+    // Thông báo khi có người chấp nhận lời mời kết bạn của bạn
+    async createFriendAcceptNotification(senderId: number, receiverId: number, friendshipId: number): Promise<Notification> {
+        const sender = await this.userRepository.findOne({ where: { idUser: senderId } });
+        const receiver = await this.userRepository.findOne({ where: { idUser: receiverId } });
+        if (!sender || !receiver) throw new Error("User not found");
+        const notificationContent = `${receiver.name || receiver.email} đã chấp nhận lời mời kết bạn của bạn.`;
+        const notification = this.notificationRepository.create({
+            user_id: sender,
+            content: notificationContent,
+            status: StatusNoti.PENDING,
+            type: NotiType.FRIEND_ACCEPT,
+            type_id: friendshipId,
+        });
+        
+        const savedNotification = await this.notificationRepository.save(notification);
+        wsService.sendToUser(senderId, {
+            type: 'NOTIFICATION',
+            data: {
+                id: savedNotification.idNotification,
+                content: savedNotification.content,
+                type: savedNotification.type,
+                status: savedNotification.status,
+                createdAt: savedNotification.createdAt,
+                receiverId,
+                friendshipId
+            }
+        });
+        console.log("sendroine")
         return savedNotification;
     }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useChatStore from "@/zustand/chatStore";
 import ChatPrivateSettingsDialog from "@/pages/chat/components/ChatPrivateSettingsDialog";
-import { Search, MoreHorizontal, Eye, UserX, Ban, ChevronDown } from "lucide-react";
+import { Search, MoreHorizontal, Eye, UserX, Ban, ChevronDown, MessageSquare } from "lucide-react";
 import { getFriends, deleteFriendship, blockFriend } from "@/services/friendShip.service";
 
 const FriendsList = () => {
@@ -215,8 +215,7 @@ const FriendsList = () => {
                   return (
                     <div
                       key={friend.id}
-                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => handleStartConversation(friend)}
+                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         {avatarUrl ? (
@@ -239,49 +238,61 @@ const FriendsList = () => {
                         <span className="text-sm text-gray-800">{friend.name}</span>
                       </div>
 
-                      <div className="relative">
+                      <div className="flex items-center gap-2">
                         <button
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="Nhắn tin"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenDropdown(openDropdown === `friend-${friend.id}` ? null : `friend-${friend.id}`);
+                            handleStartConversation(friend);
                           }}
+                          className="p-2 hover:bg-blue-50 rounded transition-colors"
                         >
-                          <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                          <MessageSquare className="w-5 h-5 text-blue-500" />
                         </button>
+                        <div className="relative">
+                          <button
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdown(openDropdown === `friend-${friend.id}` ? null : `friend-${friend.id}`);
+                            }}
+                          >
+                            <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                          </button>
 
-                        {openDropdown === `friend-${friend.id}` && (
-                          <div ref={dropdownRef} className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                            <div className="py-2">
-                              <button
-                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedFriend(friend);
-                                  setIsDialogOpen(true);
-                                  setOpenDropdown(null);
-                                }}
-                              >
-                                <Eye className="w-5 h-5" />
-                                Xem thông tin
-                              </button>
-                              <button
-                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(friend); }}
-                              >
-                                <UserX className="w-5 h-5" />
-                                Xóa bạn
-                              </button>
-                              <button
-                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                onClick={(e) => { e.stopPropagation(); setConfirmBlock(friend); }}
-                              >
-                                <Ban className="w-5 h-5" />
-                                Chặn
-                              </button>
+                          {openDropdown === `friend-${friend.id}` && (
+                            <div ref={dropdownRef} className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                              <div className="py-2">
+                                <button
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFriend(friend);
+                                    setIsDialogOpen(true);
+                                    setOpenDropdown(null);
+                                  }}
+                                >
+                                  <Eye className="w-5 h-5" />
+                                  Xem thông tin
+                                </button>
+                                <button
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(friend); }}
+                                >
+                                  <UserX className="w-5 h-5" />
+                                  Xóa bạn
+                                </button>
+                                <button
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                  onClick={(e) => { e.stopPropagation(); setConfirmBlock(friend); }}
+                                >
+                                  <Ban className="w-5 h-5" />
+                                  Chặn
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

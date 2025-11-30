@@ -119,9 +119,7 @@ const GroupsList = () => {
                   navigate('/');
                 };
                 return (
-                  <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group cursor-pointer"
-                    onClick={handleStartGroupConversation}
-                  >
+                  <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
                         <img 
@@ -136,33 +134,46 @@ const GroupsList = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                          <div className="relative">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedGroup(group);
-                                setIsDialogOpen(true);
+                      <button
+                        title="Nhắn tin nhóm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartGroupConversation();
+                        }}
+                        className="p-2 hover:bg-blue-50 rounded transition-colors"
+                      >
+                        <MessageSquare className="w-5 h-5 text-blue-500" />
+                      </button>
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedGroup(group);
+                            setIsDialogOpen(true);
+                          }}
+                          className="p-2 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                        </button>
+                      </div>
+                      {/* GroupSettingsDialog - render ngoài danh sách nhóm */}
+                      {isDialogOpen && selectedGroup && (
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+                          <div id="group-settings-dialog">
+                            <GroupSettingsDialog
+                              open={isDialogOpen}
+                              onClose={() => {
+                                setIsDialogOpen(false);
+                                setSelectedGroup(null);
                               }}
-                              className="p-2 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                            </button>
+                              group={selectedGroup}
+                              reloadGroups={() => {
+                                setPage(1);
+                              }}
+                            />
                           </div>
-                          {/* GroupSettingsDialog - render ngoài danh sách nhóm */}
-                          {isDialogOpen && selectedGroup && (
-                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-                              <div id="group-settings-dialog">
-                                <GroupSettingsDialog
-                                  open={isDialogOpen}
-                                  onClose={() => {
-                                    setIsDialogOpen(false);
-                                    setSelectedGroup(null);
-                                  }}
-                                  group={selectedGroup}
-                                />
-                              </div>
-                            </div>
-                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

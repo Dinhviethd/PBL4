@@ -87,7 +87,7 @@ class GroupInvitationRepository {
   async findById(invitationId: number) {
     return await this.repo.findOne({
       where: { idInvitation: invitationId } as any,
-      relations: ['idGroup', 'inviter', 'invitee'],
+      relations: ['idGroup', 'idGroup.createdBy', 'inviter', 'invitee'],
     });
   }
 

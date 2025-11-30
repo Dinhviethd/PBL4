@@ -43,7 +43,6 @@ const NotificationPage = () => {
         setLoading(true);
         const response = await notificationService.getNotifications();
         setNotifications(response.data);
-        
         // Update global unread count
         const unread = response.data.filter(n => n.status === "pending").length;
         updateUnreadCount(unread);
@@ -57,6 +56,16 @@ const NotificationPage = () => {
     if (accessToken) {
       fetchNotifications();
     }
+
+    // Lắng nghe sự kiện notificationReceived để reload thông báo realtime
+    const handleNotificationReceived = () => {
+      fetchNotifications();
+    };
+    window.addEventListener('notificationReceived', handleNotificationReceived);
+
+    return () => {
+      window.removeEventListener('notificationReceived', handleNotificationReceived);
+    };
   }, [accessToken, updateUnreadCount]);
 
   const handleMarkAllAsRead = async () => {
@@ -153,7 +162,7 @@ const NotificationPage = () => {
             <p className="text-gray-500">Bạn đã xem hết tất cả thông báo!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[100vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50">
             {visibleNotifications.map(notification => {
               const { icon: Icon, bgColor, textColor, borderColor } = getNotificationIcon(notification.type);
               const isUnread = notification.status === "pending";

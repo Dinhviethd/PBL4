@@ -7,6 +7,10 @@ export enum NotiType {
   FRIEND_REQUEST = 'friendRequest',
   CALL = 'call',
   PASSWORD_CHANGE = 'passwordChange',
+  GROUP_INVITE = 'groupInvite',
+  GROUP_INVITE_ADMIN = 'groupInviteAdmin',
+  GROUP_MEMBER_JOINED = 'groupMemberJoined',
+  FRIEND_ACCEPT = 'friendAccept',
 }
 
 
