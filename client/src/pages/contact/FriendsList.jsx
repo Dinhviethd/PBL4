@@ -35,6 +35,7 @@ const FriendsList = () => {
 
   const deleteRef = useRef();
   const blockRef = useRef();
+  const dropdownRef = useRef();
 
   const getAvatarUrl = (avatar) => {
     if (!avatar) return null;
@@ -79,7 +80,7 @@ const FriendsList = () => {
     }
   };
 
-  // Click outside để đóng popup
+  // Click outside để đóng popup và dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (deleteRef.current && !deleteRef.current.contains(event.target)) {
@@ -87,6 +88,9 @@ const FriendsList = () => {
       }
       if (blockRef.current && !blockRef.current.contains(event.target)) {
         setConfirmBlock(null);
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -200,7 +204,7 @@ const FriendsList = () => {
                       </button>
 
                       {openDropdown === `friend-${friend.id}` && (
-                        <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <div ref={dropdownRef} className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                           <div className="py-2">
                             <button
                               className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
