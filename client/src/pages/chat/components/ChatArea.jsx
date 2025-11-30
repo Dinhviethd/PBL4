@@ -33,6 +33,7 @@ import CallButtons from '@/components/call/CallButtons';
 import { IncomingCallModal } from '@/components/call/IncomingCallModal';
 import { CallHistoryItem } from '@/components/call/CallHistoryItem';
 import { GroupSettingsDialog } from './GroupSettingsDialog';
+import ChatPrivateSettingsDialog from './ChatPrivateSettingsDialog';
 
 // Helper function to format time
 const formatTimeAgo = (date) => {
@@ -67,6 +68,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [showPrivateSettings, setShowPrivateSettings] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -596,8 +598,8 @@ const getGroupAvatarDisplay = (groupName = '') => {
             onClick={() => {
               if (conversation.type === 'group') {
                 setShowGroupSettings(true);
-              } else {
-                console.log('⚠️ Not a group conversation');
+              } else if (conversation.type === 'private') {
+                setShowPrivateSettings(true);
               }
             }}
             className="hover:bg-gray-100"
@@ -847,6 +849,14 @@ const getGroupAvatarDisplay = (groupName = '') => {
             setShowGroupSettings(false);
           }}
           group={conversation.group}
+        />
+      )}
+      {/* Private Settings Dialog */}
+      {conversation.type === 'private' && (
+        <ChatPrivateSettingsDialog
+          open={showPrivateSettings}
+          onClose={() => setShowPrivateSettings(false)}
+          partner={conversation.partner}
         />
       )}
     </div>

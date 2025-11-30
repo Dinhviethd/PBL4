@@ -1,6 +1,12 @@
 import instance from "./axios.config";
 
 const userService = {
+	// Lấy thông tin user theo id
+	async getUserById(id) {
+		if (!id) throw new Error('Thiếu id user');
+		const res = await instance.get(`/users/${id}`);
+		return res.data;
+	},
   async getProfile() {
     const res = await instance.get("/users/me");
     return res.data.data;

@@ -1,4 +1,5 @@
 
+
 import { User } from "@/models/users.model";
 import { Repository } from "typeorm";
 import { AppDataSource } from "@/configs/database.config";
@@ -88,8 +89,10 @@ class UserService {
     return true;
   }
 
-  async getUserById(userId: number): Promise<User | null> {
-    return this.userRepository.findOne({ where: { idUser: userId } });
+  async getUserById(userId: number): Promise<UserResponse | null> {
+    const user = await this.userRepository.findOne({ where: { idUser: userId } });
+    if (!user) return null;
+    return this.mapUserResponse(user);
   }
 
   async updatePassword(userId: number, hashedPassword: string): Promise<boolean> {

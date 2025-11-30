@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getMyInfo,
+  getUserById,
   updateMyInfo,
   deleteMyAccount,
   uploadAvatar,
@@ -23,6 +24,9 @@ router.get("/me", authMiddleware, asyncHandler(getMyInfo));
 router.get('/lookup', authMiddleware, asyncHandler(lookupUser));
 router.get("/status", authMiddleware, asyncHandler(getAccountStatus));
 router.put("/reactivate", authMiddleware, asyncHandler(reactivateAccount));
+
+// Lấy thông tin user theo id (public hoặc cần auth, tuỳ yêu cầu)
+router.get('/:id', authMiddleware, asyncHandler(getUserById));
 
 // Routes yêu cầu tài khoản ACTIVE
 router.put("/me", authMiddleware, checkAccountStatus, asyncHandler(updateMyInfo));

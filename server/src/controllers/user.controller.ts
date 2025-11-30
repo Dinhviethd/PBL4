@@ -1,3 +1,4 @@
+
 import { Request, Response } from "express";
 import userService from "@/services/user.service";
 import emailService from "@/services/email.service";
@@ -209,5 +210,17 @@ export const lookupUser = async (req: Request, res: Response) => {
     res.json({ success: true, data: user });
   } catch (error: any) {
     throw error;
+  }
+};
+// Lấy thông tin user theo id
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    if (!userId) throw new AppError(400, "Thiếu id user");
+    const user = await userService.getUserById(Number(userId));
+    if (!user) throw new AppError(404, "Không tìm thấy user");
+    res.json({ success: true, data: user });
+  } catch (error: any) {
+    res.status(error.status || 500).json({ success: false, message: error.message });
   }
 };
