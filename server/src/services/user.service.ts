@@ -1,7 +1,7 @@
 
 
 import { User } from "@/models/users.model";
-import { Repository } from "typeorm";
+import { Repository, Not } from "typeorm";
 import { AppDataSource } from "@/configs/database.config";
 import { AppError } from "@/utils/error.response";
 import { UpdateUserDTO, UserResponse } from "@/DTOs/user.dto";
@@ -238,11 +238,12 @@ class UserService {
   async findByEmailOrPhone(email?: string, phone?: string): Promise<UserResponse | null> {
     if (!email && !phone) return null;
     const whereClause: any = [];
-    if (email) whereClause.push({ email });
-    if (phone) whereClause.push({ phone });
+    if (email) whereClause.push({ email, status: StatusUser.LOCKED });
+    if (phone) whereClause.push({ phone, status: StatusUser.LOCKED });
 
+    // Only find users whose status is not LOCKED
     const user = await this.userRepository.findOne({
-      where: whereClause,
+      where: whereClause.length > 0 ? whereClause.map((cond: any) => ({ ...cond, status: Not(StatusUser.LOCKED) })) : undefined,
       select: ["idUser", "name", "email", "phone", "avatarUrl", "gender", "birthday"],
     } as any,
     );
