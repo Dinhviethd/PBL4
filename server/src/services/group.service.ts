@@ -106,9 +106,6 @@ export class GroupService {
       throw new AppError(404, 'Pending member not found');
     }
 
-    if (pendingMember.role !== UserRole.PENDING) {
-      throw new AppError(400, 'User is not pending approval');
-    }
 
     // Cập nhật role
     await this.groupRepository.updateMemberRole(pendingMember.id, UserRole.USER);
@@ -131,14 +128,9 @@ export class GroupService {
       throw new AppError(404, 'You are not a member of this group');
     }
 
-    // Admin không thể rời nhóm nếu còn thành viên khác
+    // Admin không thể rời nhóm, chỉ được phép xóa nhóm
     if (member.role === UserRole.ADMIN) {
-      const allMembers = await this.groupRepository.getGroupMembers(groupId);
-      const otherMembers = allMembers.filter(m => m.user.idUser !== userId);
-      
-      if (otherMembers.length > 0) {
-        throw new AppError(400, 'Admin cannot leave group while there are other members. Please delete the group or transfer admin role first.');
-      }
+      throw new AppError(400, 'Admin cannot leave the group. Please delete the group instead.');
     }
 
     await this.groupRepository.removeUserFromGroup(groupId, userId);
@@ -256,78 +248,22 @@ export class GroupService {
   }
 
   async getPendingMembers(groupId: number, adminId: number) {
-    // Kiểm tra quyền admin
-    const adminMember = await this.groupRepository.findGroupMember(groupId, adminId);
-    if (!adminMember || adminMember.role !== UserRole.ADMIN) {
-      throw new AppError(403, 'Only admin can view pending members');
+    // Chỉ cần là thành viên của nhóm là được phép xem
+    const member = await this.groupRepository.findGroupMember(groupId, adminId);
+    if (!member) {
+      throw new AppError(403, 'Only group members can view pending members');
     }
 
     const pendingMembers = await this.groupRepository.getPendingMembers(groupId);
-    
     return pendingMembers.map(member => ({
-      idUser: member.user.idUser,
-      name: member.user.name,
-      email: member.user.email,
-      avatarUrl: member.user.avatarUrl,
-      addedBy: member.actionBy ? {
-        idUser: member.actionBy.idUser,
-        name: member.actionBy.name
+      idUser: member.invitee.idUser,
+      name: member.invitee.name,
+      email: member.invitee.email,
+      avatarUrl: member.invitee.avatarUrl,
+      addedBy: member.inviter ? {
+        idUser: member.inviter.idUser,
+        name: member.inviter.name
       } : null
     }));
-  }
-
-  // Get all users that can be invited (tất cả users không phải thành viên)
-  async getInvitableUsers(groupId: number, requesterId: number) {
-    console.log('🎯 [getInvitableUsers]', { groupId, requesterId });
-    
-    // Kiểm tra user có trong group không
-    const requester = await this.groupRepository.findGroupMember(groupId, requesterId);
-    console.log('🎯 [getInvitableUsers] requester check:', !!requester);
-    
-    if (!requester) {
-      throw new AppError(403, 'You are not a member of this group');
-    }
-
-    // Lấy tất cả users không phải thành viên
-    const invitableUsers = await this.groupRepository.getInvitableUsers(groupId);
-    console.log('🎯 [getInvitableUsers] found', invitableUsers.length, 'invitable users');
-    
-    return invitableUsers.map((user: any) => ({
-      id: user.idUser,
-      idUser: user.idUser,
-      name: user.name,
-      email: user.email,
-      avatarUrl: user.avatarUrl
-    }));
-  }
-
-  // Invite user to group - thêm vào nhóm trực tiếp
-  async inviteUserToGroup(groupId: number, userId: number, requesterId: number) {
-    console.log('🎯 [inviteUserToGroup]', { groupId, userId, requesterId });
-    
-    // Kiểm tra requester có quyền (là thành viên của group)
-    const requester = await this.groupRepository.findGroupMember(groupId, requesterId);
-    console.log('🎯 [inviteUserToGroup] requester:', requester);
-    
-    if (!requester) {
-      throw new AppError(403, 'You are not a member of this group');
-    }
-
-    // Kiểm tra user đã trong group chưa
-    const existingMember = await this.groupRepository.findGroupMember(groupId, userId);
-    console.log('🎯 [inviteUserToGroup] existingMember:', existingMember);
-    
-    if (existingMember) {
-      throw new AppError(400, 'User is already a member of this group');
-    }
-
-    // Thêm user vào group
-    const groupUser = await this.groupRepository.addMember(groupId, userId, UserRole.USER);
-    console.log('🎯 [inviteUserToGroup] groupUser added:', groupUser);
-
-    return {
-      message: 'User added to group successfully',
-      data: groupUser
-    };
   }
 }

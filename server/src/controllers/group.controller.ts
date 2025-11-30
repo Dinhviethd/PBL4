@@ -210,50 +210,5 @@ export class GroupController {
     });
   });
 
-  // Get all users that can be invited to a group (tất cả users ngoài thành viên hiện tại)
-  getInvitableUsers = asyncHandler(async (req: Request, res: Response) => {
-    const { groupId } = req.params;
-    const userId = req.user?.userId;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Unauthorized'
-      });
-    }
-
-    const invitableUsers = await this.groupService.getInvitableUsers(parseInt(groupId), userId);
-
-    res.json({
-      success: true,
-      data: invitableUsers
-    });
-  });
-
-  // Invite user to group
-  inviteUserToGroup = asyncHandler(async (req: Request, res: Response) => {
-    const { groupId } = req.params;
-    const { userId } = req.body;
-    const requesterId = req.user?.userId;
-
-    if (!requesterId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Unauthorized'
-      });
-    }
-
-    const result = await this.groupService.inviteUserToGroup(
-      parseInt(groupId),
-      userId,
-      requesterId
-    );
-
-    res.json({
-      success: true,
-      message: result.message,
-      data: result
-    });
-  });
 }
 

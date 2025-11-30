@@ -11,12 +11,6 @@ router.post('/', authMiddleware, checkAccountStatus, groupController.createGroup
 // Lấy danh sách group của user - phải đặt TRƯỚC các route với :groupId
 router.get('/my-groups', authMiddleware, checkAccountStatus, groupController.getUserGroups);
 
-// Lấy danh sách users có thể mời
-router.get('/:groupId/invitable-users', authMiddleware, checkAccountStatus, groupController.getInvitableUsers);
-
-// Mời user vào group
-router.post('/:groupId/invite', authMiddleware, checkAccountStatus, groupController.inviteUserToGroup);
-
 // Thêm thành viên vào group
 router.post('/:groupId/members', authMiddleware, checkAccountStatus, groupController.addMember);
 

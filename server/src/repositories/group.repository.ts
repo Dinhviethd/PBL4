@@ -1,5 +1,6 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
+import { GroupInvitation } from '@/models/group_invitation.model';
 import { Group } from '@/models/group.model';
 import { GroupUser } from '@/models/group_user';
 import { UserRole } from '@/constants/constants';
@@ -124,14 +125,14 @@ export class GroupRepository {
       .getMany();
   }
 
-  async getPendingMembers(idGroup: number): Promise<GroupUser[]> {
-    return await this.groupUserRepo
-      .createQueryBuilder('gu')
-      .leftJoinAndSelect('gu.user', 'u')
-      .leftJoinAndSelect('gu.actionBy', 'actionBy')
-      .leftJoinAndSelect('gu.group', 'g')
-      .where('g.idGroup = :idGroup', { idGroup })
-      .andWhere('gu.role = :role', { role: UserRole.PENDING })
+  async getPendingMembers(idGroup: number) {
+    // Lấy toàn bộ lời mời vào nhóm (group_invitation) với idGroup
+    const groupInvitationRepo = AppDataSource.getRepository(GroupInvitation);
+    return await groupInvitationRepo.createQueryBuilder('inv')
+      .leftJoinAndSelect('inv.invitee', 'invitee')
+      .leftJoinAndSelect('inv.inviter', 'inviter')
+      .where('inv.idGroup = :idGroup', { idGroup })
+      .orderBy('inv.createdAt', 'DESC')
       .getMany();
   }
 

@@ -39,17 +39,22 @@ class GroupInvitationRepository {
     groupId = Number(groupId);
     inviterId = Number(inviterId);
     inviteeId = Number(inviteeId);
-    console.log('[BACKEND] createInvitation:', { groupId, inviterId, inviteeId, message });
     if (isNaN(groupId) || isNaN(inviterId) || isNaN(inviteeId)) {
-      console.error('[BACKEND] groupId, inviterId hoặc inviteeId không hợp lệ!', { groupId, inviterId, inviteeId });
       throw new Error('groupId, inviterId hoặc inviteeId không hợp lệ!');
     }
     // Kiểm tra inviter có phải admin không
-    let needAdminApprove = false;
+    let needAdminApprove = true;
     try {
-      const group = await AppDataSource.getRepository(Group).findOne({ where: { idGroup: groupId } });
-      if (group && group.createdBy && group.createdBy.idUser !== inviterId) {
-        needAdminApprove = true;
+      const group = await AppDataSource.getRepository(Group).findOne({
+        where: { idGroup: groupId },
+        relations: ['createdBy']
+      });
+      console.log("group:", group);
+      console.log("group.createdBy:", group?.createdBy);
+      console.log("nguoi gui:", inviterId);
+      if (group && group.createdBy && group.createdBy.idUser == inviterId) {
+        console.log("admin nha, khoi check")
+        needAdminApprove = false;
       }
     } catch (e) { console.error('[BACKEND] Lỗi lấy group:', e); }
     const result = await this.repo.insert({
@@ -59,7 +64,6 @@ class GroupInvitationRepository {
       message,
       needAdminApprove,
     } as any);
-    console.log('[BACKEND] createInvitation insert result:', result);
     const insertedId = result.identifiers && result.identifiers[0] && result.identifiers[0].idInvitation
       ? result.identifiers[0].idInvitation
       : result.raw?.insertId;
@@ -86,7 +90,23 @@ class GroupInvitationRepository {
       .where('inv.idGroup = :groupId', { groupId })
       .andWhere('inv.invitee = :inviteeId', { inviteeId })
       .limit(1);
-    return await qb.getOne();
+    const result = await qb.getOne();
+    if (!result) return null;
+    const mapUser = (u: any) => u ? {
+      idUser: u.idUser,
+      name: u.name || u.fullName,
+      email: u.email,
+      avatarUrl: u.avatarUrl,
+      phone: u.phone,
+      gender: u.gender,
+      birthday: u.birthday,
+      createdAt: u.createdAt
+    } : undefined;
+    return {
+      ...result,
+      inviter: mapUser(result.inviter),
+      invitee: mapUser(result.invitee)
+    };
   }
 
   async getReceivedInvitesPaginated(userId: number, skip = 0, take = 10) {

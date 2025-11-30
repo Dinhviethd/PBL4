@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from "sonner";
+import { useNotification } from "@/hooks/useNotification";
 import {
   Users,
   UserPlus,
@@ -33,6 +33,8 @@ import { getAvatarUrl } from '@/lib/utils';
 import useAuthStore from '@/zustand/authStore';
 
 export const GroupSettingsDialog = ({ open, onClose, group }) => {
+  const { showSuccess, showError } = useNotification();
+    const [inviteMessages, setInviteMessages] = useState({}); // { userId: message }
   const [isEditingName, setIsEditingName] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [members, setMembers] = useState([]);
@@ -41,7 +43,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showInviteSection, setShowInviteSection] = useState(false);
+  // const [showInviteSection, setShowInviteSection] = useState(false); // Removed unused variable
   const [activeTab, setActiveTab] = useState('info'); // 'info', 'members', 'invite', 'actions'
 
   const { user } = useAuthStore();
@@ -51,12 +53,56 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const userRole = groups.find(g => g.idGroup === group?.idGroup)?.role;
   const isAdmin = userRole === 'admin';
 
+
+  const loadGroupData = React.useCallback(async () => {
+    if (!group) return;
+    setIsLoading(true);
+    try {
+      // Load members
+      const membersResponse = await groupService.getGroupMembers(group.idGroup);
+      setMembers(membersResponse.data || []);
+      // Load pending members (optional, nếu có lỗi thì bỏ qua)
+      try {
+        const pendingResponse = await groupService.getPendingMembers(group.idGroup);
+        setPendingMembers(pendingResponse.data || []);
+        console.log("pending ne", pendingResponse.data)
+      } catch (pendingError) {
+        console.log('⚠️ No pending members API or error:', pendingError);
+        setPendingMembers([]);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load group data:', error);
+      showError('Lỗi', 'Không thể tải thông tin nhóm');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [group, showError]);
+
+  const searchUsers = React.useCallback(async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const response = await userService.searchUsers(searchQuery.trim());
+      const users = response.data || [];
+      setSearchResults(users);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+      // Hiển thị thông báo lỗi nếu cần
+      if (error.message && error.message !== "Failed to search users") {
+        showError('Lỗi tìm kiếm', error.message);
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, members, pendingMembers, user, showError]);
+
   useEffect(() => {
     if (open && group) {
       setGroupName(group.name);
       loadGroupData();
     }
-  }, [open, group]);
+  }, [open, group, loadGroupData]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -67,73 +113,11 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery]);
-
-  const loadGroupData = async () => {
-    if (!group) return;
-    
-    setIsLoading(true);
-    try {
-      // Load members
-      const membersResponse = await groupService.getGroupMembers(group.idGroup);
-      setMembers(membersResponse.data || []);
-      
-      // Load pending members (optional, nếu có lỗi thì bỏ qua)
-      try {
-        const pendingResponse = await groupService.getPendingMembers(group.idGroup);
-        setPendingMembers(pendingResponse.data || []);
-      } catch (pendingError) {
-        console.log('⚠️ No pending members API or error:', pendingError);
-        setPendingMembers([]);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load group data:', error);
-      toast.error('Lỗi', {
-        description: 'Không thể tải thông tin nhóm'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const searchUsers = async () => {
-    if (!searchQuery.trim()) return;
-    
-    setIsSearching(true);
-    try {
-      const response = await userService.searchUsers(searchQuery.trim());
-      const users = response.data || [];
-      
-      // Filter out users who are already members or pending
-      const memberIds = members.map(m => m.user?.idUser || m.idUser);
-      const pendingIds = pendingMembers.map(p => p.user?.idUser || p.idUser);
-      const currentUserId = user?.idUser;
-      
-      const filteredUsers = users.filter(u => 
-        !memberIds.includes(u.idUser) && 
-        !pendingIds.includes(u.idUser) &&
-        u.idUser !== currentUserId
-      );
-      
-      setSearchResults(filteredUsers);
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchResults([]);
-      
-      // Hiển thị thông báo lỗi nếu cần
-      if (error.message && error.message !== "Failed to search users") {
-        toast.error('Lỗi tìm kiếm', {
-          description: error.message
-        });
-      }
-    } finally {
-      setIsSearching(false);
-    }
-  };
+  }, [searchQuery, searchUsers]);
 
   const handleUpdateGroupName = async () => {
     if (!groupName.trim() || groupName === group.name) {
-      setIsEditing(false);
+      setIsEditingName(false);
       return;
     }
 
@@ -143,16 +127,12 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       
       updateGroup(group.idGroup, { name: groupName.trim() });
       
-      toast.success('Thành công', {
-        description: 'Tên nhóm đã được cập nhật'
-      });
+      showSuccess('Thành công', 'Tên nhóm đã được cập nhật');
       
-      setIsEditing(false);
+      setIsEditingName(false);
     } catch (error) {
       console.error('Update group name error:', error);
-      toast.error('Lỗi', {
-        description: 'Không thể cập nhật tên nhóm'
-      });
+      showError('Lỗi', 'Không thể cập nhật tên nhóm');
       setGroupName(group.name); // Reset to original name
     } finally {
       setIsLoading(false);
@@ -160,42 +140,34 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   };
 
   const handleInviteUserToGroup = async (userId) => {
+    // Check if user is already a member hoặc có pending
+    const memberIds = members.map(m => m.user?.idUser || m.idUser);
+    const pendingIds = pendingMembers.map(p => p.user?.idUser || p.idUser);
+    if (memberIds.includes(userId)) {
+      showError('Lỗi', 'Người dùng đã là thành viên của nhóm');
+      return;
+    }
+    if (pendingIds.includes(userId)) {
+      showError('Lỗi', 'Người dùng đã có lời mời vào nhóm đang chờ duyệt');
+      return;
+    }
     setIsLoading(true);
     try {
-      await groupService.inviteUserToGroup(group.idGroup, userId);
-      
+      const message = inviteMessages[userId] || '';
+      await groupService.inviteUserToGroup(group.idGroup, userId, message);
+      showSuccess('Thành công', 'Đã gửi lời mời vào nhóm');
       loadGroupData();
       setSearchQuery('');
       setSearchResults([]);
+      setInviteMessages((prev) => ({ ...prev, [userId]: '' }));
     } catch (error) {
       console.error('Add member error:', error);
-      toast.error('Lỗi', {
-        description: error.message || 'Không thể thêm thành viên'
-      });
+      showError('Lỗi', error.message || 'Không thể thêm thành viên');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleApproveMember = async (userId) => {
-    setIsLoading(true);
-    try {
-      await groupService.approveMember(group.idGroup, userId);
-      
-      toast.success('Thành công', {
-        description: 'Thành viên đã được duyệt'
-      });
-      
-      loadGroupData();
-    } catch (error) {
-      console.error('Approve member error:', error);
-      toast.error('Lỗi', {
-        description: 'Không thể duyệt thành viên'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleKickMember = async (userId) => {
     if (!confirm('Bạn có chắc muốn kick thành viên này khỏi nhóm?')) return;
@@ -204,16 +176,12 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     try {
       await groupService.kickMember(group.idGroup, userId);
       
-      toast.success('Thành công', {
-        description: 'Thành viên đã bị kick khỏi nhóm'
-      });
+      showSuccess('Thành công', 'Thành viên đã bị kick khỏi nhóm');
       
       loadGroupData();
     } catch (error) {
       console.error('Kick member error:', error);
-      toast.error('Lỗi', {
-        description: 'Không thể kick thành viên'
-      });
+      showError('Lỗi', 'Không thể kick thành viên');
     } finally {
       setIsLoading(false);
     }
@@ -228,16 +196,12 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       
       removeGroup(group.idGroup);
       
-      toast.success('Thành công', {
-        description: 'Bạn đã rời khỏi nhóm'
-      });
+      showSuccess('Thành công', 'Bạn đã rời khỏi nhóm');
       
       onClose();
     } catch (error) {
       console.error('Leave group error:', error);
-      toast.error('Lỗi', {
-        description: 'Không thể rời nhóm'
-      });
+      showError('Lỗi', 'Không thể rời nhóm');
     } finally {
       setIsLoading(false);
     }
@@ -252,16 +216,12 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       
       removeGroup(group.idGroup);
       
-      toast.success('Thành công', {
-        description: 'Nhóm đã được xóa'
-      });
+      showSuccess('Thành công', 'Nhóm đã được xóa');
       
       onClose();
     } catch (error) {
       console.error('Delete group error:', error);
-      toast.error('Lỗi', {
-        description: 'Không thể xóa nhóm'
-      });
+      showError('Lỗi', 'Không thể xóa nhóm');
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +232,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     setGroupName(group?.name || '');
     setSearchQuery('');
     setSearchResults([]);
-    setShowInviteSection(false);
+    // setShowInviteSection(false); 
     onClose();
   };
 
@@ -405,14 +365,59 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                 <Input type="text" placeholder="Nhập email hoặc số điện thoại..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="border-2 focus:border-blue-400 mb-2" />
                 {isSearching && (<div className="text-center py-4 text-gray-500"><div className="animate-spin inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div><p className="mt-2 text-sm">Đang tìm kiếm...</p></div>)}
                 {!isSearching && searchQuery && searchResults.length === 0 && (<div className="text-center py-6 text-gray-500"><Users className="w-12 h-12 mx-auto mb-2 opacity-30" /><p className="text-sm">Không tìm thấy người dùng</p></div>)}
-                {searchResults.length > 0 && (<div className="border-2 border-blue-100 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">{searchResults.map((foundUser) => (<div key={foundUser.idUser} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors"><div className="flex items-center gap-2 flex-1 min-w-0"><Avatar className="w-9 h-9"><AvatarImage src={getAvatarUrl(foundUser.avatarUrl)} /><AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white text-sm">{foundUser.name?.charAt(0)?.toUpperCase()}</AvatarFallback></Avatar><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{foundUser.name}</p><p className="text-xs text-gray-500 truncate">{foundUser.email}</p></div></div><Button size="sm" onClick={() => handleInviteUserToGroup(foundUser.idUser)} disabled={isLoading} className="ml-2 bg-blue-500 hover:bg-blue-600">Mời</Button></div>))}</div>)}
+                {searchResults.length > 0 && (
+                  <div className="border-2 border-blue-100 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">
+                    {searchResults.map((foundUser) => {
+                      const memberIds = members.map(m => m.user?.idUser || m.idUser);
+                      const pendingIds = pendingMembers.map(p => p.user?.idUser || p.idUser);
+                      const isMember = memberIds.includes(foundUser.idUser);
+                      const isPending = pendingIds.includes(foundUser.idUser);
+                      return (
+                        <div key={foundUser.idUser} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Avatar className="w-9 h-9">
+                              <AvatarImage src={getAvatarUrl(foundUser.avatarUrl)} />
+                              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white text-sm">{foundUser.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{foundUser.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{foundUser.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 min-w-[160px]">
+                            <Input
+                              type="text"
+                              placeholder="Lời nhắn (tuỳ chọn)"
+                              value={inviteMessages[foundUser.idUser] || ''}
+                              onChange={e => setInviteMessages(prev => ({ ...prev, [foundUser.idUser]: e.target.value }))}
+                              disabled={isMember || isPending}
+                              className="mb-1 text-xs px-2 py-1 h-8 w-36"
+                            />
+                          <Button
+                            size="sm"
+                            onClick={() => handleInviteUserToGroup(foundUser.idUser)}
+                            disabled={isLoading || isMember || isPending}
+                            className={`ml-2 bg-blue-500 hover:bg-blue-600 ${isMember || isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {isMember ? 'Đã là thành viên' : isPending ? 'Đã gửi lời mời' : 'Mời'}
+                          </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
             {activeTab === 'actions' && (
               <div className="bg-white rounded-xl border-2 border-gray-100 p-5 shadow-sm space-y-3">
                 <h4 className="font-bold text-gray-900 mb-3">Hành động</h4>
-                <Button variant="outline" className="w-full justify-start text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-2 hover:border-orange-300 font-semibold py-6" onClick={handleLeaveGroup} disabled={isLoading}><LogOut className="w-5 h-5 mr-2" />Rời nhóm</Button>
-                {isAdmin && (<Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-2 hover:border-red-300 font-semibold py-6" onClick={handleDeleteGroup} disabled={isLoading}><Trash2 className="w-5 h-5 mr-2" />Xóa nhóm</Button>)}
+                {!isAdmin && (
+                  <Button variant="outline" className="w-full justify-start text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-2 hover:border-orange-300 font-semibold py-6" onClick={handleLeaveGroup} disabled={isLoading}><LogOut className="w-5 h-5 mr-2" />Rời nhóm</Button>
+                )}
+                {isAdmin && (
+                  <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-2 hover:border-red-300 font-semibold py-6" onClick={handleDeleteGroup} disabled={isLoading}><Trash2 className="w-5 h-5 mr-2" />Xóa nhóm</Button>
+                )}
               </div>
             )}
           </div>

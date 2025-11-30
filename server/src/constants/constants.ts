@@ -37,8 +37,7 @@ export enum FriendStatus {
 
 export enum UserRole {
   ADMIN = 'admin',
-  USER = 'user',
-  PENDING= "pending",
+  USER = 'user'
 }
 
 export enum CallStatus {

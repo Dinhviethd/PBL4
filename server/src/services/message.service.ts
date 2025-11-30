@@ -96,7 +96,7 @@ export class MessageService {
   ) {
     // Kiểm tra người gửi có trong nhóm không
     const senderMember = await this.groupRepository.findGroupMember(groupId, senderId);
-    if (!senderMember || senderMember.role === UserRole.PENDING) {
+    if (!senderMember ) {
       throw new AppError(403, 'You are not a member of this group or pending approval');
     }
 
@@ -121,7 +121,7 @@ export class MessageService {
     // Lấy danh sách thành viên để gửi WebSocket
     const members = await this.groupRepository.getGroupMembers(groupId);
     const memberIds = members
-      .filter(m => m.role !== UserRole.PENDING)
+      // .filter(m => m.role !== 'pending')
       .map(m => m.user.idUser);
 
     wsService.sendGroupMessage(senderId, memberIds, {
@@ -236,9 +236,9 @@ export class MessageService {
   ): Promise<PaginationResult<any>> {
     // Kiểm tra user có trong nhóm không
     const member = await this.groupRepository.findGroupMember(groupId, userId);
-    if (!member || member.role === UserRole.PENDING) {
-      throw new AppError(403, 'You are not a member of this group');
-    }
+    // if (!member || member.role === 'pending') {
+    //   throw new AppError(403, 'You are not a member of this group');
+    // }
 
     const result = await this.messageRepository.getGroupMessages(groupId, page, limit);
 

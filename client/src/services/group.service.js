@@ -125,14 +125,12 @@ const groupService = {
 
 
   // Invite user to group
- inviteUserToGroup: async (groupId, userId) => {
+inviteUserToGroup: async (groupId, userId, message = '') => {
   try {
-    let message = '';
-
     const validGroupId = Number(groupId);
     const validUserId = Number(userId);
 
-    console.log('[FRONTEND] inviteUserToGroup:', { groupId, userId, validGroupId, validUserId });
+    console.log('[FRONTEND] inviteUserToGroup:', { groupId, userId, validGroupId, validUserId, message });
 
     if (isNaN(validGroupId) || isNaN(validUserId)) {
       console.error('[FRONTEND] groupId hoặc userId không hợp lệ!', { groupId, userId });
