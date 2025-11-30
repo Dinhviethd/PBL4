@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import Button from "@/components/ui/button";
@@ -11,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { toast } from "sonner";
 import {
   Users,
@@ -74,13 +72,10 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const loadGroupData = async () => {
     if (!group) return;
     
-    console.log('🔄 Loading group data for:', group.idGroup);
     setIsLoading(true);
     try {
       // Load members
       const membersResponse = await groupService.getGroupMembers(group.idGroup);
-      console.log('✅ Members response:', membersResponse);
-      console.log('📋 Members data:', membersResponse.data);
       setMembers(membersResponse.data || []);
       
       // Load pending members (optional, nếu có lỗi thì bỏ qua)
@@ -98,7 +93,6 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
       });
     } finally {
       setIsLoading(false);
-      console.log('✅ Loading complete. Members count:', members.length);
     }
   };
 
@@ -165,16 +159,11 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     }
   };
 
-  const handleAddMember = async (userId) => {
+  const handleInviteUserToGroup = async (userId) => {
     setIsLoading(true);
     try {
-      await groupService.addMember(group.idGroup, userId);
+      await groupService.inviteUserToGroup(group.idGroup, userId);
       
-      toast.success('Thành công', {
-        description: 'Đã gửi lời mời tham gia nhóm'
-      });
-      
-      // Refresh data
       loadGroupData();
       setSearchQuery('');
       setSearchResults([]);
@@ -416,7 +405,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                 <Input type="text" placeholder="Nhập email hoặc số điện thoại..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="border-2 focus:border-blue-400 mb-2" />
                 {isSearching && (<div className="text-center py-4 text-gray-500"><div className="animate-spin inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div><p className="mt-2 text-sm">Đang tìm kiếm...</p></div>)}
                 {!isSearching && searchQuery && searchResults.length === 0 && (<div className="text-center py-6 text-gray-500"><Users className="w-12 h-12 mx-auto mb-2 opacity-30" /><p className="text-sm">Không tìm thấy người dùng</p></div>)}
-                {searchResults.length > 0 && (<div className="border-2 border-blue-100 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">{searchResults.map((foundUser) => (<div key={foundUser.idUser} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors"><div className="flex items-center gap-2 flex-1 min-w-0"><Avatar className="w-9 h-9"><AvatarImage src={getAvatarUrl(foundUser.avatarUrl)} /><AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white text-sm">{foundUser.name?.charAt(0)?.toUpperCase()}</AvatarFallback></Avatar><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{foundUser.name}</p><p className="text-xs text-gray-500 truncate">{foundUser.email}</p></div></div><Button size="sm" onClick={() => handleAddMember(foundUser.idUser)} disabled={isLoading} className="ml-2 bg-blue-500 hover:bg-blue-600">Mời</Button></div>))}</div>)}
+                {searchResults.length > 0 && (<div className="border-2 border-blue-100 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">{searchResults.map((foundUser) => (<div key={foundUser.idUser} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors"><div className="flex items-center gap-2 flex-1 min-w-0"><Avatar className="w-9 h-9"><AvatarImage src={getAvatarUrl(foundUser.avatarUrl)} /><AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white text-sm">{foundUser.name?.charAt(0)?.toUpperCase()}</AvatarFallback></Avatar><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{foundUser.name}</p><p className="text-xs text-gray-500 truncate">{foundUser.email}</p></div></div><Button size="sm" onClick={() => handleInviteUserToGroup(foundUser.idUser)} disabled={isLoading} className="ml-2 bg-blue-500 hover:bg-blue-600">Mời</Button></div>))}</div>)}
               </div>
             )}
             {activeTab === 'actions' && (

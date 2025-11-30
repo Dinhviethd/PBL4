@@ -123,27 +123,35 @@ const groupService = {
     }
   },
 
-  // Get invitable users (tất cả users có thể mời, không chỉ bạn bè)
-  getInvitableUsers: async (groupId) => {
-    try {
-      const response = await instance.get(`/groups/${groupId}/invitable-users`);
-      // Response format: { success: true, data: [...] }
-      return response.data?.data || [];
-    } catch (error) {
-      console.error('Failed to fetch invitable users:', error);
-      throw error.response?.data || { message: 'Failed to fetch invitable users' };
-    }
-  },
 
   // Invite user to group
-  inviteUserToGroup: async (groupId, userId) => {
-    try {
-      const response = await instance.post(`/groups/${groupId}/invite`, { userId });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to invite user' };
+ inviteUserToGroup: async (groupId, userId) => {
+  try {
+    let message = '';
+
+    const validGroupId = Number(groupId);
+    const validUserId = Number(userId);
+
+    console.log('[FRONTEND] inviteUserToGroup:', { groupId, userId, validGroupId, validUserId });
+
+    if (isNaN(validGroupId) || isNaN(validUserId)) {
+      console.error('[FRONTEND] groupId hoặc userId không hợp lệ!', { groupId, userId });
+      throw { message: 'groupId hoặc userId không hợp lệ!' };
     }
-  },
+
+    const response = await instance.post(`/groups/invite`, {
+      groupId: validGroupId,
+      inviteeId: validUserId,
+      message
+    });
+
+    console.log('[FRONTEND] inviteUserToGroup response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('[FRONTEND] inviteUserToGroup error:', error);
+    throw error.response?.data || { message: 'Failed to invite user' };
+  }
+},
 
   // Get received invites
   getReceivedInvites: async (page = 1, limit = 8) => {

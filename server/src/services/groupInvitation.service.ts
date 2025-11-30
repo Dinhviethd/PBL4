@@ -5,6 +5,15 @@ import { UserResponse } from '@/DTOs/user.dto';
 import { th } from 'zod/v4/locales/index.cjs';
 
 export class GroupInvitationService {
+    async getInvitesNeedAdminApprove(adminId: number, page = 1, limit = 10) {
+      const skip = (page - 1) * limit;
+      return await groupInvitationRepository.getInvitesNeedAdminApprove(adminId, skip, limit);
+    }
+
+    async getInvitesWaitingForAdmin(userId: number, page = 1, limit = 10) {
+      const skip = (page - 1) * limit;
+      return await groupInvitationRepository.getInvitesWaitingForAdmin(userId, skip, limit);
+    }
   private groupRepository: GroupRepository;
 
   constructor() {
@@ -13,27 +22,36 @@ export class GroupInvitationService {
 
   async sendInvitation(userId: number, groupId: number, inviteeId: number, message?: string) {
     const group = await this.groupRepository.getGroupById(groupId);
-    if (!group) throw new AppError(404, 'Group not found');
+    if (!group) return { status: 'not-found' };
     // inviter must be a member of the group
     const inviterIsMember = await this.groupRepository.checkMembership(groupId, userId);
-    console.log('Inviter is member:', inviterIsMember);
-    if (!inviterIsMember) throw new AppError(403, 'Only group members can send invitations');
+    if (!inviterIsMember) return { status: 'not-member' };
 
-    // cannot invite yourself
-    if (userId === inviteeId) throw new AppError(400, 'Cannot invite yourself');
+    if (userId == inviteeId) return { status: 'self' };
 
     // invitee must not already be a member
     const isMember = await this.groupRepository.checkMembership(groupId, inviteeId);
-    if (isMember) throw new AppError(400, 'User is already a member');
+    if (isMember) return { status: 'already-member' };
 
-    // prevent duplicate invitation
+    // check existing invitation
     const existing = await groupInvitationRepository.findByGroupAndInvitee(groupId, inviteeId);
-    if (existing) throw new AppError(400, 'Invitation already exists');
+    if (existing) {
+      return {
+        status: 'pending',
+        invitation: {
+          idInvitation: existing.idInvitation,
+          inviter: existing.inviter,
+          invitee: existing.invitee,
+          message: existing.message,
+          createdAt: existing.createdAt,
+          needAdminApprove: existing.needAdminApprove || false,
+        }
+      };
+    }
 
-    // Create invitation
+    // Chỉ tạo invitation, không thêm vào nhóm
     const inv = await groupInvitationRepository.createInvitation(groupId, userId, inviteeId, message);
-    if (!inv) return null;
-
+    if (!inv) return { status: 'error' };
     const mapUser = (u: any): UserResponse => ({
       idUser: u?.idUser,
       name: u?.name || u?.fullName,
@@ -44,14 +62,14 @@ export class GroupInvitationService {
       birthday: u?.birthday,
       createdAt: u?.createdAt
     });
-
     return {
+      status: 'invited',
       idInvitation: inv.idInvitation,
       message: inv.message,
-      createdAt: inv.createdAt,
-      idGroup: inv.idGroup && { idGroup: inv.idGroup.idGroup, name: inv.idGroup.name },
       inviter: mapUser(inv.inviter),
-      invitee: mapUser(inv.invitee)
+      invitee: mapUser(inv.invitee),
+      createdAt: inv.createdAt,
+      needAdminApprove: inv.needAdminApprove || false,
     };
   }
 
@@ -74,9 +92,9 @@ export class GroupInvitationService {
 
     if (inv.invitee.idUser !== userId) throw new AppError(403, 'Not allowed');
 
-    // Add member
+    // Chỉ khi accept mới thêm vào nhóm
     await this.groupRepository.addMember(inv.idGroup.idGroup, userId);
-    // Delete invitation
+    // Xóa invitation
     await groupInvitationRepository.deleteInvitationById(invitationId);
     return { message: 'Joined group successfully' };
   }

@@ -68,15 +68,9 @@ export class GroupService {
       throw new AppError(400, 'User is already in the group');
     }
 
-    // Xác định role dựa trên người thêm
-    let role: UserRole;
-    if (requesterMember.role === UserRole.ADMIN) {
-      role = UserRole.USER;
-    } else if (requesterMember.role === UserRole.USER) {
-      role = UserRole.PENDING;
-    } else {
-      throw new AppError(403, 'You do not have permission to add members');
-    }
+    // Luôn set role là 'user' khi thêm thành viên mới
+    let role: UserRole = UserRole.USER;
+    console.log('[AddMember] groupId:', groupId, 'targetUserId:', targetUserId, 'requesterId:', requesterId, 'role:', role);
 
     await this.groupRepository.addUserToGroup(group, targetUser, role, requesterMember.user);
 

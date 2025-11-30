@@ -24,4 +24,7 @@ export class GroupInvitation {
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  @Column({ type: 'boolean', default: false })
+  needAdminApprove!: boolean;
 }
