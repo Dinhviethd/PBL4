@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import {
   Dialog,
   DialogContent,
@@ -187,43 +188,43 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     }
   };
 
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const handleLeaveGroup = async () => {
-    if (!confirm('Bạn có chắc muốn rời khỏi nhóm này?')) return;
-    
+    setShowLeaveConfirm(true);
+  };
+  const confirmLeaveGroup = async () => {
     setIsLoading(true);
     try {
       await groupService.leaveGroup(group.idGroup);
-      
       removeGroup(group.idGroup);
-      
       showSuccess('Thành công', 'Bạn đã rời khỏi nhóm');
-      
       onClose();
     } catch (error) {
       console.error('Leave group error:', error);
       showError('Lỗi', 'Không thể rời nhóm');
     } finally {
       setIsLoading(false);
+      setShowLeaveConfirm(false);
     }
   };
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const handleDeleteGroup = async () => {
-    if (!confirm('Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác.')) return;
-    
+    setShowDeleteConfirm(true);
+  };
+  const confirmDeleteGroup = async () => {
     setIsLoading(true);
     try {
       await groupService.deleteGroup(group.idGroup);
-      
       removeGroup(group.idGroup);
-      
       showSuccess('Thành công', 'Nhóm đã được xóa');
-      
       onClose();
     } catch (error) {
       console.error('Delete group error:', error);
       showError('Lỗi', 'Không thể xóa nhóm');
     } finally {
       setIsLoading(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -413,10 +414,32 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
               <div className="bg-white rounded-xl border-2 border-gray-100 p-5 shadow-sm space-y-3">
                 <h4 className="font-bold text-gray-900 mb-3">Hành động</h4>
                 {!isAdmin && (
-                  <Button variant="outline" className="w-full justify-start text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-2 hover:border-orange-300 font-semibold py-6" onClick={handleLeaveGroup} disabled={isLoading}><LogOut className="w-5 h-5 mr-2" />Rời nhóm</Button>
+                  <>
+                    <Button variant="outline" className="w-full justify-start text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-2 hover:border-orange-300 font-semibold py-6" onClick={handleLeaveGroup} disabled={isLoading}><LogOut className="w-5 h-5 mr-2" />Rời nhóm</Button>
+                    <ConfirmDialog
+                      open={showLeaveConfirm}
+                      title="Xác nhận rời nhóm"
+                      description="Bạn có chắc muốn rời khỏi nhóm này?"
+                      onConfirm={confirmLeaveGroup}
+                      onCancel={() => setShowLeaveConfirm(false)}
+                      confirmText="Rời nhóm"
+                      cancelText="Hủy"
+                    />
+                  </>
                 )}
                 {isAdmin && (
-                  <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-2 hover:border-red-300 font-semibold py-6" onClick={handleDeleteGroup} disabled={isLoading}><Trash2 className="w-5 h-5 mr-2" />Xóa nhóm</Button>
+                  <>
+                    <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-2 hover:border-red-300 font-semibold py-6" onClick={handleDeleteGroup} disabled={isLoading}><Trash2 className="w-5 h-5 mr-2" />Xóa nhóm</Button>
+                    <ConfirmDialog
+                      open={showDeleteConfirm}
+                      title="Xác nhận xóa nhóm"
+                      description="Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác."
+                      onConfirm={confirmDeleteGroup}
+                      onCancel={() => setShowDeleteConfirm(false)}
+                      confirmText="Xóa nhóm"
+                      cancelText="Hủy"
+                    />
+                  </>
                 )}
               </div>
             )}

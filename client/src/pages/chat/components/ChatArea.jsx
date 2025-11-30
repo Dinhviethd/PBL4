@@ -89,7 +89,6 @@ export const ChatArea = ({ conversation }) => {
     clearUnreadCount,
     updateConversation,
     addConversation,
-    unreadCounts,
     typingUsers,
     socket,
     activeCall,
@@ -317,7 +316,6 @@ export const ChatArea = ({ conversation }) => {
     try {
       
       const conversationId = conversation.type === 'private' ? conversation.partnerId : conversation.groupId;
-      const currentUnreadCount = conversation.unreadCount || 0;
       
       // Update UI immediately - optimistic update
       updateConversation(conversation.type, conversationId, { unreadCount: 0 });
@@ -540,14 +538,6 @@ export const ChatArea = ({ conversation }) => {
     }
   };
 
-  // Accept Call Handler
-  // Moved to CallPage when accepting incoming calls
-
-  // Decline Call Handler
-  // Moved to CallPage when declining incoming calls
-
-  // End Call Handler
-  // Moved to CallPage when ending calls
 
   const isPartnerTyping = conversation.type === 'private' && 
     typingUsers[conversation.partnerId];
@@ -585,19 +575,15 @@ export const ChatArea = ({ conversation }) => {
           <div>
             <h2 className="font-semibold text-gray-900">
               {conversation.type === 'private' 
-                ? conversation.partner?.name || 'Unknown User'
-                : conversation.group?.name || 'Unknown Group'
+                ? (conversation.partner?.name || 'Unknown User')
+                : (conversation.group?.name || 'Unknown Group')
               }
             </h2>
             {conversation.type === 'private' ? (
               <p className="text-sm text-gray-500">
                 {typingUsers?.[conversation.partnerId] ? 'Đang nhập...' : 'Hoạt động'}
               </p>
-            ) : (
-              <p className="text-sm text-gray-500">
-                {conversation.memberCount || 0} thành viên
-              </p>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -613,11 +599,7 @@ export const ChatArea = ({ conversation }) => {
             variant="ghost" 
             size="sm"
             onClick={() => {
-              console.log('🔵 Info button clicked!');
-              console.log('🔵 Conversation type:', conversation.type);
-              console.log('🔵 Conversation:', conversation);
               if (conversation.type === 'group') {
-                console.log('✅ Opening group settings...');
                 setShowGroupSettings(true);
               } else {
                 console.log('⚠️ Not a group conversation');
@@ -867,7 +849,6 @@ export const ChatArea = ({ conversation }) => {
         <GroupSettingsDialog
           open={showGroupSettings}
           onClose={() => {
-            console.log('🔴 Closing group settings dialog');
             setShowGroupSettings(false);
           }}
           group={conversation.group}

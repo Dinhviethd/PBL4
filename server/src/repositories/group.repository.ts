@@ -106,7 +106,24 @@ export class GroupRepository {
   }
 
   async deleteGroup(idGroup: number): Promise<void> {
-    // Xóa tất cả thành viên trước
+    // Xóa tất cả lời mời vào nhóm
+    const groupInvitationRepo = AppDataSource.getRepository(GroupInvitation);
+    await groupInvitationRepo.delete({ idGroup: { idGroup } });
+    // Xóa tất cả tin nhắn gửi đến nhóm
+    const messageRepo = AppDataSource.getRepository(require('@/models/message.model').Message);
+    const messageReadRepo = AppDataSource.getRepository(require('@/models/message_read.model').MessageRead);
+    // Lấy tất cả idMessage gửi đến nhóm
+    const groupMessages = await messageRepo.find({ where: { sendToGroup: { idGroup } } });
+    const messageIds = groupMessages.map(m => m.idMessage);
+    if (messageIds.length > 0) {
+      await messageReadRepo
+        .createQueryBuilder()
+        .delete()
+        .where('messageId IN (:...ids)', { ids: messageIds })
+        .execute();
+    }
+    await messageRepo.delete({ sendToGroup: { idGroup } });
+    // Xóa tất cả thành viên 
     await this.groupUserRepo.delete({ group: { idGroup } });
     // Xóa group
     await this.groupRepo.delete(idGroup);

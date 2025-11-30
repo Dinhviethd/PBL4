@@ -27,16 +27,13 @@ const GroupsList = () => {
     let mounted = true;
     const load = async () => {
       try {
-        console.log('🔄 [GroupsList] Loading groups...', { page, limit, searchTerm, sortOrder });
         const res = await groupService.getUserGroupsPaginated(page, limit, searchTerm, sortOrder === 'asc' ? 'asc' : 'desc');
-        console.log('✅ [GroupsList] Response:', res);
         
         if (!mounted) return;
         
         // SỬA LẠI: Xử lý cấu trúc mới - có thể là group objects trực tiếp
         let mappedGroups;
         const items = res.items || res.data || [];
-        console.log('📦 [GroupsList] Items:', items);
         
         if (items.length > 0 && items[0].group) {
           // Cấu trúc cũ: GroupUser objects
@@ -61,7 +58,6 @@ const GroupsList = () => {
           }));
         }
         
-        console.log('🎯 [GroupsList] Mapped groups:', mappedGroups);
         setGroups(mappedGroups);
         setTotal(res.total || 0);
       } catch (e) {
