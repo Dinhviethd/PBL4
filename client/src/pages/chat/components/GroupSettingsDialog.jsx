@@ -25,7 +25,8 @@ import {
   Crown,
   UserCheck,
   UserX,
-  Clock
+  Clock,
+  Calendar
 } from 'lucide-react';
 import groupService from '@/services/group.service';
 import userService from '@/services/user.service';
@@ -34,8 +35,7 @@ import { getAvatarUrl } from '@/lib/utils';
 import useAuthStore from '@/zustand/authStore';
 
 export const GroupSettingsDialog = ({ open, onClose, group }) => {
-  const [activeTab, setActiveTab] = useState('info'); // 'info', 'members', 'pending'
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
@@ -43,6 +43,8 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showInviteSection, setShowInviteSection] = useState(false);
+  const [activeTab, setActiveTab] = useState('info'); // 'info', 'members', 'invite', 'actions'
 
   const { user } = useAuthStore();
   const { updateGroup, removeGroup, groups } = useChatStore();
@@ -72,22 +74,31 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const loadGroupData = async () => {
     if (!group) return;
     
+    console.log('🔄 Loading group data for:', group.idGroup);
     setIsLoading(true);
     try {
-      const [membersResponse, pendingResponse] = await Promise.all([
-        groupService.getGroupMembers(group.idGroup),
-        groupService.getPendingMembers(group.idGroup)
-      ]);
-      
+      // Load members
+      const membersResponse = await groupService.getGroupMembers(group.idGroup);
+      console.log('✅ Members response:', membersResponse);
+      console.log('📋 Members data:', membersResponse.data);
       setMembers(membersResponse.data || []);
-      setPendingMembers(pendingResponse.data || []);
+      
+      // Load pending members (optional, nếu có lỗi thì bỏ qua)
+      try {
+        const pendingResponse = await groupService.getPendingMembers(group.idGroup);
+        setPendingMembers(pendingResponse.data || []);
+      } catch (pendingError) {
+        console.log('⚠️ No pending members API or error:', pendingError);
+        setPendingMembers([]);
+      }
     } catch (error) {
-      console.error('Failed to load group data:', error);
+      console.error('❌ Failed to load group data:', error);
       toast.error('Lỗi', {
         description: 'Không thể tải thông tin nhóm'
       });
     } finally {
       setIsLoading(false);
+      console.log('✅ Loading complete. Members count:', members.length);
     }
   };
 
@@ -268,11 +279,11 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   };
 
   const handleClose = () => {
-    setActiveTab('info');
-    setIsEditing(false);
+    setIsEditingName(false);
     setGroupName(group?.name || '');
     setSearchQuery('');
     setSearchResults([]);
+    setShowInviteSection(false);
     onClose();
   };
 
@@ -280,314 +291,147 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Cài đặt nhóm
+      <DialogContent className="sm:max-w-2xl max-h-screen overflow-y-auto flex flex-col">
+        {/* Header với gradient */}
+        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 -mx-6 -mt-6 px-6 py-5 mb-4">
+          <DialogTitle className="text-white text-xl font-bold flex items-center gap-2">
+            <Users className="w-6 h-6" />
+            Thông tin nhóm
           </DialogTitle>
-        </DialogHeader>
-
-        {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200">
-          <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'info'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('info')}
-          >
-            <Settings className="w-4 h-4 inline mr-2" />
-            Thông tin
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'members'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('members')}
-          >
-            <Users className="w-4 h-4 inline mr-2" />
-            Thành viên ({members.length})
-          </button>
-          {isAdmin && pendingMembers.length > 0 && (
-            <button
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'pending'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('pending')}
-            >
-              <Clock className="w-4 h-4 inline mr-2" />
-              Chờ duyệt ({pendingMembers.length})
-            </button>
-          )}
         </div>
 
-        <ScrollArea className="max-h-96">
-          {/* Group Info Tab */}
-          {activeTab === 'info' && (
-            <div className="space-y-6 p-4">
-              {/* Group Avatar & Name */}
-              <div className="flex items-center space-x-4">
-                <Avatar className="w-16 h-16">
-                  <AvatarImage src="/images/group-avatar.png" />
-                  <AvatarFallback>
-                    <Users className="w-8 h-8" />
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1">
-                  {isEditing ? (
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        value={groupName}
-                        onChange={(e) => setGroupName(e.target.value)}
-                        className="text-lg font-semibold"
-                        autoFocus
-                      />
-                      <Button size="sm" onClick={handleUpdateGroupName} disabled={isLoading}>
-                        <Save className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        setIsEditing(false);
-                        setGroupName(group.name);
-                      }}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <h3 className="text-lg font-semibold">{group.name}</h3>
-                      {isAdmin && (
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    Tạo bởi {group.createdBy?.name} • {members.length} thành viên
-                  </p>
-                </div>
-              </div>
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-4 border-b border-gray-200">
+          <Button variant={activeTab === 'info' ? 'default' : 'ghost'} onClick={() => setActiveTab('info')} className={activeTab === 'info' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}>
+            <Settings className="w-4 h-4 mr-1" /> Thông tin nhóm
+          </Button>
+          <Button variant={activeTab === 'members' ? 'default' : 'ghost'} onClick={() => setActiveTab('members')} className={activeTab === 'members' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}>
+            <Users className="w-4 h-4 mr-1" /> Thành viên
+          </Button>
+          <Button variant={activeTab === 'invite' ? 'default' : 'ghost'} onClick={() => setActiveTab('invite')} className={activeTab === 'invite' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}>
+            <UserPlus className="w-4 h-4 mr-1" /> Mời thành viên
+          </Button>
+          <Button variant={activeTab === 'actions' ? 'default' : 'ghost'} onClick={() => setActiveTab('actions')} className={activeTab === 'actions' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}>
+            <LogOut className="w-4 h-4 mr-1" /> Hành động
+          </Button>
+        </div>
 
-              <Separator />
-
-              {/* Group Actions */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">Hành động</h4>
-                
-                {isAdmin && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => setActiveTab('members')}
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Thêm thành viên
-                    </Button>
-                    
-                    {pendingMembers.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={() => setActiveTab('pending')}
-                      >
-                        <UserCheck className="w-4 h-4 mr-2" />
-                        Duyệt thành viên ({pendingMembers.length})
-                      </Button>
+        <ScrollArea className="flex-1 px-1 max-h-[calc(85vh-180px)] overflow-visible">
+          <div className="space-y-6 pr-4 pb-4">
+            {/* Tab content */}
+            {activeTab === 'info' && (
+              <div className="bg-white rounded-xl border-2 border-gray-100 p-5 shadow-sm">
+                {/* ...Thông tin nhóm như cũ... */}
+                <div className="flex items-start gap-4">
+                  <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
+                    <AvatarImage src={getAvatarUrl(group.avatarUrl)} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white">
+                      <Users className="w-10 h-10" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    {isEditingName ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <Input value={groupName} onChange={e => setGroupName(e.target.value)} className="text-lg font-bold" placeholder="Tên nhóm" autoFocus />
+                        <Button size="sm" onClick={handleUpdateGroupName} disabled={isLoading} className="bg-green-500 hover:bg-green-600"><Save className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="outline" onClick={() => { setIsEditingName(false); setGroupName(group.name); }}><X className="w-4 h-4" /></Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">{group.name}</h3>
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => setIsEditingName(true)} className="h-7 w-7 p-0"><Edit3 className="w-4 h-4 text-blue-500" /></Button>
+                        )}
+                      </div>
                     )}
-                  </>
-                )}
-
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-orange-600 hover:text-orange-700"
-                  onClick={handleLeaveGroup}
-                  disabled={isLoading}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Rời nhóm
-                </Button>
-
-                {isAdmin && (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-red-600 hover:text-red-700"
-                    onClick={handleDeleteGroup}
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Xóa nhóm
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Members Tab */}
-          {activeTab === 'members' && (
-            <div className="space-y-4 p-4">
-              {/* Add Member Search */}
-              {isAdmin && (
-                <div className="space-y-3">
-                  <Label>Thêm thành viên mới</Label>
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Nhập email hoặc số điện thoại..."
-                  />
-                  
-                  {isSearching && (
-                    <div className="text-center py-2">
-                      <p className="text-sm text-gray-500">Đang tìm kiếm...</p>
-                    </div>
-                  )}
-                  
-                  {!isSearching && searchQuery && searchResults.length === 0 && (
-                    <div className="text-center py-2">
-                      <p className="text-sm text-gray-500">Không tìm thấy người dùng</p>
-                    </div>
-                  )}
-                  
-                  {searchResults.length > 0 && (
-                    <div className="border rounded-lg p-2 max-h-32 overflow-y-auto">
-                      {searchResults.map((user) => (
-                        <div key={user.idUser} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                          <div className="flex items-center space-x-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={getAvatarUrl(user.avatarUrl)} />
-                              <AvatarFallback>{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <span className="text-sm font-medium">{user.name}</span>
-                              <p className="text-xs text-gray-500">{user.email}</p>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddMember(user.idUser)}
-                            disabled={isLoading}
-                          >
-                            Mời
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <Separator />
-                </div>
-              )}
-
-              {/* Current Members */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-gray-900">Thành viên hiện tại</h4>
-                {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={getAvatarUrl(member.user?.avatarUrl)} />
-                        <AvatarFallback>
-                          {member.user?.name?.charAt(0)?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{member.user?.name}</p>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
-                            {member.role === 'admin' ? (
-                              <>
-                                <Crown className="w-3 h-3 mr-1" />
-                                Quản trị viên
-                              </>
-                            ) : (
-                              'Thành viên'
-                            )}
-                          </Badge>
-                        </div>
+                    <div className="flex flex-col gap-1 text-sm text-gray-600 mt-1">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="flex items-center gap-1"><Users className="w-4 h-4" />{members.length} thành viên</span>
+                        <span>•</span>
+                        <span>Tạo bởi {group.createdBy?.name || "Bạn"}</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        <span>Ngày tạo: {group.createdAt ? new Date(group.createdAt).toLocaleDateString('vi-VN') : "Không xác định"}</span>
                       </div>
                     </div>
-                    
-                    {isAdmin && member.role !== 'admin' && member.user?.idUser !== user?.idUser && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleKickMember(member.user?.idUser)}
-                        disabled={isLoading}
-                      >
-                        <UserX className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Pending Members Tab */}
-          {activeTab === 'pending' && isAdmin && (
-            <div className="space-y-4 p-4">
-              <h4 className="font-medium text-gray-900">Thành viên chờ duyệt</h4>
-              {pendingMembers.map((pendingMember) => (
-                <div key={pendingMember.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage src={getAvatarUrl(pendingMember.user?.avatarUrl)} />
-                      <AvatarFallback>
-                        {pendingMember.user?.name?.charAt(0)?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{pendingMember.user?.name}</p>
-                      <p className="text-sm text-gray-500">
-                        Được mời bởi {pendingMember.actionBy?.name}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApproveMember(pendingMember.user?.idUser)}
-                      disabled={isLoading}
-                    >
-                      <UserCheck className="w-4 h-4 mr-1" />
-                      Duyệt
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => handleKickMember(pendingMember.user?.idUser)}
-                      disabled={isLoading}
-                    >
-                      <UserX className="w-4 h-4" />
-                    </Button>
                   </div>
                 </div>
-              ))}
-              
-              {pendingMembers.length === 0 && (
-                <p className="text-center text-gray-500 py-4">
-                  Không có thành viên nào chờ duyệt
-                </p>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+            {activeTab === 'members' && (
+              <div className="bg-white rounded-xl border-2 border-gray-100 p-5 shadow-sm overflow-visible">
+                <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-4"><Users className="w-5 h-5 text-blue-500" />Thành viên ({members.length})</h4>
+                <div className="max-h-56 overflow-y-auto space-y-3 pr-2 mb-4">
+                  {isLoading ? (
+                    <div className="text-center py-8 text-gray-500">Đang tải...</div>
+                  ) : members.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">Chưa có thành viên</div>
+                  ) : (
+                    members.map((member, index) => {
+                      const isCurrentUser = member.idUser === user?.idUser;
+                      const memberIsAdmin = member.role === 'admin';
+                      return (
+                        <div
+                          key={member.idUser || member.id || index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:bg-blue-50 transition-all"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <Avatar className="w-11 h-11 border-2 border-gray-100">
+                              <AvatarImage src={getAvatarUrl(member.avatarUrl)} />
+                              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white font-semibold">
+                                {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-bold text-gray-900 truncate text-base">{member.name || 'Unknown'}</p>
+                                {isCurrentUser && (
+                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">Bạn</Badge>
+                                )}
+                                {memberIsAdmin && (
+                                  <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs border-0"><Crown className="w-3 h-3 mr-1" />Admin</Badge>
+                                )}
+                              </div>
+                              {member.email && (
+                                <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                              )}
+                            </div>
+                          </div>
+                          {isAdmin && !isCurrentUser && !memberIsAdmin && (
+                            <Button size="sm" variant="ghost" onClick={() => handleKickMember(member.idUser)} disabled={isLoading} className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-2" title="Xóa thành viên">
+                              <UserX className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+            {activeTab === 'invite' && (
+              <div className="bg-white rounded-xl border-2 border-gray-100 p-5 shadow-sm">
+                <Label className="text-sm font-semibold text-gray-700 mb-2">Tìm kiếm người dùng</Label>
+                <Input type="text" placeholder="Nhập email hoặc số điện thoại..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="border-2 focus:border-blue-400 mb-2" />
+                {isSearching && (<div className="text-center py-4 text-gray-500"><div className="animate-spin inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div><p className="mt-2 text-sm">Đang tìm kiếm...</p></div>)}
+                {!isSearching && searchQuery && searchResults.length === 0 && (<div className="text-center py-6 text-gray-500"><Users className="w-12 h-12 mx-auto mb-2 opacity-30" /><p className="text-sm">Không tìm thấy người dùng</p></div>)}
+                {searchResults.length > 0 && (<div className="border-2 border-blue-100 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">{searchResults.map((foundUser) => (<div key={foundUser.idUser} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors"><div className="flex items-center gap-2 flex-1 min-w-0"><Avatar className="w-9 h-9"><AvatarImage src={getAvatarUrl(foundUser.avatarUrl)} /><AvatarFallback className="bg-gradient-to-br from-blue-400 to-cyan-400 text-white text-sm">{foundUser.name?.charAt(0)?.toUpperCase()}</AvatarFallback></Avatar><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{foundUser.name}</p><p className="text-xs text-gray-500 truncate">{foundUser.email}</p></div></div><Button size="sm" onClick={() => handleAddMember(foundUser.idUser)} disabled={isLoading} className="ml-2 bg-blue-500 hover:bg-blue-600">Mời</Button></div>))}</div>)}
+              </div>
+            )}
+            {activeTab === 'actions' && (
+              <div className="bg-white rounded-xl border-2 border-gray-100 p-5 shadow-sm space-y-3">
+                <h4 className="font-bold text-gray-900 mb-3">Hành động</h4>
+                <Button variant="outline" className="w-full justify-start text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-2 hover:border-orange-300 font-semibold py-6" onClick={handleLeaveGroup} disabled={isLoading}><LogOut className="w-5 h-5 mr-2" />Rời nhóm</Button>
+                {isAdmin && (<Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-2 hover:border-red-300 font-semibold py-6" onClick={handleDeleteGroup} disabled={isLoading}><Trash2 className="w-5 h-5 mr-2" />Xóa nhóm</Button>)}
+              </div>
+            )}
+          </div>
         </ScrollArea>
 
         {/* Footer */}
-        <div className="flex justify-end pt-4 border-t">
-          <Button variant="outline" onClick={handleClose}>
-            Đóng
-          </Button>
+        <div className="flex justify-end pt-4 border-t mt-4">
+          <Button variant="outline" onClick={handleClose} className="px-6">Đóng</Button>
         </div>
       </DialogContent>
     </Dialog>
