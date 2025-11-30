@@ -9,8 +9,8 @@ const ConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmT
         <DialogTitle>{title}</DialogTitle>
         <div className="my-4 text-gray-700">{description}</div>
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={onCancel}>{cancelText}</Button>
-          <Button variant="default" onClick={onConfirm}>{confirmText}</Button>
+          <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50" onClick={onCancel}>{cancelText}</Button>
+          <Button variant="default" className="bg-blue-500 hover:bg-blue-600 text-white" onClick={onConfirm}>{confirmText}</Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Shield, Bell, Palette, CheckCircle, XCircle } from "lucide-react";
+import { Shield, Lock, Palette, CheckCircle, XCircle } from "lucide-react";
 import AccountSecurity from "./components/AccountSecurity";
-import Notifications from "./components/Notifications";
 import Appearance from "./components/Appearance";
+import Privacy from "./components/Privacy";
 
 const SettingsPage = () => {
   const [activeSection, setActiveSection] = useState("account");
@@ -42,10 +42,10 @@ const SettingsPage = () => {
       component: AccountSecurity
     },
     {
-      id: "notifications", 
-      title: "Thông báo",
-      icon: <Bell className="w-5 h-5" />,
-      component: Notifications
+      id: "privacy",
+      title: "Quyền riêng tư",
+      icon: <Lock className="w-5 h-5" />,
+      component: Privacy
     },
     {
       id: "appearance",

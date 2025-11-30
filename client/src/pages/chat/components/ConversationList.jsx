@@ -64,7 +64,6 @@ export const ConversationList = () => {
 
   // Log conversations data for debugging
   React.useEffect(() => {
-    console.log('[ConversationList] conversations:', conversations);
   }, [conversations]);
 
   const filteredConversations = conversations.filter(conv =>
@@ -74,7 +73,6 @@ export const ConversationList = () => {
   );
 
   const handleConversationClick = (conversation) => {
-    // console.log('Clicked conversation:', conversation);
     setActiveConversation(conversation);
   };
 

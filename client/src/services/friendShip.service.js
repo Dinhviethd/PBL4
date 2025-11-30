@@ -1,3 +1,4 @@
+
 import instance from "./axios.config";
 
 const normalizePaginatedResponse = (resData) => {
@@ -10,6 +11,10 @@ const normalizePaginatedResponse = (resData) => {
   return { items, total, page, limit };
 };
 
+export const getBlockedList = async () => {
+  const res = await instance.get(`/friendship/blocked-list`);
+  return res.data?.data || [];
+};
 
 export const getFriends = async (page = 1, limit = 10, sortField = undefined, sortOrder = undefined) => {
   const params = { page, limit };

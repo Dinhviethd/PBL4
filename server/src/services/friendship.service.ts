@@ -1,3 +1,4 @@
+
 import { AppError } from "@/utils/error.response";
 import { FriendshipRepository } from "@/repositories/friendship.repository";
 import { UserRepository } from "@/repositories/user.repository";
@@ -31,6 +32,20 @@ class FriendshipService {
     }
 
     return friendship;
+  }
+  async getBlockedList(userId: number) {
+    // Lấy tất cả các friendship mà userId là sender và status là BLOCKED
+    const blockedRelations = await this.friendshipRepository.getBlockedFriends(userId);
+    return blockedRelations.map(f => {
+      const blocked = f.sender_id.idUser === userId ? f.friend_id : f.sender_id;
+      return {
+        id: blocked.idUser,
+        name: blocked.name,
+        avatarUrl: blocked.avatarUrl,
+        email: blocked.email,
+        phone: blocked.phone,
+      };
+    });
   }
 
   async acceptRequest(userId: number, requestId: number) {

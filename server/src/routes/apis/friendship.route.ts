@@ -11,7 +11,9 @@ import {
   blockFriend,
   unblockFriend,
   deleteFriendRequest,
+  getBlockedList,
 } from "@/controllers/friendship.controller";
+
 import { authMiddleware, checkAccountStatus } from "@/middlewares/auth.middleware";
 import { asyncHandler } from "@/utils/error.response";
 
@@ -22,6 +24,13 @@ router.post(
   authMiddleware,
   checkAccountStatus,
   asyncHandler(sendFriendRequest)
+);
+
+router.get(
+  "/blocked-list",
+  authMiddleware,
+  checkAccountStatus,
+  asyncHandler(getBlockedList)
 );
 
 router.delete(

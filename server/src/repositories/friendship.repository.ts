@@ -1,3 +1,4 @@
+
 import { AppDataSource } from "@/configs/database.config";
 import { Repository } from "typeorm";
 import { FriendShip } from "@/models/friendship.model";
@@ -30,6 +31,17 @@ export class FriendshipRepository {
       status,
     });
     return await this.repo.save(friendship);
+  }
+    async getBlockedFriends(userId: number): Promise<FriendShip[]> {
+    // Lấy các mối quan hệ mà userId là sender và status là BLOCKED
+    return await this.repo.find({
+      where: [
+        { sender_id: { idUser: userId }, status: FriendStatus.BLOCKED },
+        { friend_id: { idUser: userId }, status: FriendStatus.BLOCKED },
+      ],
+      relations: ["sender_id", "friend_id"],
+      order: { requestAt: "DESC" },
+    });
   }
 
   async findFriendship(senderId: number, friendId: number): Promise<FriendShip | null> {

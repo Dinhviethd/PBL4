@@ -1,3 +1,4 @@
+
 import { Request, Response } from "express";
 import friendshipService from "@/services/friendship.service";
 import { AppError } from "@/utils/error.response";
@@ -11,6 +12,12 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
 
   const result = await friendshipService.sendRequest(senderId, receiverId, message);
   res.json({ success: true, data: result, message: "Gửi lời mời kết bạn thành công" });
+};
+export const getBlockedList = async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  if (!userId) throw new AppError(401, "Unauthorized");
+  const blockedList = await friendshipService.getBlockedList(userId);
+  res.json({ success: true, data: blockedList });
 };
 
 export const getFriends = async (req: Request, res: Response) => {
