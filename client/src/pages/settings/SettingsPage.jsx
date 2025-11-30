@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Shield, Lock, Palette, CheckCircle, XCircle } from "lucide-react";
 import AccountSecurity from "./components/AccountSecurity";
-import Appearance from "./components/Appearance";
 import Privacy from "./components/Privacy";
 
 const SettingsPage = () => {
@@ -46,12 +45,6 @@ const SettingsPage = () => {
       title: "Quyền riêng tư",
       icon: <Lock className="w-5 h-5" />,
       component: Privacy
-    },
-    {
-      id: "appearance",
-      title: "Giao diện", 
-      icon: <Palette className="w-5 h-5" />,
-      component: Appearance
     }
   ];
 

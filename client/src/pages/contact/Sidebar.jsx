@@ -27,9 +27,7 @@ const Sidebar = ({ activeSection, setActiveSection, pendingInviteCount = 0, pend
           >
             <div className={`${activeSection === item.id ? 'text-blue-600' : 'text-gray-500'}`}>{item.icon}</div>
             <span className="text-sm font-medium">{item.title}</span>
-            {item.hasBadge && (
-              <div className="ml-auto w-2 h-2 bg-red-500 rounded-full"></div>
-            )}
+            {/* Đã xóa red dot badge */}
           </div>
         ))}
       </div>

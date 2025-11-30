@@ -7,7 +7,6 @@ import CreateGroupModal from './CreateGroupModal';
 import authService from "@/services/auth.service";
 import notificationService from "@/services/notification.service";
 import { useNotificationContext } from "@/contexts/NotificationCountContext";
-import { getReceivedRequests } from "@/services/friendShip.service";
 import useChatStore from '@/zustand/chatStore';
 
 const links = [
@@ -21,7 +20,6 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [hasPendingInvites, setHasPendingInvites] = useState(false);
   const { user, accessToken } = useAuthInit();
   const { unreadCount, updateUnreadCount } = useNotificationContext();
   const { conversations } = useChatStore();
@@ -32,7 +30,7 @@ export default function Sidebar() {
     return total + (conv.unreadCount || 0);
   }, 0);
 
-  // Fetch notifications count on mount and poll every 5 seconds
+  // Thay polling thông báo bằng lắng nghe sự kiện WebSocket
   useEffect(() => {
     const fetchNotificationCount = async () => {
       try {
@@ -46,32 +44,20 @@ export default function Sidebar() {
       }
     };
 
-    fetchNotificationCount();
-
-    // Poll every 5 seconds
-    const interval = setInterval(fetchNotificationCount, 5000);
-    return () => clearInterval(interval);
-  }, [accessToken, updateUnreadCount]);
-
-  // Fetch pending friend invites on mount and poll every 5 seconds
-  useEffect(() => {
-    const fetchPendingInvites = async () => {
-      try {
-        if (accessToken) {
-          const response = await getReceivedRequests(1, 100);
-          setHasPendingInvites((response.total || 0) > 0);
-        }
-      } catch (error) {
-        console.error("Failed to fetch pending invites:", error);
-      }
+    // Lắng nghe sự kiện notificationReceived
+    const handleNotificationEvent = (event) => {
+      fetchNotificationCount();
     };
 
-    fetchPendingInvites();
+    window.addEventListener('notificationReceived', handleNotificationEvent);
 
-    // Poll every 5 seconds
-    const interval = setInterval(fetchPendingInvites, 5000);
-    return () => clearInterval(interval);
-  }, [accessToken]);
+    // Fetch lần đầu khi mount
+    fetchNotificationCount();
+
+    return () => {
+      window.removeEventListener('notificationReceived', handleNotificationEvent);
+    };
+  }, [accessToken, updateUnreadCount]);
 
   const handleLogoutConfirm = async () => {
     try {
@@ -129,10 +115,6 @@ export default function Sidebar() {
               )}
               {/* Badge for notifications - only red dot */}
               {link.to === "/notifications" && unreadCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full shadow-md"></div>
-              )}
-              {/* Badge for friend invites - only red dot */}
-              {link.to === "/contact" && hasPendingInvites && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full shadow-md"></div>
               )}
               <span className="absolute left-14 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
