@@ -204,7 +204,6 @@ const FriendsList = () => {
                 lastMessageTime: new Date().toISOString(),
                 unreadCount: 0
               };
-              console.log('handleStartConversation called', { friend, conversation });
               addConversation(conversation);
               setActiveConversation(conversation);
               navigate('/');

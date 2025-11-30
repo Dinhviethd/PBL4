@@ -9,6 +9,7 @@ import NotificationContext from '@/contexts/NotificationContext';
 import useAuthStore from '@/zustand/authStore';
 import PopupInfor from '@/components/profile/PopupInfor';
 import { useNavigate } from 'react-router-dom';
+import useChatStore from '@/zustand/chatStore';
 
 export default function AddFriendPage() {
   const [query, setQuery] = useState('');
@@ -84,9 +85,21 @@ export default function AddFriendPage() {
 
   // Helper to navigate to chat with the user
   const navigateToChat = useCallback(() => {
-    const id = result?.idUser ?? result?.id;
+    if (!result) return;
+    const { addConversation, setActiveConversation } = useChatStore.getState();
+    const id = result.idUser ?? result.id;
     if (!id) return;
-    navigate(`/?user=${id}`);
+    const conversation = {
+      type: 'private',
+      partnerId: id,
+      partner: { idUser: id, ...result },
+      lastMessage: null,
+      lastMessageTime: new Date().toISOString(),
+      unreadCount: 0
+    };
+    addConversation(conversation);
+    setActiveConversation(conversation);
+    navigate('/');
   }, [navigate, result]);
 
   const onSendRequest = async () => {
