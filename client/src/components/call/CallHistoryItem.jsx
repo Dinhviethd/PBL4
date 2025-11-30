@@ -1,6 +1,7 @@
 import React from 'react';
 import { Phone, Video, PhoneIncoming, PhoneOutgoing, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarUrl } from '@/lib/utils';
 
 export const CallHistoryItem = ({ call, currentUserId, otherUser }) => {
   
@@ -37,7 +38,7 @@ export const CallHistoryItem = ({ call, currentUserId, otherUser }) => {
     <div className="flex items-start gap-2">
       {/* Avatar - Outside Border */}
       <Avatar className="w-8 h-8 flex-shrink-0 mt-1">
-        <AvatarImage src={otherUser?.avatarUrl} alt={otherUser?.name} />
+        <AvatarImage src={getAvatarUrl(otherUser?.avatarUrl)} alt={otherUser?.name} />
         <AvatarFallback>{otherUser?.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
       </Avatar>
 

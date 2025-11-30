@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, MessageCircle } from 'lucide-react';
 import userService from '@/services/user.service';
 import useChatStore from '@/zustand/chatStore';
+import { getAvatarUrl } from '@/lib/utils';
 
 export const StartConversationDialog = ({ open, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,7 +114,7 @@ export const StartConversationDialog = ({ open, onClose }) => {
                 >
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={user.avatarUrl} />
+                      <AvatarImage src={getAvatarUrl(user.avatarUrl)} />
                       <AvatarFallback>
                         {user.name?.charAt(0)?.toUpperCase() || 'U'}
                       </AvatarFallback>

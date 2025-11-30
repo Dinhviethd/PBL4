@@ -25,6 +25,7 @@ import { StartConversationDialog } from './StartConversationDialog';
 import { GroupSettingsDialog } from './GroupSettingsDialog';
 import useChatStore from '@/zustand/chatStore';
 import useAuthStore from '@/zustand/authStore';
+import { getAvatarUrl } from '@/lib/utils';
 
 // Helper function to format time
 const formatLastMessageTime = (time) => {
@@ -156,7 +157,7 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                   <Avatar className="w-12 h-12">
                     <AvatarImage 
                       src={conversation.type === 'private' 
-                        ? conversation.partner?.avatarUrl 
+                        ? getAvatarUrl(conversation.partner?.avatarUrl)
                         : getGroupAvatarDisplay(conversation.group?.name || 'G')
                       } 
                     />

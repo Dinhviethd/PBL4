@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAvatarUrl } from '@/lib/utils';
 void motion;
 import { Search, X, UserPlus2 } from 'lucide-react';
 import userService from '@/services/user.service.js';
@@ -217,7 +218,7 @@ export default function AddFriendPage() {
               <div className="grid grid-cols-3 gap-4 items-center">
                 <div className="col-span-1 flex justify-center">
                   <motion.img
-                    src={result.avatarUrl || '/images/avatar-default-icon.png'}
+                    src={getAvatarUrl(result.avatarUrl)}
                     alt="avatar"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}

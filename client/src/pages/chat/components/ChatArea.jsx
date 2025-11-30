@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { getAvatarUrl } from '@/lib/utils';
 import { 
   Send, 
   Paperclip, 
@@ -564,9 +565,9 @@ export const ChatArea = ({ conversation }) => {
           <Avatar className="w-10 h-10 mr-3">
             <AvatarImage 
               src={conversation.type === 'private' 
-                ? conversation.partner?.avatarUrl 
+                ? getAvatarUrl(conversation.partner?.avatarUrl)
                 : getGroupAvatarDisplay(conversation.group?.name || 'G')
-              } 
+              }
             />
             <AvatarFallback>
               {conversation.type === 'private' 
@@ -659,7 +660,7 @@ export const ChatArea = ({ conversation }) => {
                 <div className={`flex items-start max-w-[70%] ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
                   {!isOwn && (
                     <Avatar className="w-8 h-8 mr-2">
-                      <AvatarImage src={msg.sender?.avatarUrl} />
+                      <AvatarImage src={getAvatarUrl(msg.sender?.avatarUrl)} />
                       <AvatarFallback>
                         {msg.sender?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </AvatarFallback>
@@ -773,7 +774,7 @@ export const ChatArea = ({ conversation }) => {
             <div className="flex justify-start">
               <div className="flex items-center space-x-2">
                 <Avatar className="w-8 h-8">
-                  <AvatarImage src={conversation.partner?.avatarUrl} />
+                  <AvatarImage src={getAvatarUrl(conversation.partner?.avatarUrl)} />
                   <AvatarFallback>
                     {conversation.partner?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>

@@ -30,6 +30,7 @@ import {
 import groupService from '@/services/group.service';
 import userService from '@/services/user.service';
 import useChatStore from '@/zustand/chatStore';
+import { getAvatarUrl } from '@/lib/utils';
 import useAuthStore from '@/zustand/authStore';
 
 export const GroupSettingsDialog = ({ open, onClose, group }) => {
@@ -460,7 +461,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                         <div key={user.idUser} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-8 h-8">
-                              <AvatarImage src={user.avatarUrl} />
+                              <AvatarImage src={getAvatarUrl(user.avatarUrl)} />
                               <AvatarFallback>{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
@@ -491,7 +492,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                   <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={member.user?.avatarUrl} />
+                        <AvatarImage src={getAvatarUrl(member.user?.avatarUrl)} />
                         <AvatarFallback>
                           {member.user?.name?.charAt(0)?.toUpperCase()}
                         </AvatarFallback>
@@ -538,7 +539,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                 <div key={pendingMember.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={pendingMember.user?.avatarUrl} />
+                      <AvatarImage src={getAvatarUrl(pendingMember.user?.avatarUrl)} />
                       <AvatarFallback>
                         {pendingMember.user?.name?.charAt(0)?.toUpperCase()}
                       </AvatarFallback>

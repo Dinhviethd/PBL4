@@ -1,4 +1,5 @@
 import React from 'react';
+import { getAvatarUrl } from '@/lib/utils';
 
 export default function FriendSelector({ friends = [], selected = [], onToggle }) {
   return (
@@ -9,7 +10,7 @@ export default function FriendSelector({ friends = [], selected = [], onToggle }
         friends.map((f) => (
           <label key={`friend-${f.idUser}`} className="flex items-center gap-2 text-sm mb-1 cursor-pointer hover:bg-gray-100 rounded p-1">
             <input type="checkbox" checked={selected.some(u => u.idUser === f.idUser)} onChange={() => onToggle(f)} className="w-4 h-4 text-blue-500 rounded" />
-            <img src={f.avatarUrl || '/images/avatar-default-icon.png'} alt={f.name} className="w-6 h-6 rounded-full object-cover" />
+            <img src={getAvatarUrl(f.avatarUrl)} alt={f.name} className="w-6 h-6 rounded-full object-cover" />
             <span>{f.name}</span>
           </label>
         ))

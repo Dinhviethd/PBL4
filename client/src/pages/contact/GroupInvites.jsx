@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Users2, UserCheck, UserMinus } from 'lucide-react';
 import groupService from '@/services/group.service';
+import { getAvatarUrl } from '@/lib/utils';
 
 const GroupInvites = () => {
   const [activeInviteTab, setActiveInviteTab] = useState('received');
@@ -73,7 +74,7 @@ const GroupInvites = () => {
       const src = avatar.startsWith('http') ? avatar : `${import.meta.env.VITE_API_URL.replace('/api', '')}${avatar}`;
       return (
         <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-          <img src={src} alt={user?.name || 'Avatar'} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = ''; }} />
+          <img src={getAvatarUrl(src)} alt={user?.name || 'Avatar'} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = getAvatarUrl(''); }} />
         </div>
       );
     }
