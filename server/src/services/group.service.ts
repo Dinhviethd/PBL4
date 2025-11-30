@@ -1,4 +1,5 @@
 
+
 import { GroupRepository } from '@/repositories/group.repository';
 import { AppDataSource } from '@/configs/database.config';
 import { User } from '@/models/users.model';
@@ -310,5 +311,23 @@ export class GroupService {
         name: member.inviter.name
       } : null
     }));
+  }
+
+  
+  async getUserGroupsWithSearch(userId: number, searchTerm: string = '', page: number = 1, limit: number = 10) {
+    const { items, total } = await this.groupRepository.getUserGroupsWithSearch(userId, searchTerm, page, limit);
+    return {
+      items: items.map(ug => ({
+        idGroup: ug.group.idGroup,
+        name: ug.group.name,
+        createdAt: ug.group.createdAt,
+        role: ug.role,
+        createdBy: {
+          idUser: ug.group.createdBy?.idUser,
+          name: ug.group.createdBy?.name
+        }
+      })),
+      total
+    };
   }
 }

@@ -1,4 +1,5 @@
 
+
 import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
 import { GroupInvitation } from '@/models/group_invitation.model';
@@ -161,22 +162,24 @@ export class GroupRepository {
       .orderBy('inv.createdAt', 'DESC')
       .getMany();
   }
+  
+  async getUserGroupsWithSearch(idUser: number, searchTerm: string = '', page: number = 1, limit: number = 10): Promise<{ items: GroupUser[], total: number }> {
+    const query = this.groupUserRepo
+      .createQueryBuilder('gu')
+      .leftJoinAndSelect('gu.group', 'g')
+      .leftJoinAndSelect('g.createdBy', 'creator')
+      .leftJoinAndSelect('gu.user', 'u')
+      .where('u.idUser = :idUser', { idUser })
+      .andWhere('gu.role IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.USER] });
 
-  // Get all users that can be invited (tất cả users không phải thành viên của group)
-  async getInvitableUsers(idGroup: number): Promise<User[]> {
-    const userRepository = AppDataSource.getRepository(User);
-    
-    // Lấy tất cả users trừ những users đã là thành viên của group
-    return await userRepository
-      .createQueryBuilder('u')
-      .leftJoin(
-        GroupUser,
-        'gu',
-        'gu.user.idUser = u.idUser AND gu.group.idGroup = :groupId',
-        { groupId: idGroup }
-      )
-      .where('gu.id IS NULL') // Không có record GroupUser = không phải thành viên
-      .andWhere('u.statusAccount = true') // Chỉ những user active
-      .getMany();
+    if (searchTerm && searchTerm.trim() !== '') {
+      query.andWhere('LOWER(g.name) LIKE :search', { search: `%${searchTerm.toLowerCase()}%` });
+    }
+
+    query.orderBy('g.createdAt', 'DESC');
+    query.skip((page - 1) * limit).take(limit);
+
+    const [items, total] = await query.getManyAndCount();
+    return { items, total };
   }
 }

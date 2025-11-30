@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { GroupSettingsDialog } from '@/pages/chat/components/GroupSettingsDialog';
 import { Search, Filter, ChevronDown, MoreHorizontal, LogOut, UserPlus, Eye, MessageSquare } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import groupService from '@/services/group.service';
 import { useContext } from 'react';
 import NotificationContext from '@/contexts/NotificationContext';
 
 const GroupsList = () => {
-  const navigate = useNavigate();
-  const [openDropdown, setOpenDropdown] = useState(null);
   const [confirmLeave, setConfirmLeave] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { showSuccess, showError } = useContext(NotificationContext);
 
   const [groups, setGroups] = useState([]);
@@ -22,15 +22,11 @@ const GroupsList = () => {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await groupService.getUserGroupsPaginated(page, limit, searchTerm, sortOrder === 'asc' ? 'asc' : 'desc');
-        
+        const res = await groupService.getUserGroupsPaginated(page, limit, searchTerm, sortOrder);
         if (!mounted) return;
-        
         let mappedGroups;
         const items = res.items || res.data || [];
-        
         if (items.length > 0 && items[0].group) {
-          // Cấu trúc cũ: GroupUser objects
           mappedGroups = items.map(groupUser => ({
             id: groupUser.id,
             idGroup: groupUser.group.idGroup,
@@ -41,7 +37,6 @@ const GroupsList = () => {
             statusGroup: groupUser.group.statusGroup
           }));
         } else {
-          // Cấu trúc mới: Group objects trực tiếp
           mappedGroups = items.map(group => ({
             idGroup: group.idGroup,
             name: group.name,
@@ -51,7 +46,6 @@ const GroupsList = () => {
             statusGroup: group.statusGroup
           }));
         }
-        
         setGroups(mappedGroups);
         setTotal(res.total || 0);
       } catch (e) {
@@ -59,10 +53,7 @@ const GroupsList = () => {
       }
     };
     load();
-
-    // listen for group creation events and reload
     const onGroupsCreated = () => {
-      // reset to first page and reload
       setPage(1);
       load();
     };
@@ -70,14 +61,6 @@ const GroupsList = () => {
     return () => { mounted = false; window.removeEventListener('groups:created', onGroupsCreated); };
   }, [page, limit, searchTerm, sortOrder]);
 
-
-
-  const handleGroupClick = (group) => {
-    // Navigate to chat page and show this group
-    // Store group ID in sessionStorage so ChatPage can load it
-    sessionStorage.setItem('selectedGroupId', group.idGroup);
-    navigate('/');
-  };
 
   return (
     <div className="p-6">
@@ -95,63 +78,74 @@ const GroupsList = () => {
         </div>
 
         <div className="space-y-2">
-          {groups.map(group => (
-            <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer group" onClick={() => handleGroupClick(group)}>
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium text-blue-600">{(group.name || '').charAt(0).toUpperCase()}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800">{group.name}</p>
-                  <p className="text-xs text-gray-500">Vai trò: {group.role}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    sessionStorage.setItem('selectedGroupId', group.idGroup);
-                    navigate('/');
-                  }}
-                  className="p-2 hover:bg-blue-100 rounded transition-colors opacity-0 group-hover:opacity-100"
-                  title="Mở tin nhắn"
-                >
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                </button>
-                <div className="relative">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenDropdown(openDropdown === `group-${group.idGroup}` ? null : `group-${group.idGroup}`);
-                    }}
-                    className="p-2 hover:bg-gray-100 rounded transition-colors"
-                  >
-                    <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                  </button>
-                  {openDropdown === `group-${group.idGroup}` && (
-                    <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                      <div className="py-2">
-                        <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
-                          <Eye className="w-5 h-5" />
-                          Xem thông tin
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setConfirmLeave(group);
-                            setOpenDropdown(null);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                        >
-                          <LogOut className="w-5 h-5" />
-                          Rời khỏi nhóm
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+          {groups.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-gray-500">
+              {searchTerm ? (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  <div className="text-lg font-medium">Không có nhóm phù hợp</div>
+                  <div className="text-sm mt-1">Hãy thử từ khóa khác.</div>
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  <div className="text-lg font-medium">Chưa có nhóm nào</div>
+                  <div className="text-sm mt-1">Bạn chưa tham gia nhóm nào.</div>
+                </>
+              )}
             </div>
-          ))}
+          ) : (
+            [...groups]
+              .sort((a, b) => {
+                const an = (a.name || '').toLowerCase();
+                const bn = (b.name || '').toLowerCase();
+                if (an < bn) return sortOrder === 'asc' ? -1 : 1;
+                if (an > bn) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+              })
+              .map(group => (
+                <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-medium text-blue-600">{(group.name || '').charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{group.name}</p>
+                      <p className="text-xs text-gray-500">Vai trò: {group.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGroup(group);
+                              setIsDialogOpen(true);
+                            }}
+                            className="p-2 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                          </button>
+                        </div>
+                        {/* GroupSettingsDialog - render ngoài danh sách nhóm */}
+                        {isDialogOpen && selectedGroup && (
+                          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+                            <div id="group-settings-dialog">
+                              <GroupSettingsDialog
+                                open={isDialogOpen}
+                                onClose={() => {
+                                  setIsDialogOpen(false);
+                                  setSelectedGroup(null);
+                                }}
+                                group={selectedGroup}
+                              />
+                            </div>
+                          </div>
+                        )}
+                  </div>
+                </div>
+              ))
+          )}
         </div>
         
         {/* Pagination */}
@@ -165,32 +159,6 @@ const GroupsList = () => {
             </div>
           </div>
         )}
-
-        {/* Confirm leave modal */}
-        {confirmLeave && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-            <div className="bg-white rounded-lg p-6 w-80">
-              <h3 className="text-lg font-semibold mb-4">Rời khỏi nhóm</h3>
-              <p className="mb-6">Bạn có chắc muốn rời khỏi <span className="font-medium">{confirmLeave.name}</span> không?</p>
-              <div className="flex justify-end gap-4">
-                <button className="px-4 py-2 rounded-lg border" onClick={() => setConfirmLeave(null)}>Hủy</button>
-                <button className="px-4 py-2 rounded-lg bg-red-600 text-white" onClick={async () => {
-                  try {
-                    await groupService.leaveGroup(confirmLeave.idGroup);
-                    showSuccess('Thành công', `Bạn đã rời nhóm "${confirmLeave.name}"`);
-                    setGroups(prev => prev.filter(g => g.idGroup !== confirmLeave.idGroup));
-                    setConfirmLeave(null);
-                  } catch (err) {
-                    console.error(err);
-                    const msg = err?.response?.data?.message || err?.message || 'Không thể rời nhóm';
-                    showError('Lỗi', msg);
-                  }
-                }}>Rời</button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   );

@@ -184,10 +184,11 @@ export class GroupController {
 
   getUserGroups = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId;
-    const { page = 1, limit = 10, search = '', sort = 'asc' } = req.query;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || '';
+    // sort chưa dùng, có thể bổ sung sau
 
-    console.log('📋 [getUserGroups] userId:', userId);
-    console.log('📋 [getUserGroups] params:', { page, limit, search, sort });
 
     if (!userId) {
       return res.status(401).json({
@@ -196,14 +197,13 @@ export class GroupController {
       });
     }
 
-    const groups = await this.groupService.getUserGroups(userId);
-    console.log('📋 [getUserGroups] groups fetched:', groups?.length || 0, 'groups');
+    const result = await this.groupService.getUserGroupsWithSearch(userId, search, page, limit);
 
     res.json({
       success: true,
-      data: groups,
-      items: groups,
-      total: groups?.length || 0
+      data: result.items,
+      items: result.items,
+      total: result.total
     });
   });
 
