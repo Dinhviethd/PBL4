@@ -58,25 +58,34 @@ export class FriendshipRepository {
   }
 
     async getFriends(userId: number, skip: number, take: number): Promise<[FriendShip[], number]> {
+    // Chỉ lấy bạn bè có status ACCEPTED, loại bỏ các mối quan hệ BLOCKED
     const [data, total] = await this.repo.findAndCount({
-        where: [
+      where: [
         { sender_id: { idUser: userId }, status: FriendStatus.ACCEPTED },
         { friend_id: { idUser: userId }, status: FriendStatus.ACCEPTED },
-        ],
-        relations: ["sender_id", "friend_id"],
-        skip,
-        take,
-        order: { requestAt: "DESC" },
+      ],
+      relations: ["sender_id", "friend_id"],
+      skip,
+      take,
+      order: { requestAt: "DESC" },
     });
 
-    return [data, total];
+    // Loại bỏ các mối quan hệ mà status là BLOCKED (nếu có nhầm lẫn dữ liệu)
+    const filtered = data.filter(f => f.status !== FriendStatus.BLOCKED);
+    return [filtered, filtered.length];
     }
 
 
   async getPendingRequests(userId: number): Promise<FriendShip[]> {
-    return await this.repo.find({
+    // Chỉ lấy lời mời chưa bị chặn
+    const requests = await this.repo.find({
       where: { friend_id: { idUser: userId }, status: FriendStatus.PENDING },
       relations: ["sender_id"],
+    });
+    // Loại bỏ các lời mời mà giữa 2 người đã có mối quan hệ BLOCKED
+    return requests.filter(async (req) => {
+      const blocked = await this.findFriendship(req.sender_id.idUser, userId);
+      return !(blocked && blocked.status === FriendStatus.BLOCKED);
     });
   }
 
@@ -88,8 +97,15 @@ export class FriendshipRepository {
       take,
       order: { requestAt: "DESC" },
     });
-
-    return [data, total];
+    // Loại bỏ các lời mời mà giữa 2 người đã có mối quan hệ BLOCKED
+    const filtered = [];
+    for (const req of data) {
+      const blocked = await this.findFriendship(req.sender_id.idUser, userId);
+      if (!(blocked && blocked.status === FriendStatus.BLOCKED)) {
+        filtered.push(req);
+      }
+    }
+    return [filtered, filtered.length];
   }
 
   async getSentRequestsPaginated(userId: number, skip: number, take: number): Promise<[FriendShip[], number]> {
@@ -100,7 +116,14 @@ export class FriendshipRepository {
       take,
       order: { requestAt: "DESC" },
     });
-
-    return [data, total];
+    // Loại bỏ các lời mời mà giữa 2 người đã có mối quan hệ BLOCKED
+    const filtered = [];
+    for (const req of data) {
+      const blocked = await this.findFriendship(userId, req.friend_id.idUser);
+      if (!(blocked && blocked.status === FriendStatus.BLOCKED)) {
+        filtered.push(req);
+      }
+    }
+    return [filtered, filtered.length];
   }
 }

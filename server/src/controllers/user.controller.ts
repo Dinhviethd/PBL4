@@ -203,10 +203,22 @@ export const getAccountStatus = async (req: Request, res: Response) => {
 export const lookupUser = async (req: Request, res: Response) => {
   try {
     const { email, phone } = req.query as any;
+    const currentUserId = req.user?.userId;
     if (!email && !phone) {
       return res.status(400).json({ success: false, message: 'Provide email or phone' });
     }
     const user = await userService.findByEmailOrPhone(email, phone);
+    if (!user) return res.json({ success: true, data: null });
+
+    // Nếu đang đăng nhập, kiểm tra trạng thái block
+    if (currentUserId) {
+      const FriendshipRepository = require("@/repositories/friendship.repository").FriendshipRepository;
+      const friendRepo = new FriendshipRepository();
+      const relation = await friendRepo.findFriendship(currentUserId, user.idUser);
+      if (relation && relation.status === "blocked") {
+        return res.json({ success: true, data: null });
+      }
+    }
     res.json({ success: true, data: user });
   } catch (error: any) {
     throw error;

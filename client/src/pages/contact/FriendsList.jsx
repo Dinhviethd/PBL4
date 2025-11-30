@@ -150,8 +150,8 @@ const FriendsList = () => {
         {loading ? (
           <p>Đang tải...</p>
         ) : (
-          <div className="space-y-2">
-            {friendsData
+          (() => {
+            const filtered = friendsData
               .filter((f) => {
                 if (!searchTerm) return true;
                 const term = searchTerm.toLowerCase();
@@ -164,81 +164,110 @@ const FriendsList = () => {
                 if (an < bn) return sortOrder === "asc" ? -1 : 1;
                 if (an > bn) return sortOrder === "asc" ? 1 : -1;
                 return 0;
-              })
-              .map((friend) => {
-                const avatarUrl = getAvatarUrl(friend.avatarUrl);
-                return (
-                  <div
-                    key={friend.id}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      {avatarUrl ? (
-                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-purple-100">
-                          <img
-                            src={avatarUrl}
-                            alt={friend.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.parentNode.innerHTML = `<div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-medium">${friend.name[0].toUpperCase()}</div>`;
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-medium">
-                          {friend.name[0].toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-sm text-gray-800">{friend.name}</span>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        onClick={() =>
-                          setOpenDropdown(openDropdown === `friend-${friend.id}` ? null : `friend-${friend.id}`)
-                        }
-                      >
-                        <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                      </button>
-
-                      {openDropdown === `friend-${friend.id}` && (
-                        <div ref={dropdownRef} className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                          <div className="py-2">
-                            <button
-                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                              onClick={() => {
-                                setSelectedFriend(friend);
-                                setIsDialogOpen(true);
-                                setOpenDropdown(null);
-                              }}
-                            >
-                              <Eye className="w-5 h-5" />
-                              Xem thông tin
-                            </button>
-                            <button
-                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                              onClick={() => setConfirmDelete(friend)}
-                            >
-                              <UserX className="w-5 h-5" />
-                              Xóa bạn
-                            </button>
-                            <button
-                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                              onClick={() => setConfirmBlock(friend)}
-                            >
-                              <Ban className="w-5 h-5" />
-                              Chặn
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+              });
+            // Nếu không có bạn bè nào trong danh sách gốc
+            if (friendsData.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl shadow-inner">
+                  <div className="mb-4">
+                    <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="#6366f1" className="mx-auto animate-bounce">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.125A5.625 5.625 0 0110.125 13.5h3.75A5.625 5.625 0 0120.25 19.125v.375c0 .621-.504 1.125-1.125 1.125h-13.5A1.125 1.125 0 014.5 19.5v-.375z" />
+                    </svg>
                   </div>
-                );
-              })}
-          </div>
+                  <div className="text-xl font-semibold text-purple-700 mb-2">Bạn chưa có bạn bè nào</div>
+                  <div className="text-base text-gray-500 mb-6">Hãy kết bạn để trò chuyện và chia sẻ cùng mọi người!</div>
+                  <button
+                    className="px-7 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-blue-600 hover:to-purple-600 transition-all duration-200 flex items-center gap-2"
+                    onClick={() => window.location.href = '/add-friend'}
+                  >
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4v16m8-8H4" /></svg>
+                    Kết bạn ngay
+                  </button>
+                </div>
+              );
+            }
+            // Nếu có bạn bè nhưng không có kết quả tìm kiếm
+            if (filtered.length === 0) {
+              return <div className="text-center text-gray-500 py-8">Không có bạn bè phù hợp</div>;
+            }
+            return (
+              <div className="space-y-2">
+                {filtered.map((friend) => {
+                  const avatarUrl = getAvatarUrl(friend.avatarUrl);
+                  return (
+                    <div
+                      key={friend.id}
+                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {avatarUrl ? (
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-purple-100">
+                            <img
+                              src={avatarUrl}
+                              alt={friend.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.parentNode.innerHTML = `<div class='w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-medium'>${friend.name[0].toUpperCase()}</div>`;
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-medium">
+                            {friend.name[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-sm text-gray-800">{friend.name}</span>
+                      </div>
+
+                      <div className="relative">
+                        <button
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          onClick={() =>
+                            setOpenDropdown(openDropdown === `friend-${friend.id}` ? null : `friend-${friend.id}`)
+                          }
+                        >
+                          <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                        </button>
+
+                        {openDropdown === `friend-${friend.id}` && (
+                          <div ref={dropdownRef} className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                            <div className="py-2">
+                              <button
+                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                                onClick={() => {
+                                  setSelectedFriend(friend);
+                                  setIsDialogOpen(true);
+                                  setOpenDropdown(null);
+                                }}
+                              >
+                                <Eye className="w-5 h-5" />
+                                Xem thông tin
+                              </button>
+                              <button
+                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                onClick={() => setConfirmDelete(friend)}
+                              >
+                                <UserX className="w-5 h-5" />
+                                Xóa bạn
+                              </button>
+                              <button
+                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                onClick={() => setConfirmBlock(friend)}
+                              >
+                                <Ban className="w-5 h-5" />
+                                Chặn
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()
         )}
 
         {/* Pagination */}
