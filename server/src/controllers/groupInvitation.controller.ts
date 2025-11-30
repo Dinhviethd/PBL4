@@ -3,6 +3,11 @@ import groupInvitationService from '@/services/groupInvitation.service';
 import { asyncHandler } from '@/utils/error.response';
 
 class GroupInvitationController {
+      getPendingMembers = asyncHandler(async (req: Request, res: Response) => {
+        const groupId = parseInt((req.query.groupId as string) || req.body.groupId || req.params.groupId);
+        const result = await groupInvitationService.getPendingMembers(groupId);
+        res.status(200).json({ success: true, data: result });
+      });
     getInvitesNeedAdminApprove = asyncHandler(async (req: Request, res: Response) => {
       const userId = (req as any).user.userId;
       const page = parseInt((req.query.page as string) || '1');

@@ -2,9 +2,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Users2, UserCheck, UserMinus } from 'lucide-react';
 import groupService from '@/services/group.service';
 import { getAvatarUrl } from '@/lib/utils';
+import { getGroupAvatarDisplay } from '@/utils/groupAvatar';
+import { useNotification } from '@/hooks/useNotification';
 
 const GroupInvites = () => {
   const [activeInviteTab, setActiveInviteTab] = useState('received');
+  const [pendingAdminInvites, setPendingAdminInvites] = useState([]);
+  const { showSuccess, showError } = useNotification();
   const [receivedInvites, setReceivedInvites] = useState([]);
   const [sentInvites, setSentInvites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,9 +24,14 @@ const GroupInvites = () => {
         const res = await groupService.getReceivedInvites(page, limit);
         setReceivedInvites(res.data?.items || []);
         setTotal(res.data?.total || 0);
-      } else {
+      } else if (activeInviteTab === 'sent') {
         const res = await groupService.getSentInvites(page, limit);
         setSentInvites(res.data?.items || []);
+        setTotal(res.data?.total || 0);
+      } else if (activeInviteTab === 'admin') {
+        const res = await groupService.getInvitesNeedAdminApprove(page, limit);
+        console.log('[GroupInvites] getInvitesNeedAdminApprove result:', res);
+        setPendingAdminInvites(res.data?.items || []);
         setTotal(res.data?.total || 0);
       }
     } catch (err) {
@@ -38,14 +47,14 @@ const GroupInvites = () => {
       try {
         const receivedRes = await groupService.getReceivedInvites(1, 10);
         setReceivedInvites(receivedRes.data?.items || []);
-        
         const sentRes = await groupService.getSentInvites(1, 10);
         setSentInvites(sentRes.data?.items || []);
+        const adminRes = await groupService.getInvitesNeedAdminApprove(1, 10);
+        setPendingAdminInvites(adminRes.data?.items || []);
       } catch (err) {
         console.error('Failed to fetch group invites counts:', err);
       }
     };
-
     fetchAllCounts();
   }, []);
 
@@ -66,10 +75,19 @@ const GroupInvites = () => {
   };
 
   const renderAvatar = (invite, type = 'received') => {
+    // Nếu là lời mời nhóm, hiển thị avatar nhóm bằng tiện ích getGroupAvatarDisplay
+    const groupName = invite.idGroup?.name || '';
+    if (groupName) {
+      return (
+        <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+          <img src={getGroupAvatarDisplay(groupName)} alt={groupName} className="w-full h-full object-cover" />
+        </div>
+      );
+    }
+    // Nếu không có tên nhóm, fallback về avatar user như cũ
     const user = type === 'received' ? invite.inviter : invite.invitee;
     const avatar = user?.avatarUrl;
     const initials = (user?.name || user?.fullName || invite.message || '').slice(0, 2).toUpperCase();
-
     if (avatar) {
       const src = avatar.startsWith('http') ? avatar : `${import.meta.env.VITE_API_URL.replace('/api', '')}${avatar}`;
       return (
@@ -78,7 +96,6 @@ const GroupInvites = () => {
         </div>
       );
     }
-
     return (
       <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-lg font-medium text-blue-700 flex-shrink-0">
         {initials || '?'}
@@ -90,9 +107,11 @@ const GroupInvites = () => {
     setActionLoading(id);
     try {
       await groupService.acceptInvite(id);
+      showSuccess('Thành công', 'Bạn đã tham gia nhóm!');
       await fetchInvites();
     } catch (err) {
       console.error(err);
+      showError('Lỗi', err?.message || 'Không thể chấp nhận lời mời');
     } finally {
       setActionLoading(null);
     }
@@ -102,15 +121,17 @@ const GroupInvites = () => {
     setActionLoading(id);
     try {
       await groupService.deleteInvite(id);
+      showSuccess('Thành công', 'Lời mời đã được từ chối');
       await fetchInvites();
     } catch (err) {
       console.error(err);
+      showError('Lỗi', err?.message || 'Không thể từ chối lời mời');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const invites = activeInviteTab === 'received' ? receivedInvites : sentInvites;
+  const invites = activeInviteTab === 'received' ? receivedInvites : activeInviteTab === 'sent' ? sentInvites : pendingAdminInvites;
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -131,6 +152,9 @@ const GroupInvites = () => {
         </button>
         <button onClick={() => { setActiveInviteTab('received'); setPage(1); }} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeInviteTab === 'received' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
           Lời mời đã nhận {receivedInvites.length > 0 && <span className="ml-2 inline-block">{receivedInvites.length}</span>}
+        </button>
+        <button onClick={() => { setActiveInviteTab('admin'); setPage(1); }} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeInviteTab === 'admin' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          Lời mời chờ xử lý {pendingAdminInvites.length > 0 && <span className="ml-2 inline-block">{pendingAdminInvites.length}</span>}
         </button>
       </div>
 
@@ -162,6 +186,15 @@ const GroupInvites = () => {
 
               <div className="flex flex-col gap-2">
                 {activeInviteTab === 'received' ? (
+                  invite.status === 'pending' ? (
+                    <>
+                      <button onClick={() => withdraw(invite.idInvitation)} disabled={actionLoading === invite.idInvitation} className="text-sm text-gray-600 bg-gray-100 px-4 py-1.5 rounded hover:bg-gray-200 transition-colors">Từ chối</button>
+                      <button onClick={() => accept(invite.idInvitation)} disabled={actionLoading === invite.idInvitation} className="text-sm text-white bg-blue-500 px-4 py-1.5 rounded hover:bg-blue-600 transition-colors">Chấp nhận</button>
+                    </>
+                  ) : invite.status === 'accepted' ? (
+                    <span className="text-sm text-yellow-600 bg-yellow-100 px-4 py-1.5 rounded">Đang chờ admin duyệt</span>
+                  ) : null
+                ) : activeInviteTab === 'admin' ? (
                   <>
                     <button onClick={() => withdraw(invite.idInvitation)} disabled={actionLoading === invite.idInvitation} className="text-sm text-gray-600 bg-gray-100 px-4 py-1.5 rounded hover:bg-gray-200 transition-colors">Từ chối</button>
                     <button onClick={() => accept(invite.idInvitation)} disabled={actionLoading === invite.idInvitation} className="text-sm text-white bg-blue-500 px-4 py-1.5 rounded hover:bg-blue-600 transition-colors">Chấp nhận</button>

@@ -34,6 +34,7 @@ import CallButtons from '@/components/call/CallButtons';
 import { IncomingCallModal } from '@/components/call/IncomingCallModal';
 import { CallHistoryItem } from '@/components/call/CallHistoryItem';
 import { GroupSettingsDialog } from './GroupSettingsDialog';
+import groupService from '@/services/group.service';
 import ChatPrivateSettingsDialog from './ChatPrivateSettingsDialog';
 
 // Helper function to format time
@@ -88,6 +89,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [fullGroupInfo, setFullGroupInfo] = useState(null);
   const [showPrivateSettings, setShowPrivateSettings] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -559,6 +561,34 @@ const getGroupAvatarDisplay = (groupName = '') => {
   const isPartnerTyping = conversation.type === 'private' && 
     typingUsers[conversation.partnerId];
 
+  // Fetch full group info when opening GroupSettingsDialog
+  useEffect(() => {
+    const fetchGroupInfo = async () => {
+      if (showGroupSettings && conversation.type === 'group') {
+        const g = conversation.group || {};
+        // Check if missing important fields
+        if (!g.createdAt || !g.createdBy || !g.statusGroup) {
+          try {
+            const res = await groupService.getGroupById(g.idGroup ?? conversation.idGroup);
+            // Merge API data with existing group info
+            setFullGroupInfo({
+              ...g,
+              ...res.data
+            });
+          } catch (err) {
+            console.error('[ChatArea] Failed to fetch full group info:', err);
+            setFullGroupInfo(g); // fallback
+          }
+        } else {
+          setFullGroupInfo(g);
+        }
+      } else {
+        setFullGroupInfo(null);
+      }
+    };
+    fetchGroupInfo();
+  }, [showGroupSettings, conversation]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Incoming Call Modal */}
@@ -874,7 +904,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
           onClose={() => {
             setShowGroupSettings(false);
           }}
-          group={conversation.group}
+          group={fullGroupInfo}
         />
       )}
       {/* Private Settings Dialog */}

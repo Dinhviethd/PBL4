@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getGroupAvatarDisplay } from '@/utils/groupAvatar';
 import { GroupSettingsDialog } from '@/pages/chat/components/GroupSettingsDialog';
 import { Search, Filter, ChevronDown, MoreHorizontal, LogOut, UserPlus, Eye, MessageSquare } from 'lucide-react';
 import groupService from '@/services/group.service';
@@ -102,8 +103,12 @@ const GroupsList = () => {
               .map(group => (
                 <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-medium text-blue-600">{(group.name || '').charAt(0).toUpperCase()}</span>
+                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+                      <img 
+                        src={getGroupAvatarDisplay(group.name || '')}
+                        alt={group.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800">{group.name}</p>

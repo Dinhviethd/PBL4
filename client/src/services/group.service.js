@@ -1,3 +1,5 @@
+
+
 import instance from './axios.config';
 
 const groupService = {
@@ -16,7 +18,6 @@ const groupService = {
         
         try {
           await Promise.all(addMemberPromises);
-          console.log('All members added successfully');
         } catch (error) {
           console.warn('Some members could not be added:', error);
           // Không throw error ở đây để group vẫn được tạo thành công
@@ -26,6 +27,15 @@ const groupService = {
       return group;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to create group' };
+    }
+  },
+    // Get group by id
+  getGroupById: async (groupId) => {
+    try {
+      const response = await instance.get(`/groups/${groupId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch group info' };
     }
   },
   updateGroup: async (groupId, { name, statusGroup }) => {
@@ -78,6 +88,17 @@ const groupService = {
       throw error.response?.data || { message: 'Failed to kick member' };
     }
   },
+    // Get pending members (chờ duyệt)
+  getPendingMembers: async (groupId) => {
+    try {
+      const response = await instance.get(`/groups/invite/pending`, {
+        params: { groupId }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch pending members' };
+    }
+  },
 
   // Delete group
   deleteGroup: async (groupId) => {
@@ -121,16 +142,6 @@ const groupService = {
     }
   },
 
-  // Get pending members
-  getPendingMembers: async (groupId) => {
-    try {
-      const response = await instance.get(`/groups/${groupId}/pending`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch pending members' };
-    }
-  },
-
 
   // Invite user to group
 inviteUserToGroup: async (groupId, userId, message = '') => {
@@ -138,7 +149,6 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
     const validGroupId = Number(groupId);
     const validUserId = Number(userId);
 
-    console.log('[FRONTEND] inviteUserToGroup:', { groupId, userId, validGroupId, validUserId, message });
 
     if (isNaN(validGroupId) || isNaN(validUserId)) {
       console.error('[FRONTEND] groupId hoặc userId không hợp lệ!', { groupId, userId });
@@ -151,7 +161,6 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
       message
     });
 
-    console.log('[FRONTEND] inviteUserToGroup response:', response.data);
     return response.data;
   } catch (error) {
     console.error('[FRONTEND] inviteUserToGroup error:', error);
@@ -162,11 +171,9 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Get received invites
   getReceivedInvites: async (page = 1, limit = 8) => {
     try {
-      console.log('[groupService] getReceivedInvites called', { page, limit });
       const response = await instance.get('/groups/invite/received', {
         params: { page, limit }
       });
-      console.log('[groupService] getReceivedInvites response', response.data);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch received invites' };
@@ -188,7 +195,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Accept invite
   acceptInvite: async (inviteId) => {
     try {
-      const response = await instance.post(`/groups/invite/${inviteId}/accept`);
+      const response = await instance.put(`/groups/invite/invitation/${inviteId}/accept`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to accept invite' };
@@ -198,10 +205,22 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Delete invite
   deleteInvite: async (inviteId) => {
     try {
-      const response = await instance.delete(`/groups/invite/${inviteId}`);
+      const response = await instance.delete(`/groups/invite/invitation/${inviteId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to delete invite' };
+    }
+  },
+
+  // Get invites need admin approval
+  getInvitesNeedAdminApprove: async (page = 1, limit = 8) => {
+    try {
+      const response = await instance.get('/groups/invite/admin-approval', {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch admin approval invites' };
     }
   }
 };

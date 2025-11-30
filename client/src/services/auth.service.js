@@ -81,17 +81,6 @@ const authService = {
     }
   },
 
-  confirmPasswordReset: async (verificationId, email) => {
-    try {
-      const response = await instance.post("/auth/confirm-password-reset", {
-        verificationId,
-        email,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Đã có lỗi xảy ra" };
-    }
-  },
 
   confirmChangePassword: async (verificationId, email) => {
     try {

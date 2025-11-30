@@ -106,6 +106,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
     if (open && group) {
       // Luôn cập nhật groupName từ store/conversation khi dialog mở hoặc group thay đổi
       setGroupName(latestGroupName);
+      console.log('[GroupSettingsDialog] group info:', group);
       loadGroupData();
     }
   }, [open, group, latestGroupName, loadGroupData]);
@@ -147,7 +148,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
   const handleInviteUserToGroup = async (userId) => {
     // Check if user is already a member hoặc có pending
     const memberIds = members.map(m => m.user?.idUser || m.idUser);
-    const pendingIds = pendingMembers.map(p => p.user?.idUser || p.idUser);
+    const pendingIds = pendingMembers.map(p => p.invitee?.idUser);
     if (memberIds.includes(userId)) {
       showError('Lỗi', 'Người dùng đã là thành viên của nhóm');
       return;
@@ -384,7 +385,7 @@ export const GroupSettingsDialog = ({ open, onClose, group }) => {
                   <div className="border-2 border-blue-100 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">
                     {searchResults.map((foundUser) => {
                       const memberIds = members.map(m => m.user?.idUser || m.idUser);
-                      const pendingIds = pendingMembers.map(p => p.user?.idUser || p.idUser);
+                      const pendingIds = pendingMembers.map(p => p.invitee?.idUser || p.idUser);
                       const isMember = memberIds.includes(foundUser.idUser);
                       const isPending = pendingIds.includes(foundUser.idUser);
                       return (

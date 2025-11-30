@@ -8,6 +8,21 @@ import { UserRole } from '@/constants/constants';
 import { wsService } from './websocket.service';
 
 export class GroupService {
+    async getGroupById(groupId: number) {
+      const group = await this.groupRepository.findGroupById(groupId);
+      if (!group) return null;
+      return {
+        idGroup: group.idGroup,
+        name: group.name,
+        createdAt: group.createdAt,
+        statusGroup: group.statusGroup,
+        createdBy: group.createdBy ? {
+          idUser: group.createdBy.idUser,
+          name: group.createdBy.name,
+          email: group.createdBy.email
+        } : null
+      };
+    }
   private groupRepository: GroupRepository;
   private userRepository;
 
@@ -122,35 +137,6 @@ export class GroupService {
       message: role === UserRole.USER ? 'User added to group successfully' : 'User invitation sent, waiting for admin approval',
       role
     };
-  }
-
-  async approvePendingMember(groupId: number, targetUserId: number, adminId: number) {
-    // Kiểm tra admin có quyền không
-    const adminMember = await this.groupRepository.findGroupMember(groupId, adminId);
-    if (!adminMember || adminMember.role !== UserRole.ADMIN) {
-      throw new AppError(403, 'Only admin can approve members');
-    }
-
-    // Kiểm tra pending member
-    const pendingMember = await this.groupRepository.findGroupMember(groupId, targetUserId);
-    if (!pendingMember) {
-      throw new AppError(404, 'Pending member not found');
-    }
-
-
-    // Cập nhật role
-    await this.groupRepository.updateMemberRole(pendingMember.id, UserRole.USER);
-
-    // Thông báo cho user được duyệt
-    wsService.sendToUser(targetUserId, {
-      type: 'GROUP_APPROVED',
-      data: {
-        groupId: groupId,
-        approvedBy: adminId
-      }
-    });
-
-    return { message: 'Member approved successfully' };
   }
 
   async leaveGroup(groupId: number, userId: number) {
@@ -292,27 +278,6 @@ export class GroupService {
       }
     }));
   }
-
-  async getPendingMembers(groupId: number, adminId: number) {
-    // Chỉ cần là thành viên của nhóm là được phép xem
-    const member = await this.groupRepository.findGroupMember(groupId, adminId);
-    if (!member) {
-      throw new AppError(403, 'Only group members can view pending members');
-    }
-
-    const pendingMembers = await this.groupRepository.getPendingMembers(groupId);
-    return pendingMembers.map(member => ({
-      idUser: member.invitee.idUser,
-      name: member.invitee.name,
-      email: member.invitee.email,
-      avatarUrl: member.invitee.avatarUrl,
-      addedBy: member.inviter ? {
-        idUser: member.inviter.idUser,
-        name: member.inviter.name
-      } : null
-    }));
-  }
-
   
   async getUserGroupsWithSearch(userId: number, searchTerm: string = '', page: number = 1, limit: number = 10) {
     const { items, total } = await this.groupRepository.getUserGroupsWithSearch(userId, searchTerm, page, limit);

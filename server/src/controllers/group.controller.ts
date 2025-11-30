@@ -3,6 +3,17 @@ import { asyncHandler } from '@/utils/error.response';
 import { GroupService } from '@/services/group.service';
 
 export class GroupController {
+      getGroupById = asyncHandler(async (req: Request, res: Response) => {
+        const { groupId } = req.params;
+        if (!groupId) {
+          return res.status(400).json({ success: false, message: 'Missing groupId' });
+        }
+        const group = await this.groupService.getGroupById(parseInt(groupId));
+        if (!group) {
+          return res.status(404).json({ success: false, message: 'Group not found' });
+        }
+        res.json({ success: true, data: group });
+      });
     updateGroup = asyncHandler(async (req: Request, res: Response) => {
       const { groupId } = req.params;
       const { name, statusGroup } = req.body;
@@ -74,30 +85,6 @@ export class GroupController {
       success: true,
       message: result.message,
       data: result
-    });
-  });
-
-  approveMember = asyncHandler(async (req: Request, res: Response) => {
-    const { groupId } = req.params;
-    const { userId } = req.body;
-    const adminId = req.user?.userId;
-
-    if (!adminId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Unauthorized'
-      });
-    }
-
-    const result = await this.groupService.approvePendingMember(
-      parseInt(groupId),
-      userId,
-      adminId
-    );
-
-    res.json({
-      success: true,
-      message: result.message
     });
   });
 
@@ -204,25 +191,6 @@ export class GroupController {
       data: result.items,
       items: result.items,
       total: result.total
-    });
-  });
-
-  getPendingMembers = asyncHandler(async (req: Request, res: Response) => {
-    const { groupId } = req.params;
-    const adminId = req.user?.userId;
-
-    if (!adminId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Unauthorized'
-      });
-    }
-
-    const pendingMembers = await this.groupService.getPendingMembers(parseInt(groupId), adminId);
-
-    res.json({
-      success: true,
-      data: pendingMembers
     });
   });
 

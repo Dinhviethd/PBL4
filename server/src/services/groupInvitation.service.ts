@@ -3,8 +3,32 @@ import { GroupRepository } from '@/repositories/group.repository';
 import { AppError } from '@/utils/error.response';
 import { UserResponse } from '@/DTOs/user.dto';
 import { th } from 'zod/v4/locales/index.cjs';
+import { GroupInvitationStatus } from '@/constants/constants';
 
 export class GroupInvitationService {
+      // Lấy toàn bộ danh sách pending members của nhóm (không phân trang)
+      async getPendingMembers(groupId: number) {
+        const items = await groupInvitationRepository.getPendingMembers(groupId);
+        const mapUser = (u: any): UserResponse => ({
+          idUser: u?.idUser,
+          name: u?.name || u?.fullName,
+          email: u?.email,
+          avatarUrl: u?.avatarUrl,
+          phone: u?.phone,
+          gender: u?.gender,
+          birthday: u?.birthday,
+          createdAt: u?.createdAt
+        });
+        return items.map((inv: any) => ({
+          idInvitation: inv.idInvitation,
+          message: inv.message,
+          createdAt: inv.createdAt,
+          status: inv.status,
+          idGroup: inv.idGroup && { idGroup: inv.idGroup.idGroup, name: inv.idGroup.name },
+          inviter: mapUser(inv.inviter),
+          invitee: mapUser(inv.invitee),
+        }));
+      }
     async getInvitesNeedAdminApprove(adminId: number, page = 1, limit = 10) {
       const skip = (page - 1) * limit;
       return await groupInvitationRepository.getInvitesNeedAdminApprove(adminId, skip, limit);
@@ -77,8 +101,14 @@ export class GroupInvitationService {
     const inv = await groupInvitationRepository.findById(invitationId);
     if (!inv) throw new AppError(404, 'Invitation not found');
 
-    // Only inviter or invitee can delete (withdraw or reject)
-    if (inv.inviter.idUser !== userId && inv.invitee.idUser !== userId) {
+    // Cho phép admin của nhóm xóa lời mời
+    let isAdmin = false;
+    if (inv.idGroup && inv.idGroup.idGroup) {
+      isAdmin = await this.groupRepository.checkAdmin(inv.idGroup.idGroup, userId);
+    }
+
+    // Chỉ inviter, invitee hoặc admin mới được xóa
+    if (inv.inviter.idUser !== userId && inv.invitee.idUser !== userId && !isAdmin) {
       throw new AppError(403, 'Not allowed');
     }
 
@@ -90,13 +120,28 @@ export class GroupInvitationService {
     const inv = await groupInvitationRepository.findById(invitationId);
     if (!inv) throw new AppError(404, 'Invitation not found');
 
-    if (inv.invitee.idUser !== userId) throw new AppError(403, 'Not allowed');
+    // Kiểm tra nếu là admin thì cho phép duyệt trực tiếp
+    let isAdmin = false;
+    if (inv.idGroup && inv.idGroup.idGroup) {
+      isAdmin = await this.groupRepository.checkAdmin(inv.idGroup.idGroup, userId);
+    }
 
-    // Chỉ khi accept mới thêm vào nhóm
-    await this.groupRepository.addMember(inv.idGroup.idGroup, userId);
-    // Xóa invitation
-    await groupInvitationRepository.deleteInvitationById(invitationId);
-    return { message: 'Joined group successfully' };
+    if (inv.invitee.idUser !== userId && !isAdmin) throw new AppError(403, 'Not allowed');
+
+    if (isAdmin) {
+      // Admin duyệt trực tiếp, thêm thành viên vào nhóm và xóa lời mời
+      await this.groupRepository.addMember(inv.idGroup.idGroup, inv.invitee.idUser);
+      await groupInvitationRepository.deleteInvitationById(invitationId);
+      return { message: 'Admin đã duyệt, thành viên đã được thêm vào nhóm' };
+    } else if (inv.needAdminApprove) {
+      // Nếu cần admin duyệt, chỉ chuyển status sang accepted
+      await groupInvitationRepository.updateInvitationStatus(invitationId, GroupInvitationStatus.ACCEPTED);
+      return { message: 'Đã xác nhận, chờ admin duyệt' };
+    } else {
+      await this.groupRepository.addMember(inv.idGroup.idGroup, userId);
+      await groupInvitationRepository.deleteInvitationById(invitationId);
+      return { message: 'Joined group successfully' };
+    }
   }
 
   async getReceivedInvites(userId: number, page = 1, limit = 10) {
@@ -116,9 +161,10 @@ export class GroupInvitationService {
       idInvitation: inv.idInvitation,
       message: inv.message,
       createdAt: inv.createdAt,
+      status: inv.status,
       idGroup: inv.idGroup && { idGroup: inv.idGroup.idGroup, name: inv.idGroup.name },
       inviter: mapUser(inv.inviter),
-      invitee: mapUser(inv.invitee)
+      invitee: mapUser(inv.invitee),
     }));
     return { items: mapped, total };
   }

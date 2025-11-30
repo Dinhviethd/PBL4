@@ -1,9 +1,19 @@
+
 import { AppDataSource } from '@/configs/database.config';
 import { GroupInvitation } from '@/models/group_invitation.model';
 import { User } from '@/models/users.model';
 import { Group } from '@/models/group.model';
+import { GroupInvitationStatus } from '@/constants/constants';
 
 class GroupInvitationRepository {
+      // Lấy tất cả lời mời vào nhóm theo groupId, không xét status
+      async getPendingMembers(groupId: number) {
+        return await this.repo.find({
+          where: { idGroup: groupId } as any,
+          relations: ['idGroup', 'inviter', 'invitee'],
+          order: { createdAt: 'DESC' }
+        });
+      }
     // Lời mời cần duyệt bởi admin (admin là người tạo group)
     async getInvitesNeedAdminApprove(adminId: number, skip = 0, take = 10) {
       const qb = this.repo.createQueryBuilder('inv')
@@ -49,11 +59,7 @@ class GroupInvitationRepository {
         where: { idGroup: groupId },
         relations: ['createdBy']
       });
-      console.log("group:", group);
-      console.log("group.createdBy:", group?.createdBy);
-      console.log("nguoi gui:", inviterId);
       if (group && group.createdBy && group.createdBy.idUser == inviterId) {
-        console.log("admin nha, khoi check")
         needAdminApprove = false;
       }
     } catch (e) { console.error('[BACKEND] Lỗi lấy group:', e); }
@@ -73,6 +79,9 @@ class GroupInvitationRepository {
 
   async deleteInvitationById(invitationId: number) {
     return await this.repo.delete({ idInvitation: invitationId } as any);
+  }
+  async updateInvitationStatus(invitationId: number, status: GroupInvitationStatus) {
+    return await this.repo.update({ idInvitation: invitationId }, { status });
   }
 
   async findById(invitationId: number) {

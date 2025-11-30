@@ -1,5 +1,3 @@
-
-
 import { Repository } from 'typeorm';
 import { AppDataSource } from '@/configs/database.config';
 import { GroupInvitation } from '@/models/group_invitation.model';
@@ -114,6 +112,16 @@ export class GroupRepository {
       .getOne();
     return !!member;
   }
+  async checkAdmin(groupId: number, userId: number): Promise<boolean> {
+    const member = await this.groupUserRepo.createQueryBuilder('gu')
+      .leftJoin('gu.group', 'g')
+      .leftJoin('gu.user', 'u')
+      .where('g.idGroup = :groupId', { groupId })
+      .andWhere('u.idUser = :userId', { userId })
+      .andWhere('gu.role = :role', { role: UserRole.ADMIN })
+      .getOne();
+    return !!member;
+  }
 
   async deleteGroup(idGroup: number): Promise<void> {
     // Xóa tất cả lời mời vào nhóm
@@ -152,16 +160,6 @@ export class GroupRepository {
       .getMany();
   }
 
-  async getPendingMembers(idGroup: number) {
-    // Lấy toàn bộ lời mời vào nhóm (group_invitation) với idGroup
-    const groupInvitationRepo = AppDataSource.getRepository(GroupInvitation);
-    return await groupInvitationRepo.createQueryBuilder('inv')
-      .leftJoinAndSelect('inv.invitee', 'invitee')
-      .leftJoinAndSelect('inv.inviter', 'inviter')
-      .where('inv.idGroup = :idGroup', { idGroup })
-      .orderBy('inv.createdAt', 'DESC')
-      .getMany();
-  }
   
   async getUserGroupsWithSearch(idUser: number, searchTerm: string = '', page: number = 1, limit: number = 10): Promise<{ items: GroupUser[], total: number }> {
     const query = this.groupUserRepo

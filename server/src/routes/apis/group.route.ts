@@ -14,9 +14,6 @@ router.get('/my-groups', authMiddleware, checkAccountStatus, groupController.get
 // Thêm thành viên vào group
 router.post('/:groupId/members', authMiddleware, checkAccountStatus, groupController.addMember);
 
-// Duyệt thành viên pending
-router.patch('/:groupId/members/approve', authMiddleware, checkAccountStatus, groupController.approveMember);
-
 // Rời nhóm
 router.delete('/:groupId/leave', authMiddleware, checkAccountStatus, groupController.leaveGroup);
 
@@ -28,10 +25,10 @@ router.put('/:groupId', authMiddleware, checkAccountStatus, groupController.upda
 // Xóa group (chỉ admin)
 router.delete('/:groupId', authMiddleware, checkAccountStatus, groupController.deleteGroup);
 
+// Lấy thông tin chi tiết group theo id
+router.get('/:groupId', authMiddleware, checkAccountStatus, groupController.getGroupById);
 // Lấy danh sách thành viên group
 router.get('/:groupId/members', authMiddleware, checkAccountStatus, groupController.getGroupMembers);
 
-// Lấy danh sách thành viên pending (chỉ admin)
-router.get('/:groupId/pending', authMiddleware, checkAccountStatus, groupController.getPendingMembers);
 
 export default router;

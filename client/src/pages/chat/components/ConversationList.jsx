@@ -22,8 +22,8 @@ import {
 } from 'lucide-react';
 import { StartConversationDialog } from './StartConversationDialog';
 import useChatStore from '@/zustand/chatStore';
-import useAuthStore from '@/zustand/authStore';
 import { getAvatarUrl } from '@/lib/utils';
+import { getGroupAvatarDisplay } from '@/utils/groupAvatar';
 
 // Helper function to format time
 const formatLastMessageTime = (time) => {
@@ -48,26 +48,24 @@ const formatLastMessageTime = (time) => {
   }
 };
 
-// Helper function to generate group avatar display (first letter)
-const getGroupAvatarDisplay = (groupName = '') => {
-  // Returns an SVG with the first letter (or colored circle)
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2360A5FA'/%3E%3Ctext x='50' y='65' font-size='40' font-weight='bold' fill='white' text-anchor='middle'%3E${groupName.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
-};
 
-export const ConversationList = ({ onCreateGroup, onAddMember }) => {
+export const ConversationList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showStartConversation, setShowStartConversation] = useState(false);
-  
-  const { user } = useAuthStore();
+
   const {
     conversations,
     activeConversation,
     setActiveConversation,
-    unreadCounts,
     _groups,
     onlineUsers,
     getConversationKey
   } = useChatStore();
+
+  // Log conversations data for debugging
+  React.useEffect(() => {
+    console.log('[ConversationList] conversations:', conversations);
+  }, [conversations]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.type === 'private'
