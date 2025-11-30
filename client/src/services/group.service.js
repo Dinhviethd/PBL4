@@ -162,9 +162,11 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Get received invites
   getReceivedInvites: async (page = 1, limit = 8) => {
     try {
-      const response = await instance.get('/groups/invites/received', {
+      console.log('[groupService] getReceivedInvites called', { page, limit });
+      const response = await instance.get('/groups/invite/received', {
         params: { page, limit }
       });
+      console.log('[groupService] getReceivedInvites response', response.data);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch received invites' };
@@ -174,7 +176,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Get sent invites
   getSentInvites: async (page = 1, limit = 8) => {
     try {
-      const response = await instance.get('/groups/invites/sent', {
+      const response = await instance.get('/groups/invite/sent', {
         params: { page, limit }
       });
       return response.data;
@@ -186,7 +188,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Accept invite
   acceptInvite: async (inviteId) => {
     try {
-      const response = await instance.post(`/groups/invites/${inviteId}/accept`);
+      const response = await instance.post(`/groups/invite/${inviteId}/accept`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to accept invite' };
@@ -196,7 +198,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Delete invite
   deleteInvite: async (inviteId) => {
     try {
-      const response = await instance.delete(`/groups/invites/${inviteId}`);
+      const response = await instance.delete(`/groups/invite/${inviteId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to delete invite' };

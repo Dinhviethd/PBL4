@@ -18,12 +18,12 @@ const GroupInvites = () => {
     try {
       if (activeInviteTab === 'received') {
         const res = await groupService.getReceivedInvites(page, limit);
-        setReceivedInvites(res.items || []);
-        setTotal(res.total || 0);
+        setReceivedInvites(res.data?.items || []);
+        setTotal(res.data?.total || 0);
       } else {
         const res = await groupService.getSentInvites(page, limit);
-        setSentInvites(res.items || []);
-        setTotal(res.total || 0);
+        setSentInvites(res.data?.items || []);
+        setTotal(res.data?.total || 0);
       }
     } catch (err) {
       console.error(err);
@@ -36,11 +36,11 @@ const GroupInvites = () => {
   useEffect(() => {
     const fetchAllCounts = async () => {
       try {
-        const receivedRes = await groupService.getReceivedInvites(1, 100);
-        setReceivedInvites(receivedRes.items || []);
+        const receivedRes = await groupService.getReceivedInvites(1, 10);
+        setReceivedInvites(receivedRes.data?.items || []);
         
-        const sentRes = await groupService.getSentInvites(1, 100);
-        setSentInvites(sentRes.items || []);
+        const sentRes = await groupService.getSentInvites(1, 10);
+        setSentInvites(sentRes.data?.items || []);
       } catch (err) {
         console.error('Failed to fetch group invites counts:', err);
       }

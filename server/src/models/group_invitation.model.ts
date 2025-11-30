@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Column, CreateDateColumn } from 'typeorm';
 import { Group } from './group.model';
 import { User } from './users.model';
+import { GroupInvitationStatus } from '../constants/constants';
 
 @Entity('Group_Invitation')
 export class GroupInvitation {
@@ -27,4 +28,11 @@ export class GroupInvitation {
 
   @Column({ type: 'boolean', default: false })
   needAdminApprove!: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: GroupInvitationStatus,
+    default: GroupInvitationStatus.PENDING
+  })
+  status!: GroupInvitationStatus;
 }

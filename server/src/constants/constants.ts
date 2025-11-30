@@ -1,3 +1,7 @@
+export enum GroupInvitationStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+}
 export enum NotiType {
   MESSAGE = 'message',
   FRIEND_REQUEST = 'friendRequest',
