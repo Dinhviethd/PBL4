@@ -32,6 +32,7 @@ import useCallSignaling from '@/hooks/useCallSignaling';
 import CallButtons from '@/components/call/CallButtons';
 import { IncomingCallModal } from '@/components/call/IncomingCallModal';
 import { CallHistoryItem } from '@/components/call/CallHistoryItem';
+import { GroupSettingsDialog } from './GroupSettingsDialog';
 
 // Helper function to format time
 const formatTimeAgo = (date) => {
@@ -62,6 +63,7 @@ export const ChatArea = ({ conversation }) => {
   const [message, setMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -71,6 +73,9 @@ export const ChatArea = ({ conversation }) => {
   const inputRef = useRef(null);
   const previousScrollHeight = useRef(0);
   const previousMessageCount = useRef(0);
+
+  console.log('🟢 ChatArea render - showGroupSettings:', showGroupSettings);
+  console.log('🟢 Conversation type:', conversation.type);
 
   const { user } = useAuthStore();
   
@@ -604,8 +609,24 @@ export const ChatArea = ({ conversation }) => {
               onVideoCallClick={handleVideoCall}
             />
           )}
-          <Button variant="ghost" size="sm">
-            <Info className="w-4 h-4" />
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => {
+              console.log('🔵 Info button clicked!');
+              console.log('🔵 Conversation type:', conversation.type);
+              console.log('🔵 Conversation:', conversation);
+              if (conversation.type === 'group') {
+                console.log('✅ Opening group settings...');
+                setShowGroupSettings(true);
+              } else {
+                console.log('⚠️ Not a group conversation');
+              }
+            }}
+            className="hover:bg-gray-100"
+            title={conversation.type === 'group' ? 'Thông tin nhóm' : 'Thông tin'}
+          >
+            <Info className="w-5 h-5" />
           </Button>
         </div>
       </div>
@@ -840,6 +861,18 @@ export const ChatArea = ({ conversation }) => {
           </Button>
         </div>
       </div>
+
+      {/* Group Settings Dialog */}
+      {conversation.type === 'group' && (
+        <GroupSettingsDialog
+          open={showGroupSettings}
+          onClose={() => {
+            console.log('🔴 Closing group settings dialog');
+            setShowGroupSettings(false);
+          }}
+          group={conversation.group}
+        />
+      )}
     </div>
   );
 };

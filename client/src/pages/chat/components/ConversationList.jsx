@@ -17,12 +17,10 @@ import {
   Plus,
   MoreHorizontal,
   UserPlus,
-  Settings,
   LogOut,
   Trash2
 } from 'lucide-react';
 import { StartConversationDialog } from './StartConversationDialog';
-import { GroupSettingsDialog } from './GroupSettingsDialog';
 import useChatStore from '@/zustand/chatStore';
 import useAuthStore from '@/zustand/authStore';
 import { getAvatarUrl } from '@/lib/utils';
@@ -59,8 +57,6 @@ const getGroupAvatarDisplay = (groupName = '') => {
 export const ConversationList = ({ onCreateGroup, onAddMember }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showStartConversation, setShowStartConversation] = useState(false);
-  const [showGroupSettings, setShowGroupSettings] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(null);
   
   const { user } = useAuthStore();
   const {
@@ -82,26 +78,6 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
   const handleConversationClick = (conversation) => {
     // console.log('Clicked conversation:', conversation);
     setActiveConversation(conversation);
-  };
-
-  const handleGroupSettings = (group) => {
-    setSelectedGroup(group);
-    setShowGroupSettings(true);
-  };
-
-  const handleGroupAction = (group, action) => {
-    console.log('Group action:', action, group);
-    
-    switch (action) {
-      case 'settings':
-        handleGroupSettings(group);
-        break;
-      case 'addMember':
-        onAddMember(group);
-        break;
-      default:
-        break;
-    }
   };
 
   return (
@@ -192,21 +168,6 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
                       <span className="text-xs text-gray-500 whitespace-nowrap">
                         {formatLastMessageTime(conversation.lastMessageTime)}
                       </span>
-                      
-                      {/* Group actions - THAY ĐỔI: Click vào icon sẽ mở modal settings */}
-                      {conversation.type === 'group' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-gray-200"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleGroupSettings(conversation.group);
-                          }}
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                   
@@ -249,12 +210,6 @@ export const ConversationList = ({ onCreateGroup, onAddMember }) => {
       <StartConversationDialog
         open={showStartConversation}
         onClose={() => setShowStartConversation(false)}
-      />
-      
-      <GroupSettingsDialog
-        open={showGroupSettings}
-        onClose={() => setShowGroupSettings(false)}
-        group={selectedGroup}
       />
     </div>
   );
