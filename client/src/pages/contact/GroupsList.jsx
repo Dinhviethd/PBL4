@@ -9,11 +9,6 @@ const GroupsList = () => {
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(null);
   const [confirmLeave, setConfirmLeave] = useState(null);
-  const [selectedGroupForInvite, setSelectedGroupForInvite] = useState(null);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteSearch, setInviteSearch] = useState('');
-  const [invitableUsers, setInvitableUsers] = useState([]);
-  const [loadingInvitable, setLoadingInvitable] = useState(false);
   const { showSuccess, showError } = useContext(NotificationContext);
 
   const [groups, setGroups] = useState([]);
@@ -31,7 +26,6 @@ const GroupsList = () => {
         
         if (!mounted) return;
         
-        // SỬA LẠI: Xử lý cấu trúc mới - có thể là group objects trực tiếp
         let mappedGroups;
         const items = res.items || res.data || [];
         
@@ -76,49 +70,7 @@ const GroupsList = () => {
     return () => { mounted = false; window.removeEventListener('groups:created', onGroupsCreated); };
   }, [page, limit, searchTerm, sortOrder]);
 
-  // Fetch invitable users khi mở modal mời
-  useEffect(() => {
-    if (!selectedGroupForInvite) return;
 
-    const loadInvitableUsers = async () => {
-      setLoadingInvitable(true);
-      try {
-        console.log('📍 Loading invitable users for group:', selectedGroupForInvite.idGroup);
-        const res = await groupService.getInvitableUsers(selectedGroupForInvite.idGroup);
-        console.log('📍 Invitable users response:', res);
-        setInvitableUsers(res || []);
-      } catch (err) {
-        console.error('❌ Error loading invitable users:', err);
-        showError('Lỗi', 'Không thể tải danh sách người dùng để mời');
-      } finally {
-        setLoadingInvitable(false);
-      }
-    };
-
-    loadInvitableUsers();
-  }, [selectedGroupForInvite, showError]);
-
-  const getAvatarUrl = (avatar) => {
-    if (!avatar) return null;
-    return avatar.startsWith("http")
-      ? avatar
-      : `${import.meta.env.VITE_API_URL.replace("/api", "")}${avatar}`;
-  };
-
-  const handleInviteUser = async (userId) => {
-    try {
-      console.log('👤 Inviting user', userId, 'to group', selectedGroupForInvite.idGroup);
-      const response = await groupService.inviteUserToGroup(selectedGroupForInvite.idGroup, userId);
-      console.log('✅ Invite response:', response);
-      showSuccess('Thành công', 'Đã gửi lời mời!');
-      // Cập nhật lại danh sách - xóa user đã mời
-      setInvitableUsers(prev => prev.filter(u => u.id !== userId && u.idUser !== userId));
-    } catch (err) {
-      console.error('❌ Invite error:', err);
-      const errMsg = err?.response?.data?.message || err?.message || 'Không thể gửi lời mời';
-      showError('Lỗi', errMsg);
-    }
-  };
 
   const handleGroupClick = (group) => {
     // Navigate to chat page and show this group
@@ -183,19 +135,6 @@ const GroupsList = () => {
                           <Eye className="w-5 h-5" />
                           Xem thông tin
                         </button>
-                        {group.role === 'admin' && (
-                          <button 
-                            onClick={() => {
-                              setSelectedGroupForInvite(group);
-                              setShowInviteModal(true);
-                              setOpenDropdown(null);
-                            }}
-                            className="flex items-center gap-3 w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
-                          >
-                            <UserPlus className="w-5 h-5" />
-                            Mời vào nhóm
-                          </button>
-                        )}
                         <button 
                           onClick={() => {
                             setConfirmLeave(group);
@@ -252,93 +191,6 @@ const GroupsList = () => {
           </div>
         )}
 
-        {/* Invite user modal */}
-        {showInviteModal && selectedGroupForInvite && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-            <div className="bg-white rounded-lg p-6 w-96 max-h-96 overflow-auto">
-              <h3 className="text-lg font-semibold mb-4">Mời vào nhóm: {selectedGroupForInvite.name}</h3>
-              
-              {/* Search box */}
-              <div className="mb-4 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Tìm bạn bè..."
-                  value={inviteSearch}
-                  onChange={(e) => setInviteSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {loadingInvitable ? (
-                <p className="text-gray-600 text-center py-4">Đang tải...</p>
-              ) : invitableUsers.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Không có bạn bè nào để mời</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {invitableUsers
-                    .filter(user => {
-                      const term = inviteSearch.toLowerCase();
-                      return (user.name || '').toLowerCase().includes(term) ||
-                             (user.email || '').toLowerCase().includes(term);
-                    })
-                    .map(user => {
-                      const avatarUrl = getAvatarUrl(user.avatarUrl);
-                      return (
-                        <div
-                          key={user.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            {avatarUrl ? (
-                              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-blue-100">
-                                <img
-                                  src={avatarUrl}
-                                  alt={user.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.parentNode.innerHTML = `<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">${user.name[0].toUpperCase()}</div>`;
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
-                                {user.name[0].toUpperCase()}
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-xs font-medium text-gray-800">{user.name}</p>
-                              <p className="text-xs text-gray-500">{user.email}</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleInviteUser(user.id)}
-                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-                          >
-                            Mời
-                          </button>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-4 mt-6">
-                <button
-                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
-                  onClick={() => {
-                    setShowInviteModal(false);
-                    setSelectedGroupForInvite(null);
-                    setInviteSearch('');
-                  }}
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
