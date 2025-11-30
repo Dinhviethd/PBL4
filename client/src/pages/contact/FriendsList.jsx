@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import useChatStore from "@/zustand/chatStore";
 import ChatPrivateSettingsDialog from "@/pages/chat/components/ChatPrivateSettingsDialog";
 import { Search, MoreHorizontal, Eye, UserX, Ban, ChevronDown } from "lucide-react";
 import { getFriends, deleteFriendship, blockFriend } from "@/services/friendShip.service";
@@ -17,6 +19,8 @@ const FriendsList = () => {
   const [confirmBlock, setConfirmBlock] = useState(null);
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { addConversation, setActiveConversation } = useChatStore();
+  const navigate = useNavigate();
   // Đóng dialog khi click ngoài
   useEffect(() => {
     if (!isDialogOpen) return;
@@ -190,6 +194,21 @@ const FriendsList = () => {
             if (filtered.length === 0) {
               return <div className="text-center text-gray-500 py-8">Không có bạn bè phù hợp</div>;
             }
+            // Helper to start or switch to a conversation
+            const handleStartConversation = (friend) => {
+              const conversation = {
+                type: 'private',
+                partnerId: friend.id,
+                partner: { idUser: friend.id, ...friend },
+                lastMessage: null,
+                lastMessageTime: new Date().toISOString(),
+                unreadCount: 0
+              };
+              console.log('handleStartConversation called', { friend, conversation });
+              addConversation(conversation);
+              setActiveConversation(conversation);
+              navigate('/');
+            };
             return (
               <div className="space-y-2">
                 {filtered.map((friend) => {
@@ -197,7 +216,8 @@ const FriendsList = () => {
                   return (
                     <div
                       key={friend.id}
-                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => handleStartConversation(friend)}
                     >
                       <div className="flex items-center gap-3">
                         {avatarUrl ? (
@@ -223,9 +243,10 @@ const FriendsList = () => {
                       <div className="relative">
                         <button
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          onClick={() =>
-                            setOpenDropdown(openDropdown === `friend-${friend.id}` ? null : `friend-${friend.id}`)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdown(openDropdown === `friend-${friend.id}` ? null : `friend-${friend.id}`);
+                          }}
                         >
                           <MoreHorizontal className="w-5 h-5 text-gray-400" />
                         </button>
@@ -235,7 +256,8 @@ const FriendsList = () => {
                             <div className="py-2">
                               <button
                                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setSelectedFriend(friend);
                                   setIsDialogOpen(true);
                                   setOpenDropdown(null);
@@ -246,14 +268,14 @@ const FriendsList = () => {
                               </button>
                               <button
                                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                onClick={() => setConfirmDelete(friend)}
+                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(friend); }}
                               >
                                 <UserX className="w-5 h-5" />
                                 Xóa bạn
                               </button>
                               <button
                                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                onClick={() => setConfirmBlock(friend)}
+                                onClick={(e) => { e.stopPropagation(); setConfirmBlock(friend); }}
                               >
                                 <Ban className="w-5 h-5" />
                                 Chặn

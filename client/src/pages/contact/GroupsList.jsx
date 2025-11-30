@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useChatStore from '@/zustand/chatStore';
 import { getGroupAvatarDisplay } from '@/utils/groupAvatar';
 import { GroupSettingsDialog } from '@/pages/chat/components/GroupSettingsDialog';
 import { Search, Filter, ChevronDown, MoreHorizontal, LogOut, UserPlus, Eye, MessageSquare } from 'lucide-react';
@@ -7,6 +9,8 @@ import groupService from '@/services/group.service';
 const GroupsList = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { addConversation, setActiveConversation } = useChatStore();
+  const navigate = useNavigate();
 
   const [groups, setGroups] = useState([]);
   const [page, setPage] = useState(1);
@@ -100,52 +104,69 @@ const GroupsList = () => {
                 if (an > bn) return sortOrder === 'asc' ? 1 : -1;
                 return 0;
               })
-              .map(group => (
-                <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
-                      <img 
-                        src={getGroupAvatarDisplay(group.name || '')}
-                        alt={group.name}
-                        className="w-full h-full object-cover"
-                      />
+              .map(group => {
+                const handleStartGroupConversation = () => {
+                  const conversation = {
+                    type: 'group',
+                    groupId: group.idGroup,
+                    group,
+                    lastMessage: null,
+                    lastMessageTime: new Date().toISOString(),
+                    unreadCount: 0
+                  };
+                  addConversation(conversation);
+                  setActiveConversation(conversation);
+                  navigate('/');
+                };
+                return (
+                  <div key={group.idGroup} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group cursor-pointer"
+                    onClick={handleStartGroupConversation}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+                        <img 
+                          src={getGroupAvatarDisplay(group.name || '')}
+                          alt={group.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{group.name}</p>
+                        <p className="text-xs text-gray-500">Vai trò: {group.role}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800">{group.name}</p>
-                      <p className="text-xs text-gray-500">Vai trò: {group.role}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedGroup(group);
-                              setIsDialogOpen(true);
-                            }}
-                            className="p-2 hover:bg-gray-100 rounded transition-colors"
-                          >
-                            <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                          </button>
-                        </div>
-                        {/* GroupSettingsDialog - render ngoài danh sách nhóm */}
-                        {isDialogOpen && selectedGroup && (
-                          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-                            <div id="group-settings-dialog">
-                              <GroupSettingsDialog
-                                open={isDialogOpen}
-                                onClose={() => {
-                                  setIsDialogOpen(false);
-                                  setSelectedGroup(null);
-                                }}
-                                group={selectedGroup}
-                              />
-                            </div>
+                    <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedGroup(group);
+                                setIsDialogOpen(true);
+                              }}
+                              className="p-2 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                            </button>
                           </div>
-                        )}
+                          {/* GroupSettingsDialog - render ngoài danh sách nhóm */}
+                          {isDialogOpen && selectedGroup && (
+                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+                              <div id="group-settings-dialog">
+                                <GroupSettingsDialog
+                                  open={isDialogOpen}
+                                  onClose={() => {
+                                    setIsDialogOpen(false);
+                                    setSelectedGroup(null);
+                                  }}
+                                  group={selectedGroup}
+                                />
+                              </div>
+                            </div>
+                          )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
           )}
         </div>
         
