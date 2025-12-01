@@ -21,7 +21,7 @@ const router = express.Router();
 
 //Routes không yêu cầu tài khoản phải ACTIVE 
 router.get("/me", authMiddleware, asyncHandler(getMyInfo));
-router.get('/lookup', authMiddleware, asyncHandler(lookupUser));
+router.get('/lookup', asyncHandler(lookupUser));
 router.get("/status", authMiddleware, asyncHandler(getAccountStatus));
 router.put("/reactivate", authMiddleware, asyncHandler(reactivateAccount));
 

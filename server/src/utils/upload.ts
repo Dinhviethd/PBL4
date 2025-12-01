@@ -22,3 +22,8 @@ export const deleteFromCloudinary = async (publicId: string) => {
     console.error("Xóa ảnh thất bại:", error);
   }
 };
+
+export const seeCloudinaryFolder= async ()=>{
+    const result = await cloudinary.api.sub_folders("/");
+  console.log(result);
+}
