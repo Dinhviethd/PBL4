@@ -48,7 +48,6 @@ export const ChatPrivateSettingsDialog = ({ open, onClose, partner }) => {
 
   const info = userInfo || partner || {};
   // Debug: log all info
-  console.log('[ChatPrivateSettingsDialog] info:', info, 'relation:', relation);
 
   // Format birthday if available
   let birthday = '';

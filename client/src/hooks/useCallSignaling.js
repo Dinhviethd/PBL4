@@ -187,34 +187,43 @@ const useCallSignaling = (webRTC) => {
 
   const declineCall = useCallback((callId, callerId) => {
     try {
-      
       setTimeout(() => {
         if (webRTC && webRTC.closePeerConnection) {
           webRTC.closePeerConnection();
         }
-        
+
         setSignalingState('idle');
-        
         setCallInfo(null);
-        
+
+        // Gửi cho người gọi
         sendSignalingMessage({
           type: 'CALL_DECLINE',
           callId,
-          toUserId: callerId  // Gửi về cho người gọi
+          toUserId: callerId
         });
+
+        // Gửi cho người nhận (callee)
+        if (user && user.idUser) {
+          sendSignalingMessage({
+            type: 'CALL_DECLINE',
+            callId,
+            toUserId: user.idUser
+          });
+          console.log(user.idUser)
+        }
       }, 0);
     } catch (err) {
       console.error('Error declining call:', err);
     }
-  }, [webRTC, sendSignalingMessage]);
+  }, [webRTC, sendSignalingMessage, user]);
 
   /**
    * Kết thúc cuộc gọi
    */
   const endCall = useCallback((callId, toUserId) => {
     try {
-      console.log(`🔴 endCall: Kết thúc cuộc gọi callId=${callId}, toUserId=${toUserId}`);
       setSignalingState('idle');
+      console.log(" tatw may", toUserId)
       sendSignalingMessage({
         type: 'CALL_END',
         callId,
@@ -222,7 +231,6 @@ const useCallSignaling = (webRTC) => {
       });
 
       // Dispatch a global event so any mounted WebRTC hooks can cleanup
-      console.log(`📡 Phát sự kiện 'callEnded' toàn cục`);
       try {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('callEnded', { detail: { callId, toUserId } }));

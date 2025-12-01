@@ -33,8 +33,6 @@ class CallSignalingManager {
    */
   registerConnection(userId: number, ws: WebSocket) {
     this.activeConnections.set(userId, { userId, ws });
-    // console.log(`\n✅ User ${userId} registered for calls`);
-    // console.log(`📊 Active WebSocket Connections: ${this.activeConnections.size}`);
     this.logActiveConnections();
   }
 
@@ -43,8 +41,6 @@ class CallSignalingManager {
    */
   unregisterConnection(userId: number) {
     this.activeConnections.delete(userId);
-    // console.log(`\n❌ User ${userId} unregistered from calls`);
-    // console.log(`📊 Active WebSocket Connections: ${this.activeConnections.size}`);
     this.logActiveConnections();
   }
 
@@ -103,21 +99,14 @@ class CallSignalingManager {
     try {
       const { fromUserId, toUserId, callType } = data;
 
-      console.log(`\n📞 CALL_INITIATE Handler:`);
-      console.log(`   fromUserId: ${fromUserId}`);
-      console.log(`   toUserId: ${toUserId}`);
-      console.log(`   callType: ${callType}`);
-      console.log(`   Active connections: ${this.activeConnections.size}`);
-
+    
       // Log active connections
       this.logActiveConnections();
 
       // Kiểm tra người dùng nhận có online không
       const recipientConnected = this.activeConnections.has(toUserId);
-      console.log(`   User ${toUserId} online: ${recipientConnected}`);
 
       if (!recipientConnected) {
-        console.log(`❌ User ${toUserId} is offline, cannot initiate call`);
         return {
           success: false,
           error: 'User is offline',
@@ -153,9 +142,7 @@ class CallSignalingManager {
         console.log('⚠️ Could not fetch caller info from DB:', err);
       }
 
-      console.log(`✅ Sending CALL_INITIATE from User ${fromUserId} to User ${toUserId}`);
-      console.log(`   CallId: ${call.idCall}, CallType: ${callType}`);
-      console.log(`   Caller info:`, callerInfo);
+ 
 
       // Gửi thông báo cuộc gọi đến người nhận
       this.sendToUser(toUserId, {
@@ -259,11 +246,7 @@ class CallSignalingManager {
     try {
       const { callId, fromUserId, toUserId } = data;
 
-      console.log(`\n✅ CALL_ACCEPT Handler:`);
-      console.log(`   callId: ${callId}`);
-      console.log(`   fromUserId: ${fromUserId} (Callee accepting)`);
-      console.log(`   toUserId: ${toUserId} (Caller to receive accept)`);
-
+    
       // Check if already processed this accept
       if (this.processedDeclines.has(callId!)) {
         console.log(`   ⚠️  Already processed for this callId, ignoring duplicate`);
@@ -275,10 +258,8 @@ class CallSignalingManager {
 
       // Update database
       await CallService.acceptCall(callId!);
-      console.log(`   ✅ Call status updated in database to ACCEPTED`);
 
       // Send CALL_ACCEPT to Caller
-      console.log(`   📤 Sending CALL_ACCEPT to User ${toUserId} (Caller)...`);
       const sent = this.sendToUser(toUserId, {
         type: 'CALL_ACCEPT',
         data: {
@@ -287,11 +268,8 @@ class CallSignalingManager {
         }
       });
 
-      console.log(`   ✅ Message sent to Caller (User ${toUserId}): ${sent}`);
       
       if (!sent) {
-        console.log(`   ❌ FAILED to send CALL_ACCEPT to User ${toUserId}`);
-        console.log(`   📊 Checking active connections:`);
         this.logActiveConnections();
       }
 
@@ -315,11 +293,9 @@ class CallSignalingManager {
 
     // Check if already processed this decline
     if (this.processedDeclines.has(callId!)) {
-      console.log(`⚠️  CALL_DECLINE already processed for callId=${callId}, ignoring duplicate`);
       return { success: false, error: 'Decline already processed' };
     }
 
-    console.log(`📞 CALL_DECLINE Handler: callId=${callId}, from=${fromUserId}, to=${toUserId}`);
 
     // Mark as processed
     this.processedDeclines.add(callId!);
@@ -337,7 +313,6 @@ class CallSignalingManager {
       }
     });
 
-    console.log(`   Message sent to Caller (User ${toUserId}): ${sentToCaller}`);
 
     // Clean up after 5 seconds`
     setTimeout(() => {
@@ -354,10 +329,6 @@ class CallSignalingManager {
     try {
       const { callId, fromUserId, toUserId } = data;
 
-      console.log(`\n📞 CALL_END Handler:`);
-      console.log(`   fromUserId: ${fromUserId}`);
-      console.log(`   toUserId: ${toUserId}`);
-      console.log(`   callId: ${callId}`);
 
       await CallService.endCall(callId!);
 
@@ -374,9 +345,6 @@ class CallSignalingManager {
 
       const sentToCallee = this.sendToUser(toUserId, payload);
       const sentToCaller = this.sendToUser(fromUserId, payload);
-
-      console.log(`   📤 CALL_END sent to callee(${toUserId}): ${sentToCallee}`);
-      console.log(`   📤 CALL_END sent to caller(${fromUserId}): ${sentToCaller}`);
 
       return { success: sentToCallee || sentToCaller };
     } catch (error) {
@@ -409,9 +377,6 @@ class CallSignalingManager {
   async handleSignalingMessage(userId: number, data: CallSignalingData) {
     const { type } = data;
 
-    console.log(`\n🔵 [User ${userId}] ${type} message`);
-    console.log(`   Received data:`, JSON.stringify(data, null, 2));
-
     // Gắn userId từ người gửi
     data.fromUserId = userId;
 
@@ -419,8 +384,6 @@ class CallSignalingManager {
     if (data.toUserId && typeof data.toUserId === 'string') {
       data.toUserId = parseInt(data.toUserId, 10);
     }
-
-    console.log(`   After setting fromUserId: toUserId=${data.toUserId}, fromUserId=${data.fromUserId}`);
 
     switch (type) {
       case 'CALL_INITIATE':

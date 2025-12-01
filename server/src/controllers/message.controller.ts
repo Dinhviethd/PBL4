@@ -182,10 +182,8 @@ export class MessageController {
     const { partnerId } = req.params;
     const userId = req.user?.userId;
 
-    console.log(`🟢 [Controller] POST /messages/private/${partnerId}/mark-read - userId: ${userId}`);
 
     if (!userId) {
-      console.log(`❌ [Controller] Unauthorized - no userId in request`);
       throw new AppError(401, 'Unauthorized');
     }
 
@@ -194,7 +192,6 @@ export class MessageController {
       parseInt(partnerId)
     );
     
-    console.log(`✅ [Controller] markPrivateConversationAsRead completed:`, result);
 
     res.status(200).json({
       success: true,
@@ -206,10 +203,8 @@ export class MessageController {
     const { groupId } = req.params;
     const userId = req.user?.userId;
 
-    console.log(`🟢 [Controller] POST /messages/group/${groupId}/mark-read - userId: ${userId}`);
 
     if (!userId) {
-      console.log(`❌ [Controller] Unauthorized - no userId in request`);
       throw new AppError(401, 'Unauthorized');
     }
 
@@ -218,7 +213,6 @@ export class MessageController {
       parseInt(groupId)
     );
     
-    console.log(`✅ [Controller] markGroupConversationAsRead completed:`, result);
 
     res.status(200).json({
       success: true,

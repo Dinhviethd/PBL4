@@ -75,7 +75,6 @@ const getGroupAvatarDisplay = (groupName = '') => {
       }
       try {
         const rel = await friendshipService.getRelationStatus(conversation.partnerId);
-        console.log('[ChatArea] Relation status:', rel);
         setIsBlocked(rel?.status === 'blocked');
       } catch (err) {
         console.error('[ChatArea] Error checking relation:', err);
@@ -438,9 +437,21 @@ const getGroupAvatarDisplay = (groupName = '') => {
   };
 
   // ==================== CALL HANDLERS ====================
+  // Handle accept incoming call
+
+  // Handle decline incoming call
+  const handleDeclineIncomingCall = () => {
+    setActiveCall(null);
+    if (callInfo && callInfo.callId) {
+      declineCall(callInfo.callId, callInfo.fromUserId);
+    } else {
+      console.warn('❌ Cannot decline - callInfo missing:', callInfo);
+    }
+  };
 
   // Handle accept incoming call
   const handleAcceptIncomingCall = () => {
+    setActiveCall(null);
     if (callInfo && callInfo.callId) {
 
       setActiveCall({
@@ -466,13 +477,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
   };
 
   // Handle decline incoming call
-  const handleDeclineIncomingCall = () => {
-    if (callInfo && callInfo.callId) {
-      declineCall(callInfo.callId, callInfo.fromUserId);
-    } else {
-      console.warn('❌ Cannot decline - callInfo missing:', callInfo);
-    }
-  };
+  // Duplicate removed. See below for the retained definition.
 
   // Audio Call Handler
   const handleAudioCall = async () => {
@@ -589,10 +594,24 @@ const getGroupAvatarDisplay = (groupName = '') => {
     fetchGroupInfo();
   }, [showGroupSettings, conversation]);
 
+  useEffect(() => {
+    const handler = () => {
+      // Tắt IncomingCallModal nếu đang mở
+      setActiveCall(null);
+    };
+    window.addEventListener('callEnded', handler);
+    return () => {
+      window.removeEventListener('callEnded', handler);
+    };
+  }, [setActiveCall]);
+
+  // Đảm bảo khi từ chối hoặc kết thúc cuộc gọi, setActiveCall(null)
+  // Only one handleDeclineIncomingCall and handleAcceptIncomingCall should exist below.
+
   return (
     <div className="flex flex-col h-full">
       {/* Incoming Call Modal */}
-      {callInfo && (
+      {activeCall && callInfo && (
         <IncomingCallModal
           callInfo={callInfo}
           onAccept={handleAcceptIncomingCall}

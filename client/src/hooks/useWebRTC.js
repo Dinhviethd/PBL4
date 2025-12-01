@@ -48,7 +48,6 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     };
 
     peerConnection.oniceconnectionstatechange = () => {
-      console.log(`ICE state: ${peerConnection.iceConnectionState}`);
     };
 
     peerConnectionRef.current = peerConnection;
@@ -112,7 +111,6 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       
       let pc = peerConnectionRef.current;
       if (!pc) {
-        console.log('   🔄 PeerConnection lost after addLocalStream, reinitializing');
         pc = initializePeerConnection();
       }
 
@@ -136,7 +134,6 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       
       let pc = peerConnectionRef.current;
       if (!pc) {
-        console.log('   🔄 PeerConnection lost after addLocalStream, reinitializing');
         pc = initializePeerConnection();
       }
 
@@ -159,7 +156,6 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       let pc = peerConnectionRef.current;
       // Auto-initialize if not yet created (handles case where offer arrives before init)
       if (!pc) {
-        console.log('   🔄 PeerConnection not initialized, auto-initializing for setRemoteDescription');
         pc = initializePeerConnection();
       }
       if (!pc) throw new Error('Peer connection not initialized');
@@ -176,7 +172,6 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       let pc = peerConnectionRef.current;
       // Auto-initialize if not yet created
       if (!pc) {
-        console.log('   🔄 PeerConnection not initialized, auto-initializing for addIceCandidate');
         pc = initializePeerConnection();
       }
       if (!pc) throw new Error('Peer connection not initialized');
@@ -190,11 +185,9 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
   }, [initializePeerConnection]);
 
   const stopLocalStream = useCallback(() => {
-    console.log('🛑 stopLocalStream called');
     
     if (localStream) {
       localStream.getTracks().forEach(track => {
-        console.log(`🛑 Stopping track: ${track.kind} (enabled=${track.enabled})`);
         // Force disable track first
         track.enabled = false;
         // Then stop it
@@ -234,15 +227,12 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     const pc = peerConnectionRef.current;
 
     if (pc && pc.connectionState !== 'closed') {
-      console.log('🔌 closePeerConnection: Closing PC and removing all tracks');
       
       // Remove all senders first
       const senders = pc.getSenders();
-      console.log(`   📤 Found ${senders.length} senders to remove`);
       senders.forEach((sender, idx) => {
         try {
           if (sender.track) {
-            console.log(`   🛑 Removing sender track ${idx}: ${sender.track.kind}`);
             sender.track.enabled = false;
             sender.track.stop();
             pc.removeTrack(sender);
@@ -254,11 +244,9 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
       
       // Also try to remove all receivers
       const receivers = pc.getReceivers();
-      console.log(`   📥 Found ${receivers.length} receivers to remove`);
       receivers.forEach((receiver, idx) => {
         try {
           if (receiver.track) {
-            console.log(`   🛑 Stopping receiver track ${idx}: ${receiver.track.kind}`);
             receiver.track.enabled = false;
             receiver.track.stop();
           }
@@ -274,9 +262,7 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
 
     // Stop all local tracks
     if (localStream) {
-      console.log(`🛑 Stopping ${localStream.getTracks().length} local tracks`);
       localStream.getTracks().forEach((track, idx) => {
-        console.log(`   🛑 Stopping local track ${idx}: ${track.kind}`);
         track.enabled = false;
         track.stop();
       });
@@ -323,13 +309,7 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
 }, [localStream, localVideoRef, remoteVideoRef]);
 
   const resetWebRTC = useCallback(() => {
-    console.log('🔄 Resetting WebRTC state');
 
-    // Log current state before reset
-    console.log('   Current peerConnection:', peerConnectionRef.current);
-    console.log('   Current localStream:', localStream);
-    console.log('   Current remoteStream:', remoteStream);
-    console.log('   Current connectionState:', connectionState);
 
     // Close peer connection
     closePeerConnection();
@@ -343,12 +323,7 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
     setRemoteStream(null);
     setConnectionState('new');
 
-    // Log state after reset
-    console.log('✅ WebRTC state reset');
-    console.log('   peerConnection after reset:', peerConnectionRef.current);
-    console.log('   localStream after reset:', localStream);
-    console.log('   remoteStream after reset:', remoteStream);
-    console.log('   connectionState after reset:', connectionState);
+
   }, [closePeerConnection, stopLocalStream, connectionState, localStream, remoteStream]);
 
   // Listen for a global callEnded event to ensure all hook instances
@@ -356,7 +331,6 @@ const useWebRTC = (callType = 'audio', customLocalVideoRef = null, customRemoteV
   useEffect(() => {
     const handler = () => {
       try {
-        console.log('useWebRTC: global callEnded received, cleaning up');
         if (typeof closePeerConnection === 'function') closePeerConnection();
         if (typeof stopLocalStream === 'function') stopLocalStream();
         try { killAllMedia(); } catch { /* ignore */ }

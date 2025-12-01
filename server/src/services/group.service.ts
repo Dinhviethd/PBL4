@@ -126,7 +126,6 @@ export class GroupService {
 
     // Luôn set role là 'user' khi thêm thành viên mới
     let role: UserRole = UserRole.USER;
-    console.log('[AddMember] groupId:', groupId, 'targetUserId:', targetUserId, 'requesterId:', requesterId, 'role:', role);
 
     await this.groupRepository.addUserToGroup(group, targetUser, role, requesterMember.user);
 

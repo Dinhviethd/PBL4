@@ -15,13 +15,7 @@ export default function CallPage() {
   const { activeCall, clearActiveCall } = useChatStore();
   const { showNotification } = useNotification();
   
-  // Log mount/unmount
-  useEffect(() => {
-    console.log('   📱 CallPage MOUNTED');
-    return () => {
-      console.log('   📱 CallPage UNMOUNTED - cleanup running');
-    };
-  }, []);
+
   
   // Flag to prevent rendering after call ends
   const isCallEndingRef = useRef(false);
@@ -68,7 +62,6 @@ export default function CallPage() {
         if (pc && pc.connectionState !== 'closed') {
           try {
             pc.close();
-            console.log(' Peer connection closed');
           } catch (err) {
             console.error('Error closing PC:', err);
           }
@@ -154,9 +147,7 @@ export default function CallPage() {
   // Listen for global 'callEnded' event to reset CallPage state immediately
   useEffect(() => {
     const handler = () => {
-      console.log('   🧹 CallPage: callEnded event received, resetting all state and navigating away');
-      console.log('   🧹 Current location before navigate:', window.location.pathname);
-      
+    
       // Set flag to prevent re-renders
       isCallEndingRef.current = true;
       
@@ -170,9 +161,7 @@ export default function CallPage() {
       try { killAllMedia(); } catch { /* ignore */ }
 
       // Navigate away IMMEDIATELY to unmount CallPage and stop rendering video
-      console.log('   🧹 Calling navigate("/", { replace: true })');
       navigate('/', { replace: true });
-      console.log('   🧹 Navigate called, new location should be /');
     };
 
     if (typeof window !== 'undefined') {
@@ -273,7 +262,8 @@ export default function CallPage() {
       });
 
       setMicEnabled(newState);
-      console.log(`🎤 Microphone ${newState ? 'enabled' : 'disabled'}`);
+
+
     } catch (error) {
       console.error(' Error toggling mic:', error);
       showNotification('Could not toggle microphone', 'error');
@@ -352,13 +342,6 @@ export default function CallPage() {
       const callId = activeCall?.idCall || callInfo?.callId;
       const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;
       
-      console.log('   🔴 handleEndCall triggered with:', {
-        callId,
-        toUserId,
-        activeCall: activeCall ? { toUserId: activeCall.toUserId, fromUserId: activeCall.fromUserId, idCall: activeCall.idCall } : 'null',
-        callInfo: callInfo ? { toUserId: callInfo.toUserId, fromUserId: callInfo.fromUserId, callId: callInfo.callId } : 'null'
-      });
-      
       if (callId && toUserId) {
         endCall(callId, toUserId);
       } else {
@@ -414,18 +397,8 @@ export default function CallPage() {
       {(() => {
         // Early return if call is ending to prevent unnecessary renders
         if (isCallEndingRef.current) {
-          console.log('   🧹 Skipping render - isCallEnding is true');
           return null;
         }
-        
-        console.log('📺 CallPage rendering VideoDisplay with:', {
-          callType,
-          remoteStream: webRTC?.remoteStream ? `Tracks: ${webRTC.remoteStream.getTracks().length}` : 'null',
-          localStream: webRTC?.localStream ? `Tracks: ${webRTC.localStream.getTracks().length}` : 'null',
-          cameraEnabled,
-          remoteVideoRef: remoteVideoRef?.current ? 'attached' : 'null',
-          localVideoRef: videoRef?.current ? 'attached' : 'null',
-        });
         return null;
       })()}
       {!isCallEndingRef.current && (

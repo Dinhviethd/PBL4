@@ -127,34 +127,22 @@ class UserService {
       throw new AppError(400, "Tài khoản không có mật khẩu");
     }
 
-    console.log(`Debug: Password change request for user ${userId}`);
-    console.log(`Debug: Current password provided: ${currentPassword ? 'YES' : 'NO'}`);
-    console.log(`Debug: New password provided: ${newPassword ? 'YES' : 'NO'}`);
-    console.log(`Debug: User has password in DB: ${user.password ? 'YES' : 'NO'}`);
-    console.log(`Debug: DB password starts with $2: ${user.password?.startsWith('$2') ? 'YES' : 'NO'}`);
-    console.log(`Debug: DB password length: ${user.password?.length}`);
-
     // Verify current password
     const isCurrentPasswordValid = await passwordCompare(currentPassword, user.password);
-    console.log(`Debug: Current password validation result: ${isCurrentPasswordValid}`);
     
     if (!isCurrentPasswordValid) {
-      console.log(`Debug: Current password validation failed for user ${userId}`);
       throw new AppError(400, "Mật khẩu hiện tại không đúng");
     }
 
     // Check if new password is the same as current
     const isSamePassword = await passwordCompare(newPassword, user.password);
-    console.log(`Debug: Same password check result: ${isSamePassword}`);
     
     if (isSamePassword) {
-      console.log(`Debug: New password is same as current for user ${userId}`);
       throw new AppError(400, "Mật khẩu mới không được giống mật khẩu hiện tại");
     }
 
     // Hash the new password to store temporarily
     const hashedNewPassword = await hashPassword(newPassword);
-    console.log(`Debug: New password hashed successfully`);
 
     // Create verification record
     const verificationCodeRepository = AppDataSource.getRepository(VerifiedCode);
@@ -165,7 +153,6 @@ class UserService {
       user
     });
 
-    console.log(`Debug: Verification record created with ID: ${verification.idVerifiedCode}`);
 
     return {
       verificationId: verification.idVerifiedCode,

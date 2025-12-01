@@ -241,7 +241,6 @@ class NotificationService {
                 friendshipId
             }
         });
-        console.log("sendroine")
         return savedNotification;
     }
 

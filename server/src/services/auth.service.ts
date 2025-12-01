@@ -166,13 +166,7 @@ export class AuthService {
             // Send email using email service
             await emailService.sendPasswordResetConfirmationEmail(email, confirmationLink);
         } catch (error) {
-            // If email fails, still log the link for development
-            console.log(`Password reset confirmation email for ${email}:`);
-            console.log(`Click this link to confirm your password change: ${confirmationLink}`);
-            console.log(`Verification ID: ${verification.idVerifiedCode}`);
-            
-            // Don't throw error here, just log it
-            console.error('Failed to send email, but link is logged above');
+         
         }
     }
 

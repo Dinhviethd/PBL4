@@ -409,14 +409,11 @@ export class MessageService {
   }
 
   async markPrivateConversationAsRead(userId: number, partnerId: number) {
-    console.log(`🔵 [Service] markPrivateConversationAsRead called - userId: ${userId}, partnerId: ${partnerId}`);
     
     const markedCount = await this.messageRepository.markPrivateConversationAsRead(userId, partnerId);
-    console.log(`📊 [Service] Repository returned markedCount: ${markedCount}`);
 
     // Gửi thông báo cho partner qua WebSocket
     if (markedCount > 0) {
-      console.log(`📡 [Service] Sending MESSAGE_READ notification to partner ${partnerId}`);
       wsService.sendToUser(partnerId, {
         type: 'MESSAGE_READ',
         data: {
@@ -426,7 +423,6 @@ export class MessageService {
           count: markedCount
         }
       });
-      console.log(`✅ [Service] MESSAGE_READ notification sent successfully`);
     } else {
       console.log(`ℹ️  [Service] No messages to mark as read, skipping WebSocket notification`);
     }
@@ -438,7 +434,6 @@ export class MessageService {
   }
 
   async markGroupConversationAsRead(userId: number, groupId: number) {
-    console.log(`🔵 [Service] markGroupConversationAsRead called - userId: ${userId}, groupId: ${groupId}`);
     
     // Kiểm tra user có trong nhóm không
     const member = await this.groupRepository.findGroupMember(groupId, userId);
@@ -446,16 +441,13 @@ export class MessageService {
       console.log(`❌ [Service] User ${userId} is not a member of group ${groupId}`);
       throw new AppError(403, 'You are not a member of this group');
     }
-    console.log(`✅ [Service] User ${userId} is a valid member of group ${groupId}`);
 
     const markedCount = await this.messageRepository.markGroupConversationAsRead(userId, groupId);
-    console.log(`📊 [Service] Repository returned markedCount: ${markedCount}`);
 
     // Gửi thông báo cho các thành viên nhóm
     if (markedCount > 0) {
       const members = await this.groupRepository.getGroupMembers(groupId);
       const memberIds = members.map(m => m.user.idUser).filter(id => id !== userId);
-      console.log(`📡 [Service] Broadcasting MESSAGE_READ to ${memberIds.length} group members`);
       
       memberIds.forEach(memberId => {
         wsService.sendToUser(memberId, {

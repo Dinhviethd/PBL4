@@ -102,7 +102,6 @@ export class MessageRepository {
   }
 
   async markMessageAsRead(messageId: number, userId: number): Promise<MessageRead> {
-    console.log(`📖 [Repository] markMessageAsRead - messageId: ${messageId}, userId: ${userId}`);
     
     // Kiểm tra đã đọc chưa
     const existingRead = await this.messageReadRepo.findOne({
@@ -113,7 +112,6 @@ export class MessageRepository {
     });
 
     if (existingRead) {
-      console.log(`✅ [Repository] Message ${messageId} already marked as read by user ${userId}`);
       return existingRead;
     }
 
@@ -124,7 +122,6 @@ export class MessageRepository {
     });
 
     const saved = await this.messageReadRepo.save(messageRead);
-    console.log(`✅ [Repository] Created new message_read: id=${saved.id}, messageId=${messageId}, userId=${userId}`);
     return saved;
   }
 
@@ -282,11 +279,9 @@ export class MessageRepository {
   }
 
   async markPrivateConversationAsRead(userId: number, partnerId: number): Promise<number> {
-    console.log(`📖 [Repository] markPrivateConversationAsRead - userId: ${userId}, partnerId: ${partnerId}`);
     
     // Get all unread messages from partner to user
     const unreadMessages = await this.getUnreadMessages(userId, partnerId);
-    console.log(`📬 [Repository] Found ${unreadMessages.length} unread messages from partner ${partnerId}`);
     
     // Mark all as read
     let markedCount = 0;
@@ -295,16 +290,13 @@ export class MessageRepository {
       markedCount++;
     }
     
-    console.log(`✅ [Repository] Marked ${markedCount} messages as read in private conversation`);
     return markedCount;
   }
 
   async markGroupConversationAsRead(userId: number, groupId: number): Promise<number> {
-    console.log(`📖 [Repository] markGroupConversationAsRead - userId: ${userId}, groupId: ${groupId}`);
     
     // Get all unread messages in group for user
     const unreadMessages = await this.getUnreadGroupMessages(userId, groupId);
-    console.log(`📬 [Repository] Found ${unreadMessages.length} unread messages in group ${groupId}`);
     
     // Mark all as read
     let markedCount = 0;
@@ -313,7 +305,6 @@ export class MessageRepository {
       markedCount++;
     }
     
-    console.log(`✅ [Repository] Marked ${markedCount} messages as read in group conversation`);
     return markedCount;
   }
 }

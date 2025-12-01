@@ -70,6 +70,60 @@ export const IncomingCallModal = ({
     }
   }, [callInfo, autoRejectTime]);
 
+  // Lắng nghe sự kiện CALL_DECLINE để tắt modal
+  useEffect(() => {
+    const handleCallDecline = (event) => {
+      const data = event.detail;
+      if (data.type === 'CALL_DECLINE') {
+        setIsDeclined(true);
+        // Dọn dẹp kết nối nếu cần
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        // Có thể cập nhật đoạn chat ở component cha qua callback hoặc context
+        // Ví dụ: gọi hàm onCallDeclined?.(data) nếu được truyền vào
+      }
+    };
+    window.addEventListener('callSignalingMessage', handleCallDecline);
+    return () => {
+      window.removeEventListener('callSignalingMessage', handleCallDecline);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('[IncomingCallModal] mount, callInfo:', callInfo, 'isDeclined:', isDeclined);
+    return () => {
+      console.log('[IncomingCallModal] unmount, callInfo:', callInfo, 'isDeclined:', isDeclined);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('[IncomingCallModal] callInfo changed:', callInfo, 'isDeclined:', isDeclined);
+  }, [callInfo]);
+
+  useEffect(() => {
+    console.log('[IncomingCallModal] isDeclined changed:', isDeclined, 'callInfo:', callInfo);
+  }, [isDeclined]);
+
+  useEffect(() => {
+    const handleCallDecline = (event) => {
+      const data = event.detail;
+      if (data.type === 'CALL_DECLINE') {
+        console.log('[IncomingCallModal] CALL_DECLINE event received, set isDeclined true');
+        setIsDeclined(true);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+      }
+    };
+    window.addEventListener('callSignalingMessage', handleCallDecline);
+    return () => {
+      window.removeEventListener('callSignalingMessage', handleCallDecline);
+    };
+  }, []);
+
   if (!callInfo || isDeclined) return null;
 
   const callerName = callInfo.caller?.name || 'Unknown';

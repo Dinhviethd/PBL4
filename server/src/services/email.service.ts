@@ -79,7 +79,6 @@ class EmailService {
             };
 
             await this.transporter.sendMail(mailOptions);
-            console.log(`Password reset confirmation email sent to: ${email}`);
 
         } catch (error) {
             console.error('Error sending email:', error);
@@ -90,7 +89,6 @@ class EmailService {
     async testConnection(): Promise<boolean> {
         try {
             await this.transporter.verify();
-            console.log('Email service connection successful');
             return true;
         } catch (error) {
             console.error('Email service connection failed:', error);

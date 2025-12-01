@@ -75,9 +75,6 @@ export const changePassword = async (req: Request, res: Response) => {
     
     const { currentPassword, newPassword } = req.body;
     
-    console.log(`Debug Controller: Change password request for user ${userId}`);
-    console.log(`Debug Controller: Current password provided: ${currentPassword ? 'YES' : 'NO'}`);
-    console.log(`Debug Controller: New password provided: ${newPassword ? 'YES' : 'NO'}`);
     
     if (!currentPassword || !newPassword) {
       throw new AppError(400, "Thiếu thông tin mật khẩu");
@@ -104,11 +101,7 @@ export const changePassword = async (req: Request, res: Response) => {
       // Send email using email service
       await emailService.sendPasswordResetConfirmationEmail(user.email || '', confirmationLink);
     } catch (error) {
-      // If email fails, still log the link for development
-      console.log(`Password change confirmation email for ${user.email}:`);
-      console.log(`Click this link to confirm your password change: ${confirmationLink}`);
-      console.log(`Verification ID: ${result.verificationId}`);
-      console.error('Failed to send email, but link is logged above');
+    
     }
     
     res.json({ 
