@@ -867,7 +867,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
       <div className="p-4 border-t border-gray-200 bg-white">
         {conversation.type === 'private' && isBlocked ? (
           <div className="flex items-center justify-center py-6">
-            <span className="px-6 py-3 bg-red-100 text-red-700 rounded-full font-semibold shadow">Bạn đã chặn người này. Không thể nhắn tin hoặc gọi.</span>
+            <span className="px-6 py-3 bg-red-100 text-red-700 rounded-full font-semibold shadow">Cuộc trò chuyện này hiện không khả dụng.</span>
           </div>
         ) : (
           <div className="flex items-center space-x-2">
