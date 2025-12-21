@@ -1,0 +1,26 @@
+steps:
+  # Bước 1: Build Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/pbl4-481903/pbl4', '.']
+
+  # Bước 2: Push Image lên Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/pbl4-481903/pbl4']
+
+  # Bước 3: Deploy Image mới nhất lên Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pbl4-app'
+      - '--image'
+      - 'gcr.io/pbl4-481903/pbl4'
+      - '--region'
+      - 'asia-southeast1'
+      - '--platform'
+      - 'managed'
+
+# Khai báo image để Cloud Build quản lý cache tốt hơn
+images:
+  - 'gcr.io/pbl4-481903/pbl4'
