@@ -1,9 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { FriendStatus } from '@/constants/constants'
+
 @Entity({ name: 'friendship' })
 export class FriendShip {
-  @PrimaryGeneratedColumn({ name: 'idfriendship' })
+  @PrimaryGeneratedColumn({ name: 'idFriendShip' }) // Sửa name
   idFriendShip!: number;
 
   @ManyToOne(() => User)
@@ -14,12 +15,13 @@ export class FriendShip {
   @JoinColumn({ name: 'friend_id' })
   friend_id!: User;
 
-  @Column({ type: 'enum', enum: FriendStatus })
+  // Thêm enumName
+  @Column({ type: 'enum', enum: FriendStatus, enumName: 'friendship_status_enum' })
   status?: FriendStatus;
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'requestat' })
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'requestAt' }) // Sửa name
   requestAt!: Date;
 
   @Column()
-  message?: string; //Text gửi kèm khi gửi lời mời kết bạn
+  message?: string; 
 }

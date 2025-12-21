@@ -5,11 +5,11 @@ import { GroupInvitationStatus } from '../constants/constants';
 
 @Entity({ name: 'group_invitation' })
 export class GroupInvitation {
-  @PrimaryGeneratedColumn({ name: 'idinvitation' })
+  @PrimaryGeneratedColumn({ name: 'idInvitation' }) // Sửa name
   idInvitation!: number;
 
   @ManyToOne(() => Group)
-  @JoinColumn({ name: 'idgroup' })
+  @JoinColumn({ name: 'idGroup' }) // Sửa name
   idGroup!: Group;
 
   @ManyToOne(() => User)
@@ -23,15 +23,15 @@ export class GroupInvitation {
   @Column({ type: 'text', nullable: true })
   message?: string;
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdat' })
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdAt' }) // Sửa name
   createdAt!: Date;
 
-  @Column({ type: 'boolean', default: false, name: 'needadminapprove' })
+  @Column({ type: 'boolean', default: false, name: 'needAdminApprove' }) // Sửa name
   needAdminApprove!: boolean;
 
+  // Bỏ type: 'enum' vì trong DB cột này là varchar
   @Column({
-    type: 'enum',
-    enum: GroupInvitationStatus,
+    type: 'varchar', 
     default: GroupInvitationStatus.PENDING
   })
   status!: GroupInvitationStatus;

@@ -2,25 +2,28 @@ import {PrimaryGeneratedColumn, Entity, ManyToOne} from "typeorm"
 import { Column, JoinColumn, CreateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { StatusNoti, NotiType } from '@/constants/constants'
+
 @Entity({ name: 'notification' })
 export class Notification {
-  @PrimaryGeneratedColumn({name: 'idnotification'})
+  @PrimaryGeneratedColumn({name: 'idNotification'}) // Sửa name
   idNotification!: number;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user_id!: User;
 
-  @Column({ type: 'enum', enum: StatusNoti })
+  // Đổi sang varchar để khớp với DB
+  @Column({ type: 'varchar', default: 'pending' }) 
   status?: StatusNoti;
 
   @Column()
   content?: string;
 
-  @CreateDateColumn({name: 'createdat'})
+  @CreateDateColumn({name: 'createdAt'}) // Sửa name
   createdAt!: Date;
 
-  @Column({ type: 'enum', enum: NotiType })
+  // Đổi sang varchar để khớp với DB
+  @Column({ type: 'varchar' })
   type?: NotiType;
 
   @Column()

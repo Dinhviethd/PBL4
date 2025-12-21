@@ -6,52 +6,53 @@ import { MessageType } from '@/constants/constants'
 
 @Entity({ name: 'message' })
 export class Message {
-  @PrimaryGeneratedColumn({ name: 'idmessage' })
+  @PrimaryGeneratedColumn({ name: 'idMessage' }) // Sửa name
   idMessage!: number;
 
-  @Column({ nullable: true, name: 'fileurl' })
+  @Column({ nullable: true, name: 'fileURL' }) // Sửa name
   fileURL?: string;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'sentby' })
+  @JoinColumn({ name: 'sentBy' }) // Sửa name khớp SQL "sentBy"
   sentBy!: User;
 
-  @Column({ type: 'enum', enum: MessageType, default: MessageType.TEXT })
+  // Thêm enumName
+  @Column({ type: 'enum', enum: MessageType, enumName: 'msg_type_enum', default: MessageType.TEXT })
   type!: MessageType;
 
   @Column({ type: 'text' })
   content!: string;
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdat' })
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdAt' }) // Sửa name
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updatedat' })
+  @UpdateDateColumn({ name: 'updatedAt' }) // Sửa name
   updatedAt!: Date;
 
   @ManyToOne(() => Group, { nullable: true })
-  @JoinColumn({ name: 'sendtogroup' })
+  @JoinColumn({ name: 'sendToGroup' }) // Sửa name
   sendToGroup?: Group;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'sendtouser' })
+  @JoinColumn({ name: 'sendToUser' }) // Sửa name
   sendToUser?: User;
 
-  @Column({ default: false , name: 'isdeleted' })
+  @Column({ default: false , name: 'isDeleted' }) // Sửa name
   isDeleted!: boolean;
 
-  @Column({ nullable: true, name: 'deletedat' })
+  @Column({ nullable: true, name: 'deletedAt' }) // Sửa name
   deletedAt?: Date;
 
-  @Column({ default: false, name: 'isedited' })
+  @Column({ default: false, name: 'isEdited' }) // Sửa name
   isEdited!: boolean;
 
-  @Column({ nullable: true, name: 'editedat' })
+  @Column({ nullable: true, name: 'editedAt' }) // Sửa name
   editedAt?: Date;
 
   @ManyToOne(() => Call, { nullable: true })
-  @JoinColumn({ name: 'callid' })
+  @JoinColumn({ name: 'callId' }) // Sửa name
   call?: Call;
 
-  @Column({ nullable: true, name: 'callid' })
+  @Column({ nullable: true, name: 'callId' }) // Sửa name
   callId?: number;
 }

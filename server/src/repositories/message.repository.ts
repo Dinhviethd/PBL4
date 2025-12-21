@@ -102,7 +102,6 @@ export class MessageRepository {
   }
 
   async markMessageAsRead(messageId: number, userId: number): Promise<MessageRead> {
-    
     // Kiểm tra đã đọc chưa
     const existingRead = await this.messageReadRepo.findOne({
       where: {
@@ -134,7 +133,6 @@ export class MessageRepository {
   }
 
   async getUnreadMessages(userId: number, partnerId: number): Promise<Message[]> {
-    // Lấy tin nhắn từ partnerId gửi cho userId mà userId chưa đọc
     const unreadMessages = await this.messageRepo
       .createQueryBuilder('message')
       .leftJoin('message.sentBy', 'sender')
@@ -142,7 +140,7 @@ export class MessageRepository {
       .leftJoin('MessageRead', 'read', 'read.messageId = message.idMessage AND read.userId = :userId', { userId })
       .where('sender.idUser = :partnerId', { partnerId })
       .andWhere('receiver.idUser = :userId', { userId })
-      .andWhere('message.isDeleted = false')
+      .andWhere('message.isDeleted = :isDeleted', { isDeleted: false })
       .andWhere('read.id IS NULL')
       .getMany();
 
@@ -156,8 +154,8 @@ export class MessageRepository {
       .leftJoin('message.sendToGroup', 'group')
       .leftJoin('MessageRead', 'read', 'read.messageId = message.idMessage AND read.userId = :userId', { userId })
       .where('group.idGroup = :groupId', { groupId })
-      .andWhere('sender.idUser != :userId', { userId }) // Không tính tin nhắn của chính mình
-      .andWhere('message.isDeleted = false')
+      .andWhere('sender.idUser != :userId', { userId })
+      .andWhere('message.isDeleted = :isDeleted', { isDeleted: false })
       .andWhere('read.id IS NULL')
       .getMany();
 
@@ -165,38 +163,41 @@ export class MessageRepository {
   }
 
   async getRecentConversations(userId: number): Promise<any[]> {
-    // Lấy cuộc hội thoại riêng tư gần nhất
+    // FIX CHO POSTGRES: 
+    // 1. Dùng $1, $2 thay vì ?
+    // 2. Dùng ngoặc kép "columnName" vì Postgres phân biệt hoa thường
+    
     const privateConversationsQuery = `
       SELECT 
         CASE 
-          WHEN m.sentBy = ? THEN m.sendToUser 
-          ELSE m.sentBy 
-        END as partnerId,
-        MAX(m.createdAt) as lastMessageTime,
+          WHEN m."sentBy" = $1 THEN m."sendToUser" 
+          ELSE m."sentBy" 
+        END as "partnerId",
+        MAX(m."createdAt") as "lastMessageTime",
         'private' as type
-      FROM Message m
-      WHERE (m.sentBy = ? OR m.sendToUser = ?)
-        AND m.sendToGroup IS NULL
-        AND m.isDeleted = false
-      GROUP BY partnerId
-      ORDER BY lastMessageTime DESC
+      FROM message m
+      WHERE (m."sentBy" = $2 OR m."sendToUser" = $3)
+        AND m."sendToGroup" IS NULL
+        AND m."isDeleted" = false
+      GROUP BY "partnerId"
+      ORDER BY "lastMessageTime" DESC
     `;
 
     const privateConversations = await this.messageRepo.query(privateConversationsQuery, [userId, userId, userId]);
 
-    // Lấy cuộc hội thoại nhóm gần nhất  
+    // Query Group Conversation - FIX Postgres Syntax
     const groupConversationsQuery = `
       SELECT 
-        m.sendToGroup as groupId,
-        MAX(m.createdAt) as lastMessageTime,
+        m."sendToGroup" as "groupId",
+        MAX(m."createdAt") as "lastMessageTime",
         'group' as type
-      FROM Message m
-      INNER JOIN Group_User gu ON gu.idGroup = m.sendToGroup
-      WHERE gu.idUser = ?
-        AND m.sendToGroup IS NOT NULL
-        AND m.isDeleted = false
-      GROUP BY m.sendToGroup
-      ORDER BY lastMessageTime DESC
+      FROM message m
+      INNER JOIN group_user gu ON gu."idGroup" = m."sendToGroup"
+      WHERE gu."idUser" = $1
+        AND m."sendToGroup" IS NOT NULL
+        AND m."isDeleted" = false
+      GROUP BY m."sendToGroup"
+      ORDER BY "lastMessageTime" DESC
     `;
 
     const groupConversations = await this.messageRepo.query(groupConversationsQuery, [userId]);
@@ -205,12 +206,10 @@ export class MessageRepository {
     const allConversations = [...privateConversations, ...groupConversations];
     allConversations.sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
 
-    // Lấy thông tin chi tiết cho từng cuộc hội thoại
     const detailedConversations = [];
 
     for (const conv of allConversations) {
       if (conv.type === 'private') {
-        // Lấy tin nhắn gần nhất
         const lastMessage = await this.messageRepo.findOne({
           where: [
             { sentBy: { idUser: userId }, sendToUser: { idUser: conv.partnerId }, isDeleted: false },
@@ -220,7 +219,6 @@ export class MessageRepository {
           order: { createdAt: 'DESC' }
         });
 
-        // Lấy thông tin partner
         const partner = await AppDataSource.getRepository(User).findOne({
           where: { idUser: conv.partnerId }
         });
@@ -241,7 +239,6 @@ export class MessageRepository {
           });
         }
       } else if (conv.type === 'group') {
-        // Lấy tin nhắn gần nhất của nhóm
         const lastMessage = await this.messageRepo.findOne({
           where: { 
             sendToGroup: { idGroup: conv.groupId },
@@ -251,7 +248,6 @@ export class MessageRepository {
           order: { createdAt: 'DESC' }
         });
 
-        // Lấy thông tin nhóm
         const group = await AppDataSource.getRepository(Group).findOne({
           where: { idGroup: conv.groupId },
           relations: ['createdBy']
@@ -279,32 +275,22 @@ export class MessageRepository {
   }
 
   async markPrivateConversationAsRead(userId: number, partnerId: number): Promise<number> {
-    
-    // Get all unread messages from partner to user
     const unreadMessages = await this.getUnreadMessages(userId, partnerId);
-    
-    // Mark all as read
     let markedCount = 0;
     for (const message of unreadMessages) {
       await this.markMessageAsRead(message.idMessage, userId);
       markedCount++;
     }
-    
     return markedCount;
   }
 
   async markGroupConversationAsRead(userId: number, groupId: number): Promise<number> {
-    
-    // Get all unread messages in group for user
     const unreadMessages = await this.getUnreadGroupMessages(userId, groupId);
-    
-    // Mark all as read
     let markedCount = 0;
     for (const message of unreadMessages) {
       await this.markMessageAsRead(message.idMessage, userId);
       markedCount++;
     }
-    
     return markedCount;
   }
 }
