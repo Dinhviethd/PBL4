@@ -40,13 +40,15 @@ export class GroupRepository {
   }
 
   async addMember(groupId: number, userId: number, role: UserRole = UserRole.USER) {
-    // Insert raw values to avoid updating related entities
     const result = await this.groupUserRepo.insert({
       group: (groupId as any),
       user: (userId as any),
       role
     } as any);
-    const insertedId = (result.identifiers && result.identifiers[0] && result.identifiers[0].id) || result.raw?.insertId;
+    
+    // FIX: Postgres trả về id trong identifiers
+    const insertedId = result.identifiers[0].id;
+    
     return await this.groupUserRepo.findOne({ where: { id: insertedId } as any, relations: ['user', 'group'] });
   }
 
@@ -124,31 +126,30 @@ export class GroupRepository {
   }
 
   async deleteGroup(idGroup: number): Promise<void> {
-    // Xóa tất cả lời mời vào nhóm
     const groupInvitationRepo = AppDataSource.getRepository(GroupInvitation);
-    await groupInvitationRepo.delete({ idGroup: { idGroup } });
-    // Xóa tất cả tin nhắn gửi đến nhóm
+    await groupInvitationRepo.delete({ idGroup: { idGroup } } as any);
+    
     const messageRepo = AppDataSource.getRepository(require('@/models/message.model').Message);
     const messageReadRepo = AppDataSource.getRepository(require('@/models/message_read.model').MessageRead);
-    // Lấy tất cả idMessage gửi đến nhóm
+    
+    // FIX: Lấy tin nhắn và xóa message_read
     const groupMessages = await messageRepo.find({ where: { sendToGroup: { idGroup } } });
-    const messageIds = groupMessages.map(m => m.idMessage);
+    const messageIds = groupMessages.map((m: any) => m.idMessage);
+    
     if (messageIds.length > 0) {
+      // Postgres: column name là "messageId" (có ngoặc kép) nếu DB đúng
       await messageReadRepo
         .createQueryBuilder()
         .delete()
-        .where('messageId IN (:...ids)', { ids: messageIds })
+        .where('"messageId" IN (:...ids)', { ids: messageIds })
         .execute();
     }
     await messageRepo.delete({ sendToGroup: { idGroup } });
-    // Xóa tất cả thành viên 
     await this.groupUserRepo.delete({ group: { idGroup } });
-    // Xóa group
     await this.groupRepo.delete(idGroup);
   }
 
   async getUserGroups(idUser: number): Promise<GroupUser[]> {
-    // SỬA LẠI: Sử dụng 'id' thay vì 'idGroupUser'
     return await this.groupUserRepo
       .createQueryBuilder('gu')
       .leftJoinAndSelect('gu.group', 'g')
@@ -159,7 +160,6 @@ export class GroupRepository {
       .orderBy('g.createdAt', 'DESC')
       .getMany();
   }
-
   
   async getUserGroupsWithSearch(idUser: number, searchTerm: string = '', page: number = 1, limit: number = 10): Promise<{ items: GroupUser[], total: number }> {
     const query = this.groupUserRepo
@@ -171,6 +171,7 @@ export class GroupRepository {
       .andWhere('gu.role IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.USER] });
 
     if (searchTerm && searchTerm.trim() !== '') {
+      // FIX: LOWER cho Postgres hoạt động tốt
       query.andWhere('LOWER(g.name) LIKE :search', { search: `%${searchTerm.toLowerCase()}%` });
     }
 

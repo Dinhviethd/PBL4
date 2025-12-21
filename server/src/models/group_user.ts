@@ -2,24 +2,24 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "t
 import { UserRole } from '@/constants/constants'
 import { User } from './users.model'
 import { Group } from './group.model'
-// Map to the existing DB table `group_user` and primary column `idGroup_User`
+
 @Entity({ name: 'group_user' })
 export class GroupUser {
-  @PrimaryGeneratedColumn({ name: 'idgroup_user' })
+  @PrimaryGeneratedColumn({ name: 'idGroup_User' }) // CamelCase
   id!: number;
 
   @ManyToOne(() => Group, (group) => group.groupUsers)
-  @JoinColumn({ name: 'idgroup' })
+  @JoinColumn({ name: 'idGroup' }) // CamelCase
   group!: Group;
 
   @ManyToOne(() => User, (user) => user.groupUsers)
-  @JoinColumn({ name: 'iduser' })
+  @JoinColumn({ name: 'idUser' }) // CamelCase
   user!: User;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  @Column({ type: 'enum', enum: UserRole, enumName: 'group_role_enum', default: UserRole.USER })
   role!: UserRole;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'actionby' })
+  @JoinColumn({ name: 'actionBy' }) // CamelCase
   actionBy?: User;
 }

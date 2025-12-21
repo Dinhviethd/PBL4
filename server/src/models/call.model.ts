@@ -1,11 +1,10 @@
-import { PrimaryGeneratedColumn, Column, Entity, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm'
+import { PrimaryGeneratedColumn, Column, Entity, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm'
 import { User } from './users.model'
 import { CallStatus } from '@/constants/constants'
-import { JoinColumn } from 'typeorm'   
 
 @Entity( { name: 'call' } )
 export class Call {
-  @PrimaryGeneratedColumn({ name: 'idcall' })
+  @PrimaryGeneratedColumn({ name: 'idCall' }) // Sửa name
   idCall!: number;
 
   @ManyToOne(() => User, { eager: true })
@@ -22,24 +21,26 @@ export class Call {
   @Column('int')
   receiver_id!: number;
 
-  @Column({ type: 'enum', enum: ['audio', 'video'], default: 'audio', name: 'calltype' })
+  // Thêm enumName
+  @Column({ type: 'enum', enum: ['audio', 'video'], enumName: 'call_type_enum', default: 'audio', name: 'callType' })
   callType!: 'audio' | 'video';
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'startedat' })
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'startedAt' }) // Sửa name
   startedAt!: Date;
 
-  @Column({ nullable: true, name: 'answeredat' })
+  @Column({ nullable: true, name: 'answeredAt' }) // Sửa name
   answeredAt?: Date;
 
-  @Column({ nullable: true, name: 'endedat' })
+  @Column({ nullable: true, name: 'endedAt' }) // Sửa name
   endedAt?: Date;
 
-  @Column({ type: 'enum', enum: CallStatus, default: CallStatus.MISSED, name: 'callstatus' })
+  // Thêm enumName
+  @Column({ type: 'enum', enum: CallStatus, enumName: 'call_status_enum', default: CallStatus.MISSED, name: 'callStatus' })
   callStatus!: CallStatus;
 
   @Column({ type: 'int', nullable: true })
-  duration?: number; // Duration in seconds
+  duration?: number;
 
-  @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)", name: 'updatedat' })
+  @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)", name: 'updatedAt' }) // Sửa name
   updatedAt!: Date;
 }
