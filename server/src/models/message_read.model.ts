@@ -9,13 +9,13 @@ export class MessageRead {
   id!: number;
 
   @ManyToOne(() => Message)
-  @JoinColumn({ name: 'messageid' })
+  @JoinColumn({ name: 'messageId' })
   message!: Message;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userid' })
+  @JoinColumn({ name: 'userId' })
   user!: User;
 
-  @CreateDateColumn({ name: 'readat' })
+  @CreateDateColumn({ name: 'readAt' })
   readAt!: Date;
 }

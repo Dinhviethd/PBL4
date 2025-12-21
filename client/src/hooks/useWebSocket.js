@@ -38,12 +38,12 @@ const useWebSocket = () => {
     }
 
     try {
-      // const backendIP = '192.168.34.177';
-      const backendIP = 'localhost';
-      const backendPort = '8000';
-      const ws = new WebSocket(`ws://${backendIP}:${backendPort}`);
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}`;
       
-      console.log(` Connecting to WebSocket: ws://${backendIP}:${backendPort}`);
+      console.log(`🚀 Connecting to WebSocket at: ${wsUrl}`);
+      const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
         console.log('WebSocket connected');
