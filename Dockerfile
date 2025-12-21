@@ -29,23 +29,15 @@ RUN npm run build
 # --- Giai đoạn 3: Đóng gói Final Image ---
 FROM node:20-alpine
 WORKDIR /app
-
-# 1. Copy code Server đã build và các thư viện cần thiết
 COPY --from=server-builder /app/server/package*.json ./
 COPY --from=server-builder /app/server/node_modules ./node_modules
 COPY --from=server-builder /app/server/dist ./dist
 COPY --from=server-builder /app/server/tsconfig.json ./
 
-# 🔥 [FIX 2] Sửa đường dẫn alias để trỏ vào dist thay vì src
 RUN sed -i 's|"baseUrl": "./src"|"baseUrl": "./dist"|g' tsconfig.json
-# 2. Copy code Frontend đã build vào thư mục 'public'
-# Lưu ý: Lúc này cấu trúc trong container sẽ là /app/dist (code server) và /app/public (code frontend)
 COPY --from=client-builder /app/client/dist ./public
-
-# Thiết lập biến môi trường
 ENV PORT=8080
 
 EXPOSE 8080
 
-# Chạy server (Lưu ý đường dẫn file main.js sau khi build) 🔥 [FIX 1] Sửa đường dẫn file chạy (Bỏ /src)
 CMD ["node", "-r", "tsconfig-paths/register", "dist/main.js"]
