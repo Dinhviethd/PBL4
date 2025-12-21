@@ -3,19 +3,19 @@ import { User } from './users.model';
 import { Message } from './message.model';
 
 // Use snake_case table name to match the existing DB table created earlier
-@Entity('message_read')
+@Entity({ name: 'message_read' })
 export class MessageRead {
   @PrimaryGeneratedColumn()
   id!: number;
 
   @ManyToOne(() => Message)
-  @JoinColumn({ name: 'messageId' })
+  @JoinColumn({ name: 'messageid' })
   message!: Message;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'userid' })
   user!: User;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'readat' })
   readAt!: Date;
 }

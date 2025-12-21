@@ -14,6 +14,7 @@ export class GroupRepository {
     this.groupRepo = AppDataSource.getRepository(Group);
     this.groupUserRepo = AppDataSource.getRepository(GroupUser);
   }
+  
   async updateGroup(groupId: number, update: { name?: string; statusGroup?: boolean }): Promise<Group | null> {
     const group = await this.groupRepo.findOne({ where: { idGroup: groupId } });
     if (!group) return null;
@@ -40,14 +41,14 @@ export class GroupRepository {
   }
 
   async addMember(groupId: number, userId: number, role: UserRole = UserRole.USER) {
-    // Insert raw values to avoid updating related entities
     const result = await this.groupUserRepo.insert({
-      group: (groupId as any),
-      user: (userId as any),
+      group: { idGroup: groupId } as any,
+      user: { idUser: userId } as any,
       role
-    } as any);
-    const insertedId = (result.identifiers && result.identifiers[0] && result.identifiers[0].id) || result.raw?.insertId;
-    return await this.groupUserRepo.findOne({ where: { id: insertedId } as any, relations: ['user', 'group'] });
+    });
+    // Sửa lại cách lấy ID cho tương thích
+    const insertedId = result.identifiers?.[0]?.id || result.raw?.insertId; 
+    return await this.groupUserRepo.findOne({ where: { id: insertedId }, relations: ['user', 'group'] });
   }
 
   async addUserToGroup(group: Group, user: User, role: UserRole, actionBy?: User): Promise<GroupUser> {
@@ -65,7 +66,7 @@ export class GroupRepository {
       .createQueryBuilder('gu')
       .leftJoinAndSelect('gu.group', 'g')
       .leftJoinAndSelect('gu.user', 'u')
-      .leftJoinAndSelect('gu.actionBy', 'actionBy')
+      .leftJoinAndSelect('gu.actionBy', 'actionBy') // 🔥 ĐÃ SỬA: actionBy (viết hoa chữ B)
       .where('g.idGroup = :idGroup', { idGroup })
       .andWhere('u.idUser = :idUser', { idUser })
       .getOne();
@@ -75,7 +76,7 @@ export class GroupRepository {
     return await this.groupUserRepo
       .createQueryBuilder('gu')
       .leftJoinAndSelect('gu.user', 'u')
-      .leftJoinAndSelect('gu.actionBy', 'actionBy')
+      .leftJoinAndSelect('gu.actionBy', 'actionBy') // 🔥 ĐÃ SỬA: actionBy (viết hoa chữ B)
       .leftJoinAndSelect('gu.group', 'g')
       .where('g.idGroup = :idGroup', { idGroup })
       .orderBy('gu.role', 'DESC')
@@ -87,13 +88,11 @@ export class GroupRepository {
   }
 
   async removeUserFromGroup(idGroup: number, idUser: number): Promise<void> {
-    await this.groupUserRepo
-      .createQueryBuilder()
-      .delete()
-      .from(GroupUser)
-      .where('group.idGroup = :idGroup', { idGroup })
-      .andWhere('user.idUser = :idUser', { idUser })
-      .execute();
+    // Sử dụng delete object chuẩn TypeORM thay vì QueryBuilder để tránh lỗi cú pháp
+    await this.groupUserRepo.delete({ 
+        group: { idGroup: idGroup }, 
+        user: { idUser: idUser } 
+    });
   }
 
   async getGroupById(groupId: number) {
@@ -104,51 +103,54 @@ export class GroupRepository {
   }
 
   async checkMembership(groupId: number, userId: number) {
-    const member = await this.groupUserRepo.createQueryBuilder('gu')
-      .leftJoin('gu.group', 'g')
-      .leftJoin('gu.user', 'u')
-      .where('g.idGroup = :groupId', { groupId })
-      .andWhere('u.idUser = :userId', { userId })
-      .getOne();
+    const member = await this.groupUserRepo.findOne({
+        where: { group: { idGroup: groupId }, user: { idUser: userId } }
+    });
     return !!member;
   }
+
   async checkAdmin(groupId: number, userId: number): Promise<boolean> {
-    const member = await this.groupUserRepo.createQueryBuilder('gu')
-      .leftJoin('gu.group', 'g')
-      .leftJoin('gu.user', 'u')
-      .where('g.idGroup = :groupId', { groupId })
-      .andWhere('u.idUser = :userId', { userId })
-      .andWhere('gu.role = :role', { role: UserRole.ADMIN })
-      .getOne();
+    const member = await this.groupUserRepo.findOne({
+        where: { group: { idGroup: groupId }, user: { idUser: userId }, role: UserRole.ADMIN }
+    });
     return !!member;
   }
 
   async deleteGroup(idGroup: number): Promise<void> {
-    // Xóa tất cả lời mời vào nhóm
     const groupInvitationRepo = AppDataSource.getRepository(GroupInvitation);
+    // Dynamic import để tránh vòng lặp dependencies nếu có
+    const MessageModel = require('@/models/message.model').Message;
+    const MessageReadModel = require('@/models/message_read.model').MessageRead;
+    
+    const messageRepo = AppDataSource.getRepository(MessageModel);
+    const messageReadRepo = AppDataSource.getRepository(MessageReadModel);
+
+    // 1. Xóa lời mời
     await groupInvitationRepo.delete({ idGroup: { idGroup } });
-    // Xóa tất cả tin nhắn gửi đến nhóm
-    const messageRepo = AppDataSource.getRepository(require('@/models/message.model').Message);
-    const messageReadRepo = AppDataSource.getRepository(require('@/models/message_read.model').MessageRead);
-    // Lấy tất cả idMessage gửi đến nhóm
+
+    // 2. Xóa tin nhắn và message read
     const groupMessages = await messageRepo.find({ where: { sendToGroup: { idGroup } } });
-    const messageIds = groupMessages.map(m => m.idMessage);
+    const messageIds = groupMessages.map((m: any) => m.idMessage);
+    
     if (messageIds.length > 0) {
+      // Postgres: dùng tên cột 'messageid' (chữ thường)
       await messageReadRepo
         .createQueryBuilder()
         .delete()
-        .where('messageId IN (:...ids)', { ids: messageIds })
+        .where('messageid IN (:...ids)', { ids: messageIds })
         .execute();
     }
+    
     await messageRepo.delete({ sendToGroup: { idGroup } });
-    // Xóa tất cả thành viên 
+    
+    // 3. Xóa thành viên
     await this.groupUserRepo.delete({ group: { idGroup } });
-    // Xóa group
+    
+    // 4. Xóa group
     await this.groupRepo.delete(idGroup);
   }
 
   async getUserGroups(idUser: number): Promise<GroupUser[]> {
-    // SỬA LẠI: Sử dụng 'id' thay vì 'idGroupUser'
     return await this.groupUserRepo
       .createQueryBuilder('gu')
       .leftJoinAndSelect('gu.group', 'g')
@@ -159,7 +161,6 @@ export class GroupRepository {
       .orderBy('g.createdAt', 'DESC')
       .getMany();
   }
-
   
   async getUserGroupsWithSearch(idUser: number, searchTerm: string = '', page: number = 1, limit: number = 10): Promise<{ items: GroupUser[], total: number }> {
     const query = this.groupUserRepo

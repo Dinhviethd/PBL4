@@ -3,7 +3,7 @@ import * as friendshipService from '@/services/friendShip.service';
 import { useNavigate } from 'react-router-dom';
 import Button from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { getAvatarUrl } from '@/lib/utils';

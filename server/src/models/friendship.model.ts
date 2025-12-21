@@ -1,9 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { FriendStatus } from '@/constants/constants'
-@Entity('FriendShip')
+@Entity({ name: 'friendship' })
 export class FriendShip {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'idfriendship' })
   idFriendShip!: number;
 
   @ManyToOne(() => User)
@@ -17,7 +17,7 @@ export class FriendShip {
   @Column({ type: 'enum', enum: FriendStatus })
   status?: FriendStatus;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'requestat' })
   requestAt!: Date;
 
   @Column()

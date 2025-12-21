@@ -3,13 +3,13 @@ import { Group } from './group.model';
 import { User } from './users.model';
 import { GroupInvitationStatus } from '../constants/constants';
 
-@Entity('Group_Invitation')
+@Entity({ name: 'group_invitation' })
 export class GroupInvitation {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'idinvitation' })
   idInvitation!: number;
 
   @ManyToOne(() => Group)
-  @JoinColumn({ name: 'idGroup' })
+  @JoinColumn({ name: 'idgroup' })
   idGroup!: Group;
 
   @ManyToOne(() => User)
@@ -23,10 +23,10 @@ export class GroupInvitation {
   @Column({ type: 'text', nullable: true })
   message?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdat' })
   createdAt!: Date;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'needadminapprove' })
   needAdminApprove!: boolean;
 
   @Column({

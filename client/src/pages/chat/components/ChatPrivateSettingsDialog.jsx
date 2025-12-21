@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import Button from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
 import { Label } from '@/components/ui/label';
 import { Info, UserX, UserCheck, Clock } from 'lucide-react';
 import { getAvatarUrl } from '@/lib/utils';

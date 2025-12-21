@@ -3,9 +3,9 @@ import { VerifiedCode } from "./verification.model"
 import { StatusUser } from '@/constants/constants'
 import { GroupUser } from './group_user';
 
-@Entity('Users')
+@Entity({ name: 'users' })
 export class User {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'iduser' })
   idUser!: number;
 
   @Column()
@@ -17,10 +17,10 @@ export class User {
   @Column()
   password!: string;
 
-  @Column({ default: false })
+  @Column({ default: false, name: 'emailverified' })
   emailVerified!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'avatarurl' })
   avatarUrl?: string;
 
   @Column({ nullable: true })
@@ -32,10 +32,10 @@ export class User {
   @Column({ nullable: true })
   gender?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdat' })
   createdAt!: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'lastlogin' })
   lastLogin?: Date;
 
   @Column({ type: 'enum', enum: StatusUser, default: StatusUser.OFFLINE })

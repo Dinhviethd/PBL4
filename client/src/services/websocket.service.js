@@ -1,3 +1,9 @@
+// Nhớ import store chứa token/user của bạn
+// Ví dụ: import useAuthStore from '@/stores/authStore'; 
+// Dưới đây tôi giả định bạn đã import useAuthStore
+
+import useAuthStore from '@/stores/useAuthStore'; // <--- Đảm bảo đường dẫn này đúng với project của bạn
+
 class WebSocketService {
   constructor() {
     this.socket = null;
@@ -8,66 +14,75 @@ class WebSocketService {
     this.messageHandlers = new Map();
   }
 
-  // connect() {
-  //   const { user, accessToken } = useAuthStore.getState();
+  connect() {
+    // Lấy thông tin user từ Store (Zustand/Redux...)
+    const { user, accessToken } = useAuthStore.getState();
 
-  //   if (!user || !accessToken) {
+    if (!user || !accessToken) {
+      console.log('No user or token, cannot connect to WebSocket');
+      return;
+    }
 
-  //     console.log('No user or token, cannot connect to WebSocket');
-  //     return;
-  //   }
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected');
+      return;
+    }
 
-  //   if (this.socket?.readyState === WebSocket.OPEN) {
-  //     console.log('WebSocket already connected');
-  //     return;
-  //   }
+    try {
+      // 🔥 PHẦN QUAN TRỌNG NHẤT: TỰ ĐỘNG LẤY ĐỊA CHỈ SERVER 🔥
+      // Nếu chạy localhost -> ws://localhost:8000
+      // Nếu chạy Cloud Run (https) -> wss://pbl4-app...
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host; 
+      const wsUrl = `${protocol}//${host}`;
 
-  //   try {
-  //     const wsUrl = `${'ws://localhost:8000'}`;
-  //     this.socket = new WebSocket(wsUrl);
-  //     this.isManuallyDisconnected = false;
-  //     this.socket.onopen = () => {
-  //       console.log('WebSocket connected');
-  //       this.reconnectAttempts = 0;
+      console.log(`Connecting to WebSocket at: ${wsUrl}`); // Log để debug xem nó kết nối đi đâu
+
+      this.socket = new WebSocket(wsUrl);
+      this.isManuallyDisconnected = false;
+
+      this.socket.onopen = () => {
+        console.log('✅ WebSocket connected successfully');
+        this.reconnectAttempts = 0;
         
-  //       // Authenticate với server
-  //       this.send({
-  //         type: 'auth',
-  //         token: accessToken,
-  //         userId: user.id
-  //       });
-  //     };
+        // Authenticate với server ngay khi kết nối
+        this.send({
+          type: 'auth',
+          token: accessToken,
+          userId: user.id
+        });
+      };
 
-  //     this.socket.onmessage = (event) => {
-  //       try {
-  //         const data = JSON.parse(event.data);
-  //         this.handleMessage(data);
-  //       } catch (error) {
-  //         console.error('Error parsing WebSocket message:', error);
-  //       }
-  //     };
+      this.socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleMessage(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
 
-  //     this.socket.onclose = (event) => {
-  //       console.log('WebSocket disconnected:', event.code, event.reason);
-  //       this.socket = null;
+      this.socket.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        this.socket = null;
         
-  //       if (!this.isManuallyDisconnected && this.reconnectAttempts < this.maxReconnectAttempts) {
-  //         setTimeout(() => {
-  //           this.reconnectAttempts++;
-  //           console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-  //           this.connect();
-  //         }, this.reconnectDelay);
-  //       }
-  //     };
+        if (!this.isManuallyDisconnected && this.reconnectAttempts < this.maxReconnectAttempts) {
+          setTimeout(() => {
+            this.reconnectAttempts++;
+            console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            this.connect();
+          }, this.reconnectDelay);
+        }
+      };
 
-  //     this.socket.onerror = (error) => {
-  //       console.error('WebSocket error:', error);
-  //     };
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-  //   } catch (error) {
-  //     console.error('Error creating WebSocket connection:', error);
-  //   }
-  // }
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
+    }
+  }
 
   disconnect() {
     this.isManuallyDisconnected = true;
@@ -172,4 +187,5 @@ class WebSocketService {
 }
 
 // Export singleton instance
-export default  WebSocketService;
+const webSocketService = new WebSocketService();
+export default webSocketService;

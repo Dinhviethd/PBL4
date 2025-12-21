@@ -4,6 +4,7 @@
   "main": "main.ts",
   "scripts": {
     "dev": "nodemon --watch ./src --ext ts --exec ts-node -r tsconfig-paths/register src/main.ts",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/configs/database.config.ts",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/configs/database.config.ts",
@@ -28,7 +29,10 @@
     "multer": "^2.0.2",
     "mysql2": "^3.14.3",
     "nodemailer": "^7.0.9",
+    "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
+    "tsconfig-paths": "^4.2.0",
+    "typeorm": "^0.3.26",
     "ws": "^8.18.3",
     "zod": "^4.1.1"
   },
@@ -43,8 +47,6 @@
     "@types/nodemailer": "^7.0.2",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typeorm": "^0.3.26",
     "typescript": "^5.9.2"
   }
 }

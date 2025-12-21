@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import Button from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, MessageCircle } from 'lucide-react';
 import userService from '@/services/user.service';
