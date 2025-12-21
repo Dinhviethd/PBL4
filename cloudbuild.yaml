@@ -24,3 +24,5 @@ steps:
 # Khai báo image để Cloud Build quản lý cache tốt hơn
 images:
   - 'gcr.io/pbl4-481903/pbl4'
+options:
+  logging: CLOUD_LOGGING_ONLY
