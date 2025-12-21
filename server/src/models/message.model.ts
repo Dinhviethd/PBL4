@@ -1,39 +1,57 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn} from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { Group } from './group.model'
+import { Call } from './call.model'
 import { MessageType } from '@/constants/constants'
-@Entity('Message')
+
+@Entity({ name: 'message' })
 export class Message {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'idmessage' })
   idMessage!: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'fileurl' })
   fileURL?: string;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'sentBy' })
+  @JoinColumn({ name: 'sentby' })
   sentBy!: User;
 
-  @Column({ type: 'enum', enum: MessageType })
+  @Column({ type: 'enum', enum: MessageType, default: MessageType.TEXT })
   type!: MessageType;
 
-  @Column()
+  @Column({ type: 'text' })
   content!: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdat' })
   createdAt!: Date;
 
+  @UpdateDateColumn({ name: 'updatedat' })
+  updatedAt!: Date;
+
   @ManyToOne(() => Group, { nullable: true })
-  @JoinColumn({ name: 'sendToGroup' })
+  @JoinColumn({ name: 'sendtogroup' })
   sendToGroup?: Group;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'sendToUser' })
+  @JoinColumn({ name: 'sendtouser' })
   sendToUser?: User;
 
-  @Column({ default: false })
+  @Column({ default: false , name: 'isdeleted' })
   isDeleted!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'deletedat' })
   deletedAt?: Date;
+
+  @Column({ default: false, name: 'isedited' })
+  isEdited!: boolean;
+
+  @Column({ nullable: true, name: 'editedat' })
+  editedAt?: Date;
+
+  @ManyToOne(() => Call, { nullable: true })
+  @JoinColumn({ name: 'callid' })
+  call?: Call;
+
+  @Column({ nullable: true, name: 'callid' })
+  callId?: number;
 }

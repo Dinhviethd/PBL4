@@ -1,8 +1,11 @@
-import { Button } from "@/components/ui/button"
 import { Outlet } from "react-router-dom"
+import { NotificationProvider } from "@/contexts/NotificationContext"
+
 const App= () =>(
-  <div className="">
-      <Outlet/>
-    </div>
-  )
+    <NotificationProvider>
+      <div className="">
+        <Outlet/>
+      </div>
+    </NotificationProvider>
+)
 export default App

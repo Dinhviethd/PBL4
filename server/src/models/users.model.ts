@@ -1,38 +1,49 @@
-import { PrimaryGeneratedColumn, Entity, Column, OneToMany, CreateDateColumn} from 'typeorm'
+import { PrimaryGeneratedColumn, Entity, Column, OneToMany, CreateDateColumn } from 'typeorm'
 import { VerifiedCode } from "./verification.model"
 import { StatusUser } from '@/constants/constants'
-@Entity('Users')
+import { GroupUser } from './group_user';
+
+@Entity({ name: 'users' })
 export class User {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'iduser' })
   idUser!: number;
 
   @Column()
-  name?: string;
+  name!: string;
 
   @Column()
-  email?: string;
+  email!: string;
 
   @Column()
-  password?: string;
+  password!: string;
 
-  @Column({ default: false })
-  emailVerified?: boolean;
+  @Column({ default: false, name: 'emailverified' })
+  emailVerified!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'avatarurl' })
   avatarUrl?: string;
 
   @Column({ nullable: true })
   phone?: string;
 
-  @CreateDateColumn()
-  createdAt?: Date;
+  @Column({ nullable: true, type: 'date' })
+  birthday?: Date;
 
   @Column({ nullable: true })
+  gender?: string;
+
+  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", name: 'createdat' })
+  createdAt!: Date;
+
+  @Column({ nullable: true, name: 'lastlogin' })
   lastLogin?: Date;
 
   @Column({ type: 'enum', enum: StatusUser, default: StatusUser.OFFLINE })
-  status?: StatusUser;
+  status!: StatusUser;
 
-  @OneToMany(()=> VerifiedCode, (verifiedCode) => verifiedCode.user)
-  verifiedCodes!: VerifiedCode[]
+  @OneToMany(() => VerifiedCode, (verifiedCode) => verifiedCode.user)
+  verifiedCodes!: VerifiedCode[];
+
+  @OneToMany(() => GroupUser, (groupUser) => groupUser.user)
+  groupUsers!: GroupUser[];
 }

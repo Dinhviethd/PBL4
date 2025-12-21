@@ -2,9 +2,9 @@ import {PrimaryGeneratedColumn, Entity, ManyToOne} from "typeorm"
 import { Column, JoinColumn, CreateDateColumn} from "typeorm"
 import { User } from './users.model'
 import { StatusNoti, NotiType } from '@/constants/constants'
-@Entity('Notification')
+@Entity({ name: 'notification' })
 export class Notification {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({name: 'idnotification'})
   idNotification!: number;
 
   @ManyToOne(() => User)
@@ -17,7 +17,7 @@ export class Notification {
   @Column()
   content?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({name: 'createdat'})
   createdAt!: Date;
 
   @Column({ type: 'enum', enum: NotiType })
