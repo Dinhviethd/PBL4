@@ -344,8 +344,6 @@ export default function CallPage() {
   // Handle end call
   const handleEndCall = useCallback(() => {
     try {
-      console.log("audioooooooooooooo, callinfor", callInfo)
-      console.log("audioooooooooooooo, activecall", activeCall)
       
       const callId = activeCall?.idCall || callInfo?.callId;
       const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;

@@ -3,6 +3,7 @@ import { MessageService } from '@/services/message.service';
 import { asyncHandler } from '@/utils/error.response';
 import { AppError } from '@/utils/error.response';
 import { MessageType } from '@/constants/constants';
+import { uploadFileToCloudinary, deleteFromCloudinary } from '@/utils/upload';
 
 export class MessageController {
   private messageService: MessageService;
@@ -233,5 +234,35 @@ export class MessageController {
       success: true,
       data: conversations
     });
+  });
+
+  uploadFile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      throw new AppError(401, 'Unauthorized');
+    }
+
+    if (!req.file) {
+      throw new AppError(400, 'Không có file nào được tải lên');
+    }
+
+    try {
+      // Upload file to Cloudinary with fileName for type detection
+      const result = await uploadFileToCloudinary(req.file.path, 'messages', req.file.originalname);
+      
+      res.status(201).json({
+        success: true,
+        data: {
+          url: result.secure_url,
+          fileType: req.file.mimetype,
+          fileName: req.file.originalname,
+          fileSize: req.file.size
+        },
+        message: 'Upload file thành công'
+      });
+    } catch (error: any) {
+      throw new AppError(500, `Upload file thất bại: ${error.message}`);
+    }
   });
 }
