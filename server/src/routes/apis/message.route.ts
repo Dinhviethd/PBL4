@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { MessageController } from '@/controllers/message.controller';
 import { authMiddleware, checkAccountStatus } from '@/middlewares/auth.middleware';
+import { fileUpload } from '@/middlewares/upload.middleware';
 
 const router = Router();
 const messageController = new MessageController();
@@ -10,6 +11,9 @@ router.post('/private', authMiddleware, checkAccountStatus, messageController.se
 
 // Gửi tin nhắn nhóm
 router.post('/group/:groupId', authMiddleware, checkAccountStatus, messageController.sendGroupMessage);
+
+// Upload file
+router.post('/upload', authMiddleware, checkAccountStatus, fileUpload.single('file'), messageController.uploadFile);
 
 // Lấy tin nhắn riêng tư với pagination
 router.get('/private/:partnerId', authMiddleware, checkAccountStatus, messageController.getPrivateMessages);

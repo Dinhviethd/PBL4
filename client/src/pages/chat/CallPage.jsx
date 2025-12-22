@@ -46,6 +46,28 @@ export default function CallPage() {
   const localStreamCacheRef = useRef(null);
   const remoteStreamCacheRef = useRef(null);
 
+  // Determine remote user info based on call direction
+  const isCaller = activeCall?.fromUserId === user?.idUser; // If I initiated the call
+  const remoteUserInfo = isCaller 
+    ? activeCall?.remoteUserInfo || callInfo?.remoteUserInfo // For outgoing calls, use remoteUserInfo
+    : { // For incoming calls, build from available sources
+        name: activeCall?.caller?.name || callInfo?.caller?.name,
+        id: activeCall?.caller?.id || callInfo?.caller?.id,
+        avatarUrl: activeCall?.caller?.avatarUrl || callInfo?.caller?.avatarUrl,
+        email: activeCall?.caller?.email || callInfo?.caller?.email,
+      };
+
+  // Debug logs
+  useEffect(() => {
+    console.log("[CallPage] isCaller:", isCaller);
+    console.log("[CallPage] user?.idUser:", user?.idUser);
+    console.log("[CallPage] activeCall?.fromUserId:", activeCall?.fromUserId);
+    console.log("[CallPage] activeCall?.remoteUserInfo:", activeCall?.remoteUserInfo);
+    console.log("[CallPage] activeCall?.caller:", activeCall?.caller);
+    console.log("[CallPage] callInfo?.remoteUserInfo:", callInfo?.remoteUserInfo);
+    console.log("[CallPage] callInfo?.caller:", callInfo?.caller);
+    console.log("[CallPage] Final remoteUserInfo:", remoteUserInfo);
+  }, [isCaller, user?.idUser, activeCall, callInfo, remoteUserInfo]);
 
   useEffect(() => {
     // Capture refs in the effect scope
@@ -410,6 +432,7 @@ export default function CallPage() {
           user={user}
           remoteVideoRef={remoteVideoRef}
           localVideoRef={videoRef}
+          remoteUserInfo={remoteUserInfo}
         />
       )}
 
@@ -429,18 +452,20 @@ export default function CallPage() {
           {micEnabled ? <Mic size={24} /> : <MicOff size={24} />}
         </button>
 
-        {/* Toggle Camera Button */}
-        <button
-          onClick={handleToggleCamera}
-          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl hover:scale-110 backdrop-blur-sm ${
-            cameraEnabled
-              ? "bg-gray-600/80 text-white hover:bg-gray-700/80"
-              : "bg-red-600/80 text-white hover:bg-red-700/80"
-          }`}
-          title={cameraEnabled ? "Turn off camera" : "Turn on camera"}
-        >
-          {cameraEnabled ? <Video size={24} /> : <VideoOff size={24} />}
-        </button>
+        {/* Toggle Camera Button - Only show for video calls */}
+        {callType === 'video' && (
+          <button
+            onClick={handleToggleCamera}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl hover:scale-110 backdrop-blur-sm ${
+              cameraEnabled
+                ? "bg-gray-600/80 text-white hover:bg-gray-700/80"
+                : "bg-red-600/80 text-white hover:bg-red-700/80"
+            }`}
+            title={cameraEnabled ? "Turn off camera" : "Turn on camera"}
+          >
+            {cameraEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+          </button>
+        )}
 
         {/* Speaker Button */}
         <button

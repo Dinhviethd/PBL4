@@ -108,6 +108,29 @@ const messageService = {
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch conversations' };
     }
+  },
+
+  // Upload file to Cloudinary
+  uploadFile: async (file) => {
+    try {
+      if (!file) throw new Error('File không hợp lệ!');
+      
+      // Validate file size (50MB max)
+      if (file.size > 50 * 1024 * 1024) {
+        throw new Error('File quá lớn! Tối đa 50MB');
+      }
+      
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await instance.post('/messages/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data.data; // Return { url, fileType, fileName, fileSize }
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.message || 'Upload file thất bại!';
+      throw { message: errorMsg };
+    }
   }
 };
 
