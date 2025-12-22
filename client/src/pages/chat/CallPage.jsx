@@ -438,18 +438,20 @@ export default function CallPage() {
           {micEnabled ? <Mic size={24} /> : <MicOff size={24} />}
         </button>
 
-        {/* Toggle Camera Button */}
-        <button
-          onClick={handleToggleCamera}
-          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl hover:scale-110 backdrop-blur-sm ${
-            cameraEnabled
-              ? "bg-gray-600/80 text-white hover:bg-gray-700/80"
-              : "bg-red-600/80 text-white hover:bg-red-700/80"
-          }`}
-          title={cameraEnabled ? "Turn off camera" : "Turn on camera"}
-        >
-          {cameraEnabled ? <Video size={24} /> : <VideoOff size={24} />}
-        </button>
+        {/* Toggle Camera Button - Only show for video calls */}
+        {callType === 'video' && (
+          <button
+            onClick={handleToggleCamera}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl hover:scale-110 backdrop-blur-sm ${
+              cameraEnabled
+                ? "bg-gray-600/80 text-white hover:bg-gray-700/80"
+                : "bg-red-600/80 text-white hover:bg-red-700/80"
+            }`}
+            title={cameraEnabled ? "Turn off camera" : "Turn on camera"}
+          >
+            {cameraEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+          </button>
+        )}
 
         {/* Speaker Button */}
         <button

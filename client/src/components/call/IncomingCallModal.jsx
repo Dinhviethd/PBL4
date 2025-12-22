@@ -91,20 +91,6 @@ export const IncomingCallModal = ({
     };
   }, []);
 
-  useEffect(() => {
-    console.log('[IncomingCallModal] mount, callInfo:', callInfo, 'isDeclined:', isDeclined);
-    return () => {
-      console.log('[IncomingCallModal] unmount, callInfo:', callInfo, 'isDeclined:', isDeclined);
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log('[IncomingCallModal] callInfo changed:', callInfo, 'isDeclined:', isDeclined);
-  }, [callInfo]);
-
-  useEffect(() => {
-    console.log('[IncomingCallModal] isDeclined changed:', isDeclined, 'callInfo:', callInfo);
-  }, [isDeclined]);
 
   useEffect(() => {
     const handleCallDecline = (event) => {
