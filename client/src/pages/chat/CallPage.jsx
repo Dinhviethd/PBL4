@@ -50,8 +50,24 @@ export default function CallPage() {
   const isCaller = activeCall?.fromUserId === user?.idUser; // If I initiated the call
   const remoteUserInfo = isCaller 
     ? activeCall?.remoteUserInfo || callInfo?.remoteUserInfo // For outgoing calls, use remoteUserInfo
-    : activeCall?.caller || callInfo?.caller; // For incoming calls, use caller info
+    : { // For incoming calls, build from available sources
+        name: activeCall?.caller?.name || callInfo?.caller?.name,
+        id: activeCall?.caller?.id || callInfo?.caller?.id,
+        avatarUrl: activeCall?.caller?.avatarUrl || callInfo?.caller?.avatarUrl,
+        email: activeCall?.caller?.email || callInfo?.caller?.email,
+      };
 
+  // Debug logs
+  useEffect(() => {
+    console.log("[CallPage] isCaller:", isCaller);
+    console.log("[CallPage] user?.idUser:", user?.idUser);
+    console.log("[CallPage] activeCall?.fromUserId:", activeCall?.fromUserId);
+    console.log("[CallPage] activeCall?.remoteUserInfo:", activeCall?.remoteUserInfo);
+    console.log("[CallPage] activeCall?.caller:", activeCall?.caller);
+    console.log("[CallPage] callInfo?.remoteUserInfo:", callInfo?.remoteUserInfo);
+    console.log("[CallPage] callInfo?.caller:", callInfo?.caller);
+    console.log("[CallPage] Final remoteUserInfo:", remoteUserInfo);
+  }, [isCaller, user?.idUser, activeCall, callInfo, remoteUserInfo]);
 
   useEffect(() => {
     // Capture refs in the effect scope

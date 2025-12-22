@@ -147,6 +147,9 @@ export default function VideoDisplay({
  * User Avatar Component
  */
 function UserAvatar({ user, type = "video" }) {
+  console.log("[UserAvatar] user object:", user);
+  console.log("[UserAvatar] user name:", user?.name);
+  
   const avatarUrl =
     user?.avatarUrl && user.avatarUrl.startsWith("http")
       ? user.avatarUrl
@@ -156,8 +159,8 @@ function UserAvatar({ user, type = "video" }) {
 
   if (type === "audio") {
     return (
-      <div className="flex flex-col items-center justify-center gap-4">
-        <div className="w-40 h-40 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center border-4 border-green-400 animate-pulse">
+      <div className="flex flex-col items-center justify-center gap-6">
+        <div className="w-48 h-48 rounded-full bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center border-4 border-blue-300 shadow-2xl" style={{boxShadow: "0 0 40px rgba(59, 130, 246, 0.5), 0 0 80px rgba(34, 211, 238, 0.3)"}}>
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -165,16 +168,16 @@ function UserAvatar({ user, type = "video" }) {
               className="w-full h-full rounded-full object-cover"
             />
           ) : (
-            <span className="text-5xl font-bold text-white">
+            <span className="text-6xl font-bold text-white">
               {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </span>
           )}
         </div>
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white">
+          <h2 className="text-5xl font-extrabold text-white">
             {user?.name || "User"}
           </h2>
-          <p className="text-sm text-gray-400 mt-2">🎤 Audio Call</p>
+          <p className="text-lg text-green-400 mt-3">Đang gọi...</p>
         </div>
       </div>
     );
