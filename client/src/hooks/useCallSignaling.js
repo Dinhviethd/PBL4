@@ -57,10 +57,10 @@ const useCallSignaling = (webRTC) => {
   /**
    * Khởi tạo cuộc gọi (Caller)
    */
-  const initiateCall = useCallback(async (toUserId, callType = 'audio') => {
+  const initiateCall = useCallback(async (toUserId, callType = 'audio', remoteUserInfo = null) => {
     try {
       setSignalingState('initiating');
-      setCallInfo({ toUserId, callType, fromUserId: user.idUser });
+      setCallInfo({ toUserId, callType, fromUserId: user.idUser, remoteUserInfo });
 
       // Gửi thông báo khởi tạo cuộc gọi
       sendSignalingMessage({
@@ -151,11 +151,12 @@ const useCallSignaling = (webRTC) => {
           idCall: callId,
           toUserId: toUserId, // Caller's ID
           callType: callInfo?.callType || 'audio', // Use callType from CALL_INITIATE
-          status: 'accepted'
+          status: 'accepted',
+          caller: callInfo?.caller || null // Store caller info for display
         };
         setActiveCall(newActiveCall);
       } else {
-        const updatedActiveCall = { ...activeCall, status: 'accepted' };
+        const updatedActiveCall = { ...activeCall, status: 'accepted', caller: callInfo?.caller || activeCall?.caller };
         setActiveCall(updatedActiveCall);
       }
       

@@ -489,12 +489,22 @@ const getGroupAvatarDisplay = (groupName = '') => {
 
       const toUserId = conversation.partnerId;
 
+      // Get remote user info from conversation partner
+      let remoteUserInfo = null;
+      if (conversation.partner) {
+        remoteUserInfo = {
+          name: conversation.partner.name,
+          avatarUrl: conversation.partner.avatarUrl
+        };
+      }
+
       // Set active call state
       setActiveCall({
         callType: "audio",
         toUserId,
         fromUserId: user.idUser,
         startTime: new Date(),
+        remoteUserInfo
       });
       setIsCaller(true);
 
@@ -505,7 +515,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
       }));
 
       // Initiate call through WebSocket signaling
-      await initiateCall(toUserId, "audio");
+      await initiateCall(toUserId, "audio", remoteUserInfo);
 
       // Send offer after short delay (wait for call ID from server)
       setTimeout(() => {
@@ -532,11 +542,21 @@ const getGroupAvatarDisplay = (groupName = '') => {
 
       const toUserId = conversation.partnerId;
 
+      // Get remote user info from conversation partner
+      let remoteUserInfo = null;
+      if (conversation.partner) {
+        remoteUserInfo = {
+          name: conversation.partner.name,
+          avatarUrl: conversation.partner.avatarUrl
+        };
+      }
+
       setActiveCall({
         callType: "video",
         toUserId,
         fromUserId: user.idUser,
         startTime: new Date(),
+        remoteUserInfo
       });
       setIsCaller(true);
 
@@ -546,7 +566,7 @@ const getGroupAvatarDisplay = (groupName = '') => {
         micEnabled: true
       }));
 
-      await initiateCall(toUserId, "video");
+      await initiateCall(toUserId, "video", remoteUserInfo);
 
       setTimeout(() => {
         if (callInfo?.callId) {

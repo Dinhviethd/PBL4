@@ -9,6 +9,7 @@ export default function VideoDisplay({
   user,
   remoteVideoRef,
   localVideoRef,
+  remoteUserInfo,
 }) {
   const remoteAudioRef = useRef(null);
 
@@ -118,7 +119,7 @@ export default function VideoDisplay({
       // Camera disabled - show user avatar
       return (
         <>
-          <UserAvatar user={user} type="video" />
+          <UserAvatar user={remoteUserInfo || user} type="video" />
           <audio ref={remoteAudioRef} autoPlay playsInline />
         </>
       );
@@ -128,7 +129,7 @@ export default function VideoDisplay({
     if (callType === "audio") {
       return (
         <>
-          <UserAvatar user={user} type="audio" />
+          <UserAvatar user={remoteUserInfo || user} type="audio" />
           <audio ref={remoteAudioRef} autoPlay playsInline />
         </>
       );

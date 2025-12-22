@@ -46,6 +46,12 @@ export default function CallPage() {
   const localStreamCacheRef = useRef(null);
   const remoteStreamCacheRef = useRef(null);
 
+  // Determine remote user info based on call direction
+  const isCaller = activeCall?.fromUserId === user?.idUser; // If I initiated the call
+  const remoteUserInfo = isCaller 
+    ? activeCall?.remoteUserInfo || callInfo?.remoteUserInfo // For outgoing calls, use remoteUserInfo
+    : activeCall?.caller || callInfo?.caller; // For incoming calls, use caller info
+
 
   useEffect(() => {
     // Capture refs in the effect scope
@@ -338,6 +344,8 @@ export default function CallPage() {
   // Handle end call
   const handleEndCall = useCallback(() => {
     try {
+      console.log("audioooooooooooooo, callinfor", callInfo)
+      console.log("audioooooooooooooo, activecall", activeCall)
       
       const callId = activeCall?.idCall || callInfo?.callId;
       const toUserId = activeCall?.toUserId || callInfo?.toUserId || activeCall?.fromUserId || callInfo?.fromUserId;
@@ -410,6 +418,7 @@ export default function CallPage() {
           user={user}
           remoteVideoRef={remoteVideoRef}
           localVideoRef={videoRef}
+          remoteUserInfo={remoteUserInfo}
         />
       )}
 
