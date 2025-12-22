@@ -9,7 +9,7 @@
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/configs/database.config.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/configs/database.config.ts",
     "migration:show": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:show -d src/configs/database.config.ts",
-    "seed": "ts-node -r tsconfig-paths/register src/seeds/seeds.ts" 
+    "seed": "ts-node -r tsconfig-paths/register src/seeds/seeds.ts"
   },
   "author": "",
   "license": "ISC",
@@ -28,7 +28,6 @@
     "multer": "^2.0.2",
     "mysql2": "^3.14.3",
     "nodemailer": "^7.0.9",
-    "redis": "^4.7.1",
     "reflect-metadata": "^0.2.2",
     "ws": "^8.18.3",
     "zod": "^4.1.1"
