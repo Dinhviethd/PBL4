@@ -1,64 +1,36 @@
+import { AppDataSource } from '@/configs/database.config'; // Import DataSource để chạy SQL
 import groupInvitationRepository from '@/repositories/groupInvitation.repository';
 import { GroupRepository } from '@/repositories/group.repository';
 import { AppError } from '@/utils/error.response';
 import { UserResponse } from '@/DTOs/user.dto';
-import { th } from 'zod/v4/locales/index.cjs';
 import { GroupInvitationStatus } from '@/constants/constants';
 import notificationService from '@/services/notification.service';
+import { Group } from '@/models/group.model';
 
 export class GroupInvitationService {
-      // Lấy toàn bộ danh sách pending members của nhóm (không phân trang)
-      async getPendingMembers(groupId: number) {
-        const items = await groupInvitationRepository.getPendingMembers(groupId);
-        const mapUser = (u: any): UserResponse => ({
-          idUser: u?.idUser,
-          name: u?.name || u?.fullName,
-          email: u?.email,
-          avatarUrl: u?.avatarUrl,
-          phone: u?.phone,
-          gender: u?.gender,
-          birthday: u?.birthday,
-          createdAt: u?.createdAt
-        });
-        return items.map((inv: any) => ({
-          idInvitation: inv.idInvitation,
-          message: inv.message,
-          createdAt: inv.createdAt,
-          status: inv.status,
-          idGroup: inv.idGroup && { idGroup: inv.idGroup.idGroup, name: inv.idGroup.name },
-          inviter: mapUser(inv.inviter),
-          invitee: mapUser(inv.invitee),
-        }));
-      }
-    async getInvitesNeedAdminApprove(adminId: number, page = 1, limit = 10) {
-      const skip = (page - 1) * limit;
-      return await groupInvitationRepository.getInvitesNeedAdminApprove(adminId, skip, limit);
-    }
-
-    async getInvitesWaitingForAdmin(userId: number, page = 1, limit = 10) {
-      const skip = (page - 1) * limit;
-      return await groupInvitationRepository.getInvitesWaitingForAdmin(userId, skip, limit);
-    }
   private groupRepository: GroupRepository;
 
   constructor() {
     this.groupRepository = new GroupRepository();
   }
 
+  // --- HÀM NÀY ĐÃ SỬA: CHẠY SQL TRỰC TIẾP (RAW QUERY) ---
   async sendInvitation(userId: number, groupId: number, inviteeId: number, message?: string) {
+    // 1. Kiểm tra nhóm tồn tại
     const group = await this.groupRepository.getGroupById(groupId);
     if (!group) return { status: 'not-found' };
-    // inviter must be a member of the group
+
+    // 2. Kiểm tra quyền người mời
     const inviterIsMember = await this.groupRepository.checkMembership(groupId, userId);
     if (!inviterIsMember) return { status: 'not-member' };
 
     if (userId == inviteeId) return { status: 'self' };
 
-    // invitee must not already be a member
+    // 3. Kiểm tra người được mời đã trong nhóm chưa
     const isMember = await this.groupRepository.checkMembership(groupId, inviteeId);
     if (isMember) return { status: 'already-member' };
 
-    // check existing invitation
+    // 4. Kiểm tra lời mời đã tồn tại chưa
     const existing = await groupInvitationRepository.findByGroupAndInvitee(groupId, inviteeId);
     if (existing) {
       return {
@@ -74,17 +46,53 @@ export class GroupInvitationService {
       };
     }
 
-    // Chỉ tạo invitation, không thêm vào nhóm
-    const inv = await groupInvitationRepository.createInvitation(groupId, userId, inviteeId, message);
-    if (!inv) return { status: 'error' };
-
-    // Tạo thông báo lời mời vào nhóm
-    try {
-      await notificationService.createGroupInviteNotification(userId, inviteeId, groupId, inv.idGroup.name);
-    } catch (error) {
-      console.error('Failed to create group invite notification:', error);
+    // 5. --- THỰC THI INSERT BẰNG RAW SQL (KHÔNG DÙNG REPOSITORY) ---
+    // Logic này đảm bảo 100% không bị lỗi "invalid syntax"
+    
+    let needAdminApprove = true;
+    if (group.createdBy && group.createdBy.idUser == userId) {
+      needAdminApprove = false;
     }
 
+    // Câu lệnh SQL cứng, fix chặt vị trí tham số
+    const query = `
+      INSERT INTO group_invitation ("idGroup", inviter, invitee, message, "needAdminApprove", status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING "idInvitation"
+    `;
+
+    const params = [
+      groupId,                        // $1 -> idGroup (integer)
+      userId,                         // $2 -> inviter (integer)
+      inviteeId,                      // $3 -> invitee (integer)
+      message || null,                // $4 -> message (text)
+      needAdminApprove,               // $5 -> needAdminApprove (boolean)
+      GroupInvitationStatus.PENDING   // $6 -> status (varchar)
+    ];
+
+    let invId;
+    try {
+      const result = await AppDataSource.query(query, params);
+      invId = result[0]?.idInvitation; // Lấy ID vừa tạo
+    } catch (err) {
+      console.error('[BACKEND] Insert Raw SQL Failed:', err);
+      throw err;
+    }
+        console.log('Received sendInvitation request with body22222222');
+    // 6. Lấy lại dữ liệu đầy đủ để trả về Frontend
+    // (Lúc này data đã nằm trong DB rồi, nên gọi repo findById sẽ an toàn)
+    const inv = await groupInvitationRepository.findById(invId);
+    if (!inv) return { status: 'error' };
+
+    // 7. Gửi thông báo (Notification)
+    const groupName = group.name; // Lấy tên nhóm từ biến group ở bước 1 cho chắc ăn
+    try {
+      await notificationService.createGroupInviteNotification(userId, inviteeId, groupId, groupName);
+    } catch (error) {
+      console.error('Failed to create notification:', error);
+    }
+
+    // 8. Map dữ liệu trả về (Format lại User object)
     const mapUser = (u: any): UserResponse => ({
       idUser: u?.idUser,
       name: u?.name || u?.fullName,
@@ -95,6 +103,7 @@ export class GroupInvitationService {
       birthday: u?.birthday,
       createdAt: u?.createdAt
     });
+
     return {
       status: 'invited',
       idInvitation: inv.idInvitation,
@@ -105,18 +114,59 @@ export class GroupInvitationService {
       needAdminApprove: inv.needAdminApprove || false,
     };
   }
+  // -------------------------------------------------------------
+
+  // --- CÁC HÀM DƯỚI ĐÂY GIỮ NGUYÊN (NHƯNG SỬA NHẸ PHẦN MAP DỮ LIỆU) ---
+  
+  async getPendingMembers(groupId: number) {
+    const items = await groupInvitationRepository.getPendingMembers(groupId);
+    const mapUser = (u: any): UserResponse => ({
+      idUser: u?.idUser,
+      name: u?.name || u?.fullName,
+      email: u?.email,
+      avatarUrl: u?.avatarUrl,
+      phone: u?.phone,
+      gender: u?.gender,
+      birthday: u?.birthday,
+      createdAt: u?.createdAt
+    });
+    return items.map((inv: any) => ({
+      idInvitation: inv.idInvitation,
+      message: inv.message,
+      createdAt: inv.createdAt,
+      status: inv.status,
+      // Fix lỗi map: kiểm tra cả 'group' (mới) và 'idGroup' (cũ)
+      idGroup: (inv.group || inv.idGroup) && { 
+        idGroup: (inv.group || inv.idGroup).idGroup, 
+        name: (inv.group || inv.idGroup).name 
+      },
+      inviter: mapUser(inv.inviter),
+      invitee: mapUser(inv.invitee),
+    }));
+  }
+
+  async getInvitesNeedAdminApprove(adminId: number, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    return await groupInvitationRepository.getInvitesNeedAdminApprove(adminId, skip, limit);
+  }
+
+  async getInvitesWaitingForAdmin(userId: number, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    return await groupInvitationRepository.getInvitesWaitingForAdmin(userId, skip, limit);
+  }
 
   async deleteInvitation(userId: number, invitationId: number) {
     const inv = await groupInvitationRepository.findById(invitationId);
     if (!inv) throw new AppError(404, 'Invitation not found');
 
-    // Cho phép admin của nhóm xóa lời mời
     let isAdmin = false;
-    if (inv.idGroup && inv.idGroup.idGroup) {
-      isAdmin = await this.groupRepository.checkAdmin(inv.idGroup.idGroup, userId);
+    // Fix lỗi check admin: lấy group từ inv.group hoặc inv.idGroup
+    const groupData = inv.group || (inv as any).idGroup;
+    
+    if (groupData && groupData.idGroup) {
+      isAdmin = await this.groupRepository.checkAdmin(groupData.idGroup, userId);
     }
 
-    // Chỉ inviter, invitee hoặc admin mới được xóa
     if (inv.inviter.idUser !== userId && inv.invitee.idUser !== userId && !isAdmin) {
       throw new AppError(403, 'Not allowed');
     }
@@ -129,71 +179,55 @@ export class GroupInvitationService {
     const inv = await groupInvitationRepository.findById(invitationId);
     if (!inv) throw new AppError(404, 'Invitation not found');
 
-    // Kiểm tra nếu là admin thì cho phép duyệt trực tiếp
     let isAdmin = false;
-    if (inv.idGroup && inv.idGroup.idGroup) {
-      isAdmin = await this.groupRepository.checkAdmin(inv.idGroup.idGroup, userId);
+    const groupData = inv.group || (inv as any).idGroup;
+    if (groupData && groupData.idGroup) {
+      isAdmin = await this.groupRepository.checkAdmin(groupData.idGroup, userId);
     }
 
     if (inv.invitee.idUser !== userId && !isAdmin) throw new AppError(403, 'Not allowed');
 
+    const groupId = groupData?.idGroup;
+    const groupName = groupData?.name;
+    const creatorId = groupData?.createdBy?.idUser;
+
+    if (!groupId) throw new AppError(500, 'Group info missing in invitation');
+
     if (isAdmin) {
-      // Admin duyệt trực tiếp, thêm thành viên vào nhóm và xóa lời mời
-      await this.groupRepository.addMember(inv.idGroup.idGroup, inv.invitee.idUser);
+      await this.groupRepository.addMember(groupId, inv.invitee.idUser);
       await groupInvitationRepository.deleteInvitationById(invitationId);
-      // Tạo thông báo thành viên mới vào nhóm
       try {
-        if (inv.invitee && inv.idGroup) {
-          // Lấy danh sách thành viên hiện tại của nhóm
-          const members = await this.groupRepository.getGroupMembers(inv.idGroup.idGroup);
+        if (inv.invitee) {
+          const members = await this.groupRepository.getGroupMembers(groupId);
           const memberIds = members.map(m => m.user.idUser);
           await notificationService.createGroupMemberJoinedNotification(
-            inv.invitee.idUser,
-            inv.idGroup.idGroup,
-            inv.idGroup.name,
-            memberIds
+            inv.invitee.idUser, groupId, groupName || '', memberIds
           );
         }
-      } catch (error) {
-        console.error('Failed to create group member joined notification:', error);
-      }
+      } catch (error) { console.error(error); }
       return { message: 'Admin đã duyệt, thành viên đã được thêm vào nhóm' };
     } else if (inv.needAdminApprove) {
-      // Nếu cần admin duyệt, chỉ chuyển status sang accepted
       await groupInvitationRepository.updateInvitationStatus(invitationId, GroupInvitationStatus.ACCEPTED);
       try {
-        if (inv.invitee && inv.idGroup && inv.idGroup.createdBy) {
+        if (inv.invitee && creatorId) {
           await notificationService.createGroupInviteAdminNotification(
-            inv.invitee.idUser,
-            inv.idGroup.createdBy.idUser,
-            inv.idGroup.idGroup,
-            inv.idGroup.name
+            inv.invitee.idUser, creatorId, groupId, groupName || ''
           );
-        } else {
-          console.error('Missing invitee or group creator info for notification');
         }
-      } catch (error) {
-        console.error('Failed to create group invite notification:', error);
-      }
+      } catch (error) { console.error(error); }
       return { message: 'Đã xác nhận, chờ admin duyệt' };
     } else {
-      await this.groupRepository.addMember(inv.idGroup.idGroup, userId);
+      await this.groupRepository.addMember(groupId, userId);
       await groupInvitationRepository.deleteInvitationById(invitationId);
-      // Tạo thông báo thành viên mới vào nhóm
       try {
-        if (inv.invitee && inv.idGroup) {
-          const members = await this.groupRepository.getGroupMembers(inv.idGroup.idGroup);
+        if (inv.invitee) {
+          const members = await this.groupRepository.getGroupMembers(groupId);
           const memberIds = members.map(m => m.user.idUser);
           await notificationService.createGroupMemberJoinedNotification(
-            userId,
-            inv.idGroup.idGroup,
-            inv.idGroup.name,
-            memberIds
+            userId, groupId, groupName || '', memberIds
           );
         }
-      } catch (error) {
-        console.error('Failed to create group member joined notification:', error);
-      }
+      } catch (error) { console.error(error); }
       return { message: 'Joined group successfully' };
     }
   }
@@ -216,7 +250,11 @@ export class GroupInvitationService {
       message: inv.message,
       createdAt: inv.createdAt,
       status: inv.status,
-      idGroup: inv.idGroup && { idGroup: inv.idGroup.idGroup, name: inv.idGroup.name },
+      // Fix map
+      idGroup: (inv.group || inv.idGroup) && { 
+        idGroup: (inv.group || inv.idGroup).idGroup, 
+        name: (inv.group || inv.idGroup).name 
+      },
       inviter: mapUser(inv.inviter),
       invitee: mapUser(inv.invitee),
     }));
@@ -240,7 +278,11 @@ export class GroupInvitationService {
       idInvitation: inv.idInvitation,
       message: inv.message,
       createdAt: inv.createdAt,
-      idGroup: inv.idGroup && { idGroup: inv.idGroup.idGroup, name: inv.idGroup.name },
+      // Fix map
+      idGroup: (inv.group || inv.idGroup) && { 
+        idGroup: (inv.group || inv.idGroup).idGroup, 
+        name: (inv.group || inv.idGroup).name 
+      },
       inviter: mapUser(inv.inviter),
       invitee: mapUser(inv.invitee)
     }));

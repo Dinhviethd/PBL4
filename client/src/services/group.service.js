@@ -91,7 +91,7 @@ const groupService = {
     // Get pending members (chờ duyệt)
   getPendingMembers: async (groupId) => {
     try {
-      const response = await instance.get(`/groups/invite/pending`, {
+      const response = await instance.get(`/invitations/pending`, {
         params: { groupId }
       });
       return response.data;
@@ -155,7 +155,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
       throw { message: 'groupId hoặc userId không hợp lệ!' };
     }
 
-    const response = await instance.post(`/groups/invite`, {
+    const response = await instance.post(`/invitations`, {
       groupId: validGroupId,
       inviteeId: validUserId,
       message
@@ -171,7 +171,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Get received invites
   getReceivedInvites: async (page = 1, limit = 8) => {
     try {
-      const response = await instance.get('/groups/invite/received', {
+      const response = await instance.get('/invitations/received', {
         params: { page, limit }
       });
       return response.data;
@@ -183,7 +183,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Get sent invites
   getSentInvites: async (page = 1, limit = 8) => {
     try {
-      const response = await instance.get('/groups/invite/sent', {
+      const response = await instance.get('/invitations/sent', {
         params: { page, limit }
       });
       return response.data;
@@ -195,7 +195,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Accept invite
   acceptInvite: async (inviteId) => {
     try {
-      const response = await instance.put(`/groups/invite/invitation/${inviteId}/accept`);
+      const response = await instance.put(`/invitations/invitation/${inviteId}/accept`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to accept invite' };
@@ -205,7 +205,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Delete invite
   deleteInvite: async (inviteId) => {
     try {
-      const response = await instance.delete(`/groups/invite/invitation/${inviteId}`);
+      const response = await instance.delete(`/invitations/invitation/${inviteId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to delete invite' };
@@ -215,7 +215,7 @@ inviteUserToGroup: async (groupId, userId, message = '') => {
   // Get invites need admin approval
   getInvitesNeedAdminApprove: async (page = 1, limit = 8) => {
     try {
-      const response = await instance.get('/groups/invite/admin-approval', {
+      const response = await instance.get('/invitations/admin-approval', {
         params: { page, limit }
       });
       return response.data;

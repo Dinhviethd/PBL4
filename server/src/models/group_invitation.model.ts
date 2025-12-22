@@ -9,8 +9,8 @@ export class GroupInvitation {
   idInvitation!: number;
 
   @ManyToOne(() => Group)
-  @JoinColumn({ name: 'idGroup' }) // Sửa name
-  idGroup!: Group;
+  @JoinColumn({ name: 'idGroup' }) 
+  group!: Group; 
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'inviter' })
