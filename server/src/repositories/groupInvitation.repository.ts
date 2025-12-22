@@ -8,19 +8,23 @@ class GroupInvitationRepository {
   private repo = AppDataSource.getRepository(GroupInvitation);
 
   async getPendingMembers(groupId: number) {
-    return await this.repo.find({
-      where: { idGroup: { idGroup: groupId } } as any, // FIX relation query
-      relations: ['idGroup', 'inviter', 'invitee'],
-      order: { createdAt: 'DESC' }
-    });
+    // Sửa 'inv.idGroup' -> 'inv.group'
+    return await this.repo.createQueryBuilder('inv')
+      .leftJoinAndSelect('inv.group', 'group') 
+      .leftJoinAndSelect('inv.inviter', 'inviter')
+      .leftJoinAndSelect('inv.invitee', 'invitee')
+      .where('group.idGroup = :groupId', { groupId })
+      .orderBy('inv.createdAt', 'DESC')
+      .getMany();
   }
 
   async getInvitesNeedAdminApprove(adminId: number, skip = 0, take = 10) {
+    // Sửa 'inv.idGroup' -> 'inv.group'
     const qb = this.repo.createQueryBuilder('inv')
-      .leftJoinAndSelect('inv.idGroup', 'g')
+      .leftJoinAndSelect('inv.group', 'g') 
       .leftJoinAndSelect('inv.inviter', 'inviter')
       .leftJoinAndSelect('inv.invitee', 'invitee')
-      .where('inv.needAdminApprove = :needApprove', { needApprove: true }) // Postgres cần boolean rõ ràng
+      .where('inv.needAdminApprove = :needApprove', { needApprove: true })
       .andWhere('g.createdBy = :adminId', { adminId })
       .orderBy('inv.createdAt', 'DESC')
       .skip(skip)
@@ -30,8 +34,9 @@ class GroupInvitationRepository {
   }
 
   async getInvitesWaitingForAdmin(userId: number, skip = 0, take = 10) {
+    // Sửa 'inv.idGroup' -> 'inv.group'
     const qb = this.repo.createQueryBuilder('inv')
-      .leftJoinAndSelect('inv.idGroup', 'g')
+      .leftJoinAndSelect('inv.group', 'g')
       .leftJoinAndSelect('inv.inviter', 'inviter')
       .leftJoinAndSelect('inv.invitee', 'invitee')
       .where('inv.needAdminApprove = :needApprove', { needApprove: true })
@@ -43,16 +48,18 @@ class GroupInvitationRepository {
     return { items, total };
   }
 
-  async createInvitation(groupId: number, inviterId: number, inviteeId: number, message?: string) {
+ async createInvitation(groupId: number, inviterId: number, inviteeId: number, message?: string) {
     groupId = Number(groupId);
     inviterId = Number(inviterId);
     inviteeId = Number(inviteeId);
+    
     if (isNaN(groupId) || isNaN(inviterId) || isNaN(inviteeId)) {
       throw new Error('groupId, inviterId hoặc inviteeId không hợp lệ!');
     }
     
     let needAdminApprove = true;
     try {
+      // Logic check admin giữ nguyên
       const group = await AppDataSource.getRepository(Group).findOne({
         where: { idGroup: groupId },
         relations: ['createdBy']
@@ -62,24 +69,45 @@ class GroupInvitationRepository {
       }
     } catch (e) { console.error('[BACKEND] Lỗi lấy group:', e); }
 
-    const result = await this.repo.insert({
-      idGroup: (groupId as any),
-      inviter: (inviterId as any),
-      invitee: (inviteeId as any),
-      message,
-      needAdminApprove,
-    } as any);
+    // Dùng RAW Query để insert trực tiếp -> Bỏ qua mọi lỗi mapping của TypeORM
+    // Lưu ý: Tên cột trong DB của bạn có dấu ngoặc kép "idGroup", "needAdminApprove"
+    const query = `
+      INSERT INTO group_invitation ("idGroup", inviter, invitee, message, "needAdminApprove", status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING "idInvitation"
+    `;
 
-    // FIX: Postgres return logic
-    const insertedId = result.identifiers[0].idInvitation;
-    
-    if (!insertedId) return null;
-    return await this.findById(insertedId as number);
+    const params = [
+      groupId,               // $1 -> idGroup (integer)
+      inviterId,             // $2 -> inviter (integer)
+      inviteeId,             // $3 -> invitee (integer)
+      message || null,       // $4 -> message (text)
+      needAdminApprove,      // $5 -> needAdminApprove (boolean) -> Postgres tự hiểu
+      GroupInvitationStatus.PENDING // $6 -> status (varchar)
+    ];
+
+    try {
+      const result = await this.repo.query(query, params);
+      
+      // result trả về mảng các dòng insert, lấy id dòng đầu tiên
+      const insertedId = result[0]?.idInvitation;
+      
+      if (!insertedId) return null;
+      
+      // Trả về object đầy đủ sau khi insert thành công
+      
+      return await this.findById(insertedId);
+      
+    } catch (error) {
+      console.error('[BACKEND] Create Invitation Error:', error);
+      throw error;
+    }
   }
 
   async deleteInvitationById(invitationId: number) {
     return await this.repo.delete({ idInvitation: invitationId } as any);
   }
+
   async updateInvitationStatus(invitationId: number, status: GroupInvitationStatus) {
     return await this.repo.update({ idInvitation: invitationId }, { status });
   }
@@ -87,16 +115,17 @@ class GroupInvitationRepository {
   async findById(invitationId: number) {
     return await this.repo.findOne({
       where: { idInvitation: invitationId } as any,
-      relations: ['idGroup', 'idGroup.createdBy', 'inviter', 'invitee'],
+      // Sửa 'idGroup' -> 'group' trong relations
+      relations: ['group', 'group.createdBy', 'inviter', 'invitee'], 
     });
   }
 
   async findByGroupAndInvitee(groupId: number, inviteeId: number) {
     const qb = this.repo.createQueryBuilder('inv')
-      .leftJoinAndSelect('inv.idGroup', 'g')
+      .leftJoinAndSelect('inv.group', 'g') // Sửa inv.idGroup -> inv.group
       .leftJoinAndSelect('inv.inviter', 'inviter')
       .leftJoinAndSelect('inv.invitee', 'invitee')
-      .where('g.idGroup = :groupId', { groupId }) // FIX: refer to alias g
+      .where('g.idGroup = :groupId', { groupId })
       .andWhere('inv.invitee = :inviteeId', { inviteeId });
       
     const result = await qb.getOne();
@@ -123,7 +152,8 @@ class GroupInvitationRepository {
   async getReceivedInvitesPaginated(userId: number, skip = 0, take = 10) {
     const [items, total] = await this.repo.findAndCount({
       where: { invitee: { idUser: userId } } as any,
-      relations: ['idGroup', 'inviter', 'invitee'],
+      // Sửa relations: 'idGroup' -> 'group'
+      relations: ['group', 'inviter', 'invitee'],
       order: { createdAt: 'DESC' },
       skip,
       take,
@@ -134,7 +164,8 @@ class GroupInvitationRepository {
   async getSentInvitesPaginated(userId: number, skip = 0, take = 10) {
     const [items, total] = await this.repo.findAndCount({
       where: { inviter: { idUser: userId } } as any,
-      relations: ['idGroup', 'inviter', 'invitee'],
+      // Sửa relations: 'idGroup' -> 'group'
+      relations: ['group', 'inviter', 'invitee'],
       order: { createdAt: 'DESC' },
       skip,
       take,

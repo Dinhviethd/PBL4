@@ -130,6 +130,8 @@ class CallSignalingManager {
           select: ['idUser', 'name', 'avatarUrl', 'email']
         });
         
+        console.log('📞 Caller user from DB:', callerUser);
+        
         if (callerUser) {
           callerInfo = {
             idUser: callerUser.idUser,
@@ -142,7 +144,7 @@ class CallSignalingManager {
         console.log('⚠️ Could not fetch caller info from DB:', err);
       }
 
- 
+      console.log('📞 Sending CALL_INITIATE to user', toUserId, 'with callerInfo:', callerInfo);
 
       // Gửi thông báo cuộc gọi đến người nhận
       this.sendToUser(toUserId, {

@@ -86,7 +86,7 @@ wss.on('connection', (ws) => {
                     
                     // Thêm client vào WebSocket service
                     wsService.addClient(userId, ws);
-                    console.log(`✅ WebSocket authenticated for user ${userId}`);
+                    console.log(`WebSocket authenticated for user ${userId}`);
                     console.log("number of online users:", wsService.getOnlineUsers().length);
                     // Đăng ký cho Call Signaling
                     callSignalingManager.registerConnection(userId, ws);
@@ -97,7 +97,8 @@ wss.on('connection', (ws) => {
                         message: 'Authentication successful',
                         onlineUsers: wsService.getOnlineUsers()
                     }));
-                    
+                    console.log(`Authentication successful`);
+
                     
                 } catch (error) {
                     console.error('WebSocket authentication failed:', error);

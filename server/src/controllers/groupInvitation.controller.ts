@@ -29,6 +29,8 @@ class GroupInvitationController {
     const { groupId, inviteeId, message } = req.body;
     const inv = await groupInvitationService.sendInvitation(userId, groupId, inviteeId, message);
     res.status(201).json({ success: true, data: inv });
+        console.log('Received sendInvitation request with body1111111', req.body);
+
   });
 
   deleteInvitation = asyncHandler(async (req: Request, res: Response) => {

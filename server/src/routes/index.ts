@@ -15,8 +15,8 @@ router.use("/auth", authRoute)
       .use("/messages", messageRoute)
       .use("/notifications", notificationRoute)
       .use("/friendship", friendshipRoute)
+      .use('/invitations', groupInvitationRoute)
       .use('/groups', groupRoute)
-      .use('/groups/invite', groupInvitationRoute)
       .use("/calls", callRoute)
 
 export default router
